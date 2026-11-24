@@ -1,0 +1,96 @@
+# docker-compose.yml — Environnement de développement
+# Enterprise Infrastructure Intelligence (PHASE 0)
+#
+# Usage : cp .env.example .env  puis  docker compose up --build
+# Web : http://localhost:3000 — API : http://localhost:8000 — Docs : http://localhost:8000/docs
+#
+# Les mots de passe par défaut ci-dessous sont des PLACEHOLDERS de dev
+# uniquement (surchargés par .env). Ne jamais les utiliser hors dev.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eii}
+      POSTGRES_USER: ${POSTGRES_USER:-eii}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_only}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eii} -d ${POSTGRES_DB:-eii}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eii}:${POSTGRES_PASSWORD:-change_me_dev_only}@db:5432/${POSTGRES_DB:-eii}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      SECRET_KEY: ${SECRET_KEY:-change_me_dev_only}
+      API_ENV: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/worker.Dockerfile
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eii}:${POSTGRES_PASSWORD:-change_me_dev_only}@db:5432/${POSTGRES_DB:-eii}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  # Connecteur de SIMULATION — données explicitement simulées (SIMULATED=true).
+  # Ne jamais présenter ses données comme une infrastructure réelle.
+  connector-sim:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/connector.Dockerfile
+    environment:
+      SIMULATED: "true"
+      EII_API_URL: http://api:8000
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

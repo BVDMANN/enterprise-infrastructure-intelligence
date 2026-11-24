@@ -1,0 +1,45 @@
+# .gitignore — Enterprise Infrastructure Intelligence
+
+# Dépendances
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Build
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environnements & secrets (JAMAIS commiter de secret réel)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+secrets/
+
+# Bases & données locales
+*.db
+*.sqlite3
+postgres_data/
+redis_data/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & couverture
+*.log
+coverage/
+htmlcov/
+.pytest_cache/
+.playwright/
+test-results/
