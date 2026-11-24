@@ -1,6 +1,8 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **24 novembre 2026** (fin de PHASE 0).
+> Dernière mise à jour : **24 novembre 2026** (audit PHASE 0, soir).
+> Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
+> 2 corrections (Dockerfiles COPY + `.dockerignore`) dans la PR `audit/phase-0`.
 > Spécification de référence : **MASTER PROMPT V3**.
 > Statut global : **PHASE 0 TERMINÉE — en attente de validation humaine
 > avant PHASE 1.**
@@ -28,7 +30,7 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 | Worker (squelette) | Celery : `celery_app.py`, tâche `healthcheck` (réelle, pas de fausse donnée) |
 | Connecteur (squelette) | Connecteur de **simulation** : implémente le contrat commun, données marquées `simulated: true` partout, bannière SIMULATION |
 | Types partagés | `packages/shared-types` : `Organization`, `User`, `Resource`, `Alert`, `Incident`, etc. |
-| Docker | `docker-compose.yml` (PostgreSQL 16, Redis 7, api, worker, web, connector-sim) + 4 Dockerfiles sous `infrastructure/docker/` + `.dockerignore` |
+| Docker | `docker-compose.yml` (PostgreSQL 16, Redis 7, api, worker, web, connector-sim) + 4 Dockerfiles sous `infrastructure/docker/` (COPY corrigés pour le contexte racine — audit §10) + `.dockerignore` |
 | CI | `.github/workflows/ci.yml` : lint/typecheck/build web, lint/tests backend, scan secrets (gitleaks), validation `docker compose config` |
 | Scripts | `scripts/check-env.sh` : vérification de l'environnement de dev |
 
@@ -60,7 +62,12 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
       `npm run build` réussi (Next.js 14.2.35, 4 pages statiques).
 - [x] Aucun secret en clair dans le repository (vérifié par recherche
       de motifs `password|secret|token|api_key` hors placeholders
-      documentés `change_me` / `${VAR}`).
+      documentés `change_me` / `${VAR}` ; re-vérifié pendant l'audit).
+- [x] CI GitHub Actions verte sur l'arborescence complète : dernier run
+      (HEAD `076535c`) 4/4 jobs réussis (audit §10).
+- [x] `docker compose config` validé (Compose v5.8.0, 24/11).
+- [x] Fichiers annoncés vérifiés contre le dépôt réel : 81/81 présents
+      (arborescence distante == fichiers locaux, audit §10).
 
 ## 4. Éléments manquants (à construire en PHASE 1+)
 
@@ -88,24 +95,33 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 | pip | 24.0 | ✅ |
 | git | 2.43.0 | ✅ |
 | PyYAML | 6.0.1 | ✅ (validation YAML locale) |
-| **Docker** | **absent (`command not found`)** | ❌ **ÉCART BLOQUANT pour le dev local** |
+| **Docker** | **29.1.3 + Compose v5.8.0** (installés le 24/11 23h10) | ✅ installé — ⚠️ daemon `dockerd --bridge=none --iptables=false` : bridge impossible dans cette VM (sandbox sans CAP_NET_ADMIN) |
 | podman | absent | — (alternative non installée) |
 
-### Conséquences de l'écart Docker
+### Limites Docker dans cette VM (audit du 24/11 au soir)
 
-- `docker compose up` **ne peut pas être exécuté sur cette VM** :
-  l'environnement complet (Postgres, Redis, api, worker, web) n'a pas
-  pu être démarré ni testé ici.
-- Les Dockerfiles et `docker-compose.yml` sont rédigés et leur syntaxe
-  est validée, mais **le build des images n'a pas été testé**.
-- Vérifications locales effectuées à la place : `py_compile` (Python),
-  validation YAML, `npm install` + `tsc --noEmit` (voir §6).
-- **Action requise avant PHASE 1** : installer Docker Engine +
-  Docker Compose sur la machine de développement (ou utiliser une VM /
-  un poste équipé), puis exécuter `docker compose up --build` et
-  consigner le résultat.
+Docker est installé depuis le 24/11 23h10 (29.1.3 + Compose v5.8.0),
+mais cette VM (sandbox) bloque la création de réseaux :
 
-## 6. Tests exécutés (résultats réels, 24/11/2026)
+- `docker compose up` **ne peut pas être exécuté ici** : le daemon
+  tourne avec `--bridge=none --iptables=false` (le sandbox refuse
+  iptables/netlink, pas de CAP_NET_ADMIN) ; la création du réseau
+  bridge de Compose échoue.
+- Le **build des images n'a pas pu être testé ici** : le daemon ne
+  parvient pas à joindre Docker Hub (`TLS handshake timeout` vers
+  `registry-1.docker.io`, malgré un proxy fonctionnel en shell ;
+  daemon redémarré avec un token proxy frais — même échec).
+- En revanche, l'audit a trouvé et corrigé une **incohérence réelle**
+  (voir §10) : les 4 Dockerfiles utilisaient des chemins COPY relatifs
+  au dossier du service, alors que `docker-compose.yml` utilise le
+  contexte racine — les builds auraient échoué à l'étape COPY.
+- **Action requise avant PHASE 1** : exécuter
+  `docker compose up --build` sur une machine avec un Docker complet
+  (bridge fonctionnel + accès Docker Hub), puis consigner le résultat.
+  La CI GitHub (dernier run vert) valide déjà lint/tests/build web/
+  compose config à chaque push.
+
+## 6. Tests exécutés (résultats réels, 24/11/2026 — re-exécutés à l'identique pendant l'audit du soir)
 
 | Test | Commande | Résultat |
 |---|---|---|
@@ -114,7 +130,7 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 | Validation YAML CI | `yaml.safe_load(.github/workflows/ci.yml)` | ✅ OK |
 | JSON web | `json.load` sur `package.json`, `tsconfig.json`, `.eslintrc.json` + 2 `package.json` de packages | ✅ OK |
 | Recherche de secrets | `grep -R` motifs sensibles (hors placeholders) | ✅ aucun secret réel (uniquement `change_me_dev_only`) |
-| `pytest` backend | venv `/tmp/eii-venv` + `pip install -r requirements.txt` + `pytest tests -q` | ✅ **3 passed** en 0,62 s (1 warning bénin : dépréciation pytest-asyncio + starlette BlockingPortal) |
+| `pytest` backend | venv + `pip install -r requirements.txt` + `pytest tests -q` | ✅ **3 passed** en 0,49 s à l'audit (0,62 s en PHASE 0 ; 1 warning bénin : dépréciation pytest-asyncio + starlette BlockingPortal) |
 | `ruff check` backend | `ruff check app tests` | ✅ All checks passed |
 | `ruff format --check` backend | `ruff format --check app tests` | ✅ OK après reformatage de `app/core/config.py` (1 fichier corrigé, sans changement de comportement) |
 | API live (uvicorn, port 8123) | `curl /health`, `/api/v1/health`, `/openapi.json` | ✅ `{"status":"ok"}` ; `{"status":"ok","api_version":"v1"}` ; OpenAPI liste les 2 routes |
@@ -124,16 +140,20 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 | `tsc --noEmit` (web) | `npx tsc --noEmit` | ✅ 0 erreur |
 | `next lint` (web) | `npx next lint` | ✅ No ESLint warnings or errors |
 | `npm run build` (web) | `npm run build` | ✅ Compiled successfully ; 4 pages statiques générées ; route `/` = 96,8 kB first load |
-| `docker compose up --build` | — | ❌ **non exécutable : Docker absent de la VM** (voir §5) |
-| CI GitHub Actions | — | ❌ **non exécutée : aucun dépôt distant** (workflow rédigé ; il tournera à la création du dépôt par Randy) |
+| `docker compose up --build` | — | ❌ **non exécutable dans cette VM** : pas de réseau bridge (sandbox, voir §5) — à exécuter sur une machine Docker normale |
+| Build des images Docker | `docker build --network=host` (api) | ❌ **non testé** : pull Docker Hub impossible depuis le daemon de cette VM (`TLS handshake timeout` vers `registry-1.docker.io`) |
+| `docker compose config` | `docker compose config --quiet` (Compose v5.8.0) | ✅ OK — fichier valide, chemins des 4 Dockerfiles résolus |
+| CI GitHub Actions | 33 runs sur main (API GitHub) | ✅ **exécutée** : runs 1–29 en échec (arborescence incomplète pendant le téléversement par lots) ; runs 30–33 **succès** ; dernier run (HEAD `076535c`) 4/4 jobs verts (gitleaks, API, Web, Compose) |
+| Audit fichiers vs dépôt | arborescence distante (API GitHub) vs fichiers locaux | ✅ **81/81 fichiers présents**, identiques, HEAD `076535c` |
+| Dockerfiles vs compose | lecture des 4 Dockerfiles + `docker-compose.yml` | ❌ **incohérence trouvée** : COPY relatifs au dossier du service vs contexte racine — corrigée dans la PR d'audit (voir §10) |
 | Tests e2e Playwright | — | ⏸️ Squelette présent, spec `dashboard.spec.ts` en `test.skip` (requiert web + api via docker compose) |
 | Tests d'isolation multi-tenant | — | ⏸️ Squelette présent (`tests/security/test_tenant_isolation.py`, 2 tests `skip`, PHASE 1) |
 
 ## 7. Risques identifiés
 
 | # | Risque | Gravité | Mitigation |
-|---|---|---|---|
-| R1 | Docker absent sur la VM de dev → l'environnement de référence n'est pas testé | **Haute** | Installer Docker avant PHASE 1 ; ne pas démarrer le MVP sans `docker compose up` vert |
+|---|---|---|
+| R1 | `docker compose up` non testé (VM sandbox sans bridge ; pull Hub impossible) → l'environnement de référence n'est pas testé de bout en bout | **Haute** | Docker installé le 24/11 ; valider `docker compose up --build` sur une machine Docker normale avant de démarrer le MVP |
 | R2 | Périmètre très large (15 modules) → tentation de tout coder d'un coup | Haute | Phases strictes ; PHASE 1 = MVP seulement (voir BACKLOG.md) |
 | R3 | Données simulées confondues avec des données réelles | Moyenne | Marquage `simulated: true` obligatoire ; UI : badge SIMULÉ ; interdiction de présenter la simulation comme réelle |
 | R4 | Multi-tenancy ajouté après coup | Haute | Isolation dès la PHASE 1 (tests d'isolation obligatoires, RLS évaluée — ADR-0005) |
@@ -144,8 +164,10 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 
 ## 8. Prochaines tâches (ordre)
 
-1. **Validation humaine de cette PHASE 0** (ce document + docs + squelettes).
-2. Installer Docker sur la machine de dev ; `docker compose up --build` vert.
+1. **Validation humaine de cet audit PHASE 0** (PR `audit/phase-0` :
+   corrections Dockerfiles + `.dockerignore` + ce document + `BACKLOG.md`).
+2. `docker compose up --build` vert sur une machine Docker normale
+   (Docker déjà installé sur la VM d'audit ; non testable ici, voir §5).
 3. PHASE 1 — MVP : auth OIDC + organisations + RBAC, dashboard,
    Infrastructure Manager, connecteur de simulation, connecteur Proxmox
    lecture seule, connecteur Debian lecture seule, Monitoring Center,
@@ -157,3 +179,45 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 `TODO` · `IN_PROGRESS` · `BLOCKED` · `IN_REVIEW` · `TESTED` · `ACCEPTED` ·
 `DEPLOYED` — avec la distinction obligatoire : développé ≠ testé ≠
 accepté ≠ déployé ≠ prêt pour la production.
+
+## 10. Résultats de l'audit PHASE 0 (24/11/2026, soir)
+
+Audit ordonné avant toute PHASE 1. Méthode : arborescence distante via
+l'API GitHub, re-exécution locale de tous les tests, lecture des 4
+Dockerfiles et de `docker-compose.yml`, analyse des 33 runs CI.
+
+| # | Point audité | Résultat |
+|---|---|---|
+| 1 | Fichiers annoncés vs dépôt réel | ✅ 81/81 présents, identiques aux fichiers locaux (HEAD `076535c`) |
+| 2 | Cohérence PROJECT_STATUS.md / BACKLOG.md | ❌ 7 affirmations obsolètes corrigées (Docker, CI, P1-01, nom personnel) |
+| 3 | GitHub Actions | ✅ dernier run 4/4 jobs verts ; 29 premiers runs en échec expliqués (arborescence incomplète pendant le téléversement) |
+| 4 | Dockerfiles / compose | ❌ COPY incompatibles avec le contexte racine — corrigés (voir ci-dessous) |
+| 5 | Présence frontend / backend / worker / connecteur | ✅ tous présents (fichiers clés vérifiés un par un) |
+| 6 | Tests déclarés | ✅ tous re-exécutés pendant l'audit, résultats identiques |
+
+### Corrections appliquées (PR `audit/phase-0`)
+
+1. **4 Dockerfiles** (`infrastructure/docker/`) : chemins COPY rendus
+   relatifs à la racine du dépôt (contexte de `docker-compose.yml`).
+   Avant, `COPY requirements.txt .` / `COPY app ./app` /
+   `COPY package.json ...` / `COPY . .` supposaient le dossier du
+   service comme contexte — ces fichiers n'existent pas à la racine,
+   les builds auraient échoué à l'étape COPY.
+2. **`.dockerignore`** : `node_modules` → `**/node_modules`,
+   `.next` → `**/.next` (les motifs sans `**/` ne s'appliquent qu'à
+   la racine ; le contexte de build envoyé mesurait 409,6 Mo, soit
+   `apps/web/node_modules` presque entier).
+3. **Ce document (§5, §6, §7, §8)** : Docker installé, CI exécutée et
+   verte, cause réelle de l'impossibilité de `compose up`, retrait du
+   nom personnel (dépôt désormais public).
+4. **`BACKLOG.md`** : Docker et CI passés à leurs statuts réels,
+   P1-01 reformulée (Docker installé ; reste `compose up` à valider).
+
+### Non testé (honnêtement)
+
+- Build des images Docker : pull Docker Hub impossible depuis le daemon
+  de cette VM (`TLS handshake timeout`).
+- `docker compose up --build` : pas de réseau bridge dans cette VM
+  (sandbox sans CAP_NET_ADMIN).
+- Les deux sont à valider sur une machine Docker normale ou via la CI
+  (qui tourne déjà à chaque push).
