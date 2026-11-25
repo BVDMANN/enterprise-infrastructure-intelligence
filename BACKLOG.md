@@ -52,7 +52,7 @@ métriques fiables.
 | P1-10 | Première collecte de métriques (VictoriaMetrics) | TODO | P1-08/P1-09 |
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
-| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 draft, run #61 : 5 tests API passed ; migration/extension/upgrade-downgrade validés en Compose | P1-01 |
+| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
 | P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TODO — prochain sous-lot P1-A1 après revue de P1-A0 | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | TODO | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
