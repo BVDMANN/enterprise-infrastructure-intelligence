@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <p className="mt-2 text-[11px] leading-5 text-slate-500">
               Les données métier affichées sont simulées. Aucune infrastructure
-              client n'est connectée.
+              client n&apos;est connectée.
             </p>
           </div>
           <p className="px-2 pt-4 text-[10px] text-slate-600">
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Enterprise Infrastructure Intelligence
             </p>
             <p className="mt-0.5 text-sm font-medium text-slate-700">
-              Console d'administration
+              Console d&apos;administration
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -71,6 +71,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+
+        <div className="border-b border-slate-200 bg-white py-2 lg:hidden">
+          <SidebarNav />
+        </div>
 
         <main className="mx-auto max-w-7xl px-5 py-8 md:px-8 lg:px-10">
           {children}
