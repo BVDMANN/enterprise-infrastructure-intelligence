@@ -27,7 +27,7 @@
 | Conteneurs non-root (USER app / USER node) + `--reload` retiré | IN_REVIEW — implémenté, vérification `id -u` en CI à confirmer |
 | Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
 | Split requirements API (runtime vs dev) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
-| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — 8 vulnérabilités Python signalées (starlette, pytest), npm audit non vérifiable ici, écarts description PR #2 documentés |
+| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — 8 vulnérabilités Python signalées (starlette, pytest) ; npm audit exécuté en CI (run #39) : 7 vulnérabilités (1 moderate, 5 high, 1 critical — next, postcss, zod, glob, minimatch) ; écarts description PR #2 documentés |
 | Correction de la description de la PR #2 (affirmations inexactes) | TODO — à faire avant fusion de la PR #2 (voir audit sécurité §9) |
 | Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
 | Montée Node 22 / Next 16 / React 19 / ESLint 10 — lot dédié | TODO — planifié (ESLint 8 en fin de vie) |

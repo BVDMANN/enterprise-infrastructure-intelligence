@@ -297,11 +297,13 @@ fusionner dans `main`). Rapport complet :
   actuelle limitée (2 endpoints health) ; correction = montée FastAPI à
   planifier en lot dédié (pas de patch silencieux). Worker + connecteur :
   aucune vulnérabilité connue.
-- **Dépendances Node :** `npm audit` **non exécutable dans cette VM**
-  (endpoint bloqué par le proxy, 403) — à exécuter en CI (job ajouté) ;
-  `npm outdated` : aucune dépendance en retard dans les plages déclarées ;
-  les versions Latest sont des majeures (Next 16, React 19, ESLint 10,
-  Tailwind 4, Zod 4, TS 7) — aucune mise à niveau effectuée.
+- **Dépendances Node :** `npm audit` **exécuté en CI** (run #39, PR #3,
+  25/11 11h06) : **7 vulnérabilités (1 moderate, 5 high, 1 critical)** —
+  glob (high), minimatch (moderate), next ≤ 16.3.0-preview.10 (**critical**,
+  26 avis dont RCE non authentifiée), postcss ≤ 8.5.22 (high), zod < 4.6.6
+  (high) ; correctifs = breaking changes (next 16.4.6, zod 4.6.7) — montée
+  majeure à planifier en lot dédié, pas de patch silencieux. `npm outdated` :
+  aucune dépendance en retard dans les plages déclarées.
 - **Versions :** Python 3.12, Node 20 (LTS jusqu'en avril 2026 — passage en
   Node 22 à planifier ; ESLint 8 en fin de vie).
 - **Authentification / isolation multi-tenant / journal d'audit : non
