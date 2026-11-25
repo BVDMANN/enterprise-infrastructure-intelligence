@@ -193,7 +193,7 @@ P1-A0 est en revue dans la PR #4 (run #67 : 7/7 jobs réussis). P1-A1 est en rev
 - Hash des mots de passe Argon2id ; refus des comptes inactifs, supprimés, OIDC-only ou MFA-enabled pour éviter un contournement du second facteur.
 - Routes `POST /login`, `GET /me`, `POST /logout` avec cookie HttpOnly, SameSite, Origin, CSRF lié à la session et rate limiting Redis fail-closed.
 - Tests de hash, politique de mot de passe, comptes invalides, login/me/logout, Origin et CSRF.
-- Run #104 : job API vert sur la tête `acb12af` ; Docker build et Compose smoke encore en cours au moment de la mise à jour. La PR ne doit pas être déclarée verte avant la fin des autres jobs.
+- Run #104 : **7/7 jobs réussis** sur la tête `acb12af` ; API **55 tests passés**, 1 avertissement. L'audit est report-only et signale encore 16 occurrences Python + 7 vulnérabilités npm.
 - Le statut `mfa_enabled` bloque actuellement le login local ; aucun challenge OTP/MFA n'est encore disponible.
 
 ### P1-A2.3 — OIDC et MFA
@@ -202,7 +202,7 @@ P1-A0 est en revue dans la PR #4 (run #67 : 7/7 jobs réussis). P1-A1 est en rev
 
 ### Dépendances de sécurité associées
 
-La PR #12 (`phase0/python-security-remediation`, tête `3adf2f9`) met à niveau FastAPI/pytest/pytest-asyncio. Run #98 : 7/7 jobs réussis ; `pip-audit` ne trouve aucune vulnérabilité Python sur cette branche. `npm audit` signale toujours 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) et reste report-only. La PR #11 ajoute également `argon2-cffi==25.1.0` dans `apps/api/requirements.txt` : les deux modifications doivent être conservées lors de la synchronisation, puis testées ensemble par pip install, Ruff, pytest, build Docker et Compose smoke.
+La PR #12 (`phase0/python-security-remediation`) met à niveau FastAPI/pytest/pytest-asyncio. Run #98 : 7/7 jobs réussis ; `pip-audit` ne trouve aucune vulnérabilité Python sur cette branche. Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 en cours, job API vert et sans avertissement Starlette/TestClient dans ses logs. `npm audit` signale toujours 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) et reste report-only. La PR #11 ajoute également `argon2-cffi==25.1.0` dans `apps/api/requirements.txt` : les deux modifications doivent être conservées lors de la synchronisation, puis testées ensemble par pip install, Ruff, pytest, build Docker et Compose smoke. L'audit du run #104 sur la branche #11 signale encore 16 occurrences Python et 7 npm, car la mise à niveau #12 n'y est pas intégrée.
 
 ### Prochain lot concret
 
