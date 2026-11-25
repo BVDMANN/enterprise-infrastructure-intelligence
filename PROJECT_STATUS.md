@@ -369,7 +369,7 @@ fusionner dans `main`). Rapport complet :
 
 **PR #4 :** https://github.com/BVDMANN/enterprise-infrastructure-intelligence/pull/4  
 **Branche :** `phase1/p1-a0-alembic-foundation` (empilée sur PR #3)  
-**Run CI #61 :** tous les jobs sont terminés avec succès ; le job de dépendances reste report-only.
+**Run CI #64 :** tous les jobs sont terminés avec succès ; le job de dépendances reste report-only. Le run #64 revalide aussi le cycle Alembic upgrade → downgrade base → nouvel upgrade sur PostgreSQL 16.
 
 - Révision initiale `0001_pg_extensions` ajoutée : installe `citext`, sans table métier.
 - `env.py` compare les types lors des migrations offline/online.
@@ -379,12 +379,12 @@ fusionner dans `main`). Rapport complet :
 - Les quatre images Docker, le build Web Node 22, Compose smoke, gitleaks et la validation des ports loopback sont verts.
 - Aucun endpoint métier, table d'organisation, mécanisme d'authentification ou secret réel n'a été ajouté.
 
-**Statut :** PR #4 reste en brouillon, non fusionnée. Prochain sous-lot prévu : P1-A1 organisations, utilisateurs et memberships, avec contraintes d'unicité et tests négatifs avant toute route métier.
+**Statut :** PR #4 est ouverte, non-draft et non fusionnée (état GitHub vérifié). Elle est prête pour revue. Prochain sous-lot prévu : P1-A1 organisations, utilisateurs et memberships, avec contraintes d'unicité et tests négatifs avant toute route métier.
 
 ## 14. Phase 1 — P1-A1 Organisations, utilisateurs et memberships (25/11/2026)
 
 **Branche :** `phase1/p1-a1-organisations-utilisateurs` (empilée sur `phase1/p1-a0-alembic-foundation`, PR #4)  
-**PR :** à créer (empilée sur PR #4) — non fusionnée, non poussée (envoi via navigateur par l'opérateur).
+**PR :** #5 (https://github.com/BVDMANN/enterprise-infrastructure-intelligence/pull/5), empilée sur PR #4 — ouverte, non fusionnée.
 
 - Modèles SQLAlchemy 2 ajoutés (`app/models/identity.py`) : `organizations` (UUID, nom, slug unique, timestamps, soft delete), `users` (UUID, email CITEXT normalisé/unique, display_name, oidc_subject unique nullable, mfa_enabled, is_active, soft delete), `memberships` (UUID, organisation + utilisateur + rôle, unicité (organization_id, user_id), CHECK rôle owner/admin/member/viewer, FK RESTRICT).
 - Migration `0002_identity` (révision `0002_identity`, parent `0001_pg_extensions`) : crée les trois tables, contraintes et index ; downgrade les supprime dans l'ordre inverse.
@@ -395,4 +395,4 @@ fusionner dans `main`). Rapport complet :
 - CI : le smoke Compose vérifie désormais aussi la présence des trois tables après `alembic upgrade head`.
 - Aucun endpoint métier, mécanisme d'authentification ou secret réel n'a été ajouté.
 
-**Statut :** lot livré en local, PR à créer. Prochain sous-lot : P1-A2 sessions et OIDC.
+**Statut :** lot livré, PR #5 ouverte. Prochain sous-lot : P1-A2 sessions et OIDC.
