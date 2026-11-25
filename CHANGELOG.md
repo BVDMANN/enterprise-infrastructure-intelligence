@@ -21,12 +21,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
   backend, scan secrets gitleaks, validation compose).
 - `scripts/check-env.sh` (vérification de l'environnement de dev).
 
-### Known issues
+### Known issues (snapshot initial du 24/11/2026 — statut actualisé ci-dessous)
 
-- Docker absent de la VM de développement : `docker compose up`
-  non testé (voir PROJECT_STATUS.md §5).
-- Aucun module métier implémenté ; aucune migration Alembic créée ;
-  OIDC/RBAC non implémentés (squelettes uniquement).
+- La validation Docker locale sur la VM de développement n'est pas confirmée ; la CI hébergée exécute les builds des images et le smoke Compose (runs #67, #73, #74, #76 et #77).
+- P1-A0 (migration Alembic `0001_pg_extensions`) et P1-A1 (organisations, utilisateurs, memberships) sont implémentés dans des PR ouvertes ; OIDC/sessions, RBAC, contexte tenant/RLS, audit trail et endpoints métier restent non implémentés.
 
 
 ### Updated — 2026-11-25
