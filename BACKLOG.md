@@ -21,16 +21,16 @@
 
 | Tâche | Statut |
 |---|---|
-| CI : build des 4 images Docker (`docker-build`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier (jamais exécuté nulle part avant) |
-| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | IN_REVIEW — run #46 : packaging validé (worker démarre) mais **nouvel échec : kombu exige redis-py >= 6.1.0 (projet à 5.2.1)** — correctif `redis==6.1.0` appliqué, vérifié en local (porte de version OK, 0 vulnérabilité per pip-audit), nouveau run CI en attente |
-| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | IN_REVIEW — implémenté, première exécution attendue en CI (`npm audit` non exécutable dans la VM d'audit) |
-| Conteneurs non-root (USER app / USER node) + `--reload` retiré | IN_REVIEW — implémenté, vérification `id -u` en CI à confirmer |
-| Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
-| Split requirements API (runtime vs dev) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
-| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — 8 vulnérabilités Python signalées (starlette, pytest) ; npm audit exécuté en CI (run #39) : 7 vulnérabilités (1 moderate, 5 high, 1 critical — next, postcss, zod, glob, minimatch) ; écarts description PR #2 documentés |
-| Correction de la description de la PR #2 (affirmations inexactes) | TODO — à faire avant fusion de la PR #2 (voir audit sécurité §9) |
+| CI : build des 4 images Docker (`docker-build`) | TESTED — run #54, 4 images construites ; contrôle non-root réussi (uid 999/1000) |
+| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | TESTED — run #54 : API/Web/Worker healthy, endpoints vérifiés, connecteur-sim exit 0, ports hôte sur 127.0.0.1 |
+| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | TESTED / REPORT-ONLY — run #54 : pip-audit 16 occurrences / 8 avis uniques ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical). Job vert grâce à `continue-on-error`, pas « zéro vulnérabilité » |
+| Conteneurs non-root (USER app / USER node) + `--reload` retiré | TESTED — run #54 : API/Worker/Connector uid 999, Web uid 1000 |
+| Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | TESTED — run #54 : healthchecks API/Web/Worker verts ; règles `.env*.local` conservées |
+| Split requirements API (runtime vs dev) | TESTED — run #54 : installation requirements-dev, ruff et pytest réussis |
+| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — revalidé run #54 : pip-audit 16 occurrences / 8 avis uniques (Starlette 0.41.3, pytest 8.3.4) ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical) ; report-only documenté |
+| Correction de la description de la PR #2 (affirmations inexactes) | DONE — corps de PR #2 corrigé le 25/11, affirmations fausses retirées |
 | Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
-| Montée Node 22 / Next 16 / React 19 / ESLint 10 — lot dédié | TODO — planifié (ESLint 8 en fin de vie) |
+| Runtime Node 22 (Docker + CI) | TESTED — run #54 : npm ci/lint/typecheck/build + image Docker Web + Compose smoke réussis sur Node 22 |
 
 ## PHASE 1 — MVP fonctionnel (à venir)
 
@@ -40,7 +40,7 @@ métriques fiables.
 
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
-| P1-01 | Valider `docker compose up --build` sur une machine Docker normale (Docker déjà installé sur la VM d'audit ; build/up non testables ici — sandbox sans bridge, pull Hub impossible ; la CI valide désormais build + smoke test, reste la confirmation du workflow dev local) | TODO | — (bloque P1-02+) |
+| P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
 | P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
@@ -94,3 +94,12 @@ métriques fiables.
 | Documentation utilisateur / administrateur / déploiement | TODO |
 | Démonstration, onboarding, support | TODO |
 | Dossier de sécurité, dossier technique, maintenance | TODO |
+
+
+## Suivi de revue du 25/11/2026 — run CI #54
+
+- Ports Compose 5432/6379/8000/3000 liés à `127.0.0.1`, avec assertion automatisée sur `docker compose config --format json` — TESTED.
+- Node 22 (Dockerfile Web + CI) — TESTED : install, lint, typecheck, build, build image et Compose smoke verts.
+- Les vulnérabilités Starlette/Pytest et npm restent ouvertes et suivies en report-only ; aucune mise à niveau majeure automatique n'a été appliquée.
+- Runtime des actions GitHub encore averti (checkout@v4/setup-node@v4/setup-python@v5 Node 20 forcé vers Node 24) — lot CI séparé.
+- Phase 1 : voir `PHASE1_PLAN.md`. L'implémentation métier ne démarre pas avant les critères de sécurité et la validation locale P1-01.
