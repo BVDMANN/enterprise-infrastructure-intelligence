@@ -41,7 +41,7 @@ métriques fiables.
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
-| P1-02 | Authentification locale + sessions + OIDC/MFA | IN_PROGRESS — PR #10 sessions (run #92 7/7) ; PR #11 login local Argon2id (run #104 : API verte, full CI encore en cours). OIDC provider et challenge MFA non implémentés. | P1-01 |
+| P1-02 | Authentification locale + sessions + OIDC/MFA | IN_PROGRESS — PR #10 sessions (run #92 7/7) ; PR #11 login local Argon2id (run #104 : 7/7 jobs, API 55 tests passés). L'audit report-only de #11 signale encore 16 occurrences Python + 7 npm. OIDC provider et challenge MFA non implémentés. | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
@@ -113,7 +113,7 @@ métriques fiables.
 | Phase 0 — PR #2 à #4 | IN_REVIEW | PR ouvertes, non fusionnées ; #4 run #67 7/7 jobs réussis. Confirmation Compose locale encore attendue. |
 | P1-A0 | IN_REVIEW / TESTED | PR #4, migration `0001_pg_extensions` ; seule `citext` est installée. |
 | P1-A1 | IN_REVIEW | PR #5 (run #73) et correctif ciblé PR #8 (run #76) ; modèles et lectures membership-scoped, sans routes publiques. |
-| P1-A2 — sessions/OIDC | TODO | Aucun flux login/logout, session serveur ou fournisseur OIDC intégré. |
+| P1-A2 — sessions/authentification | IN_PROGRESS | PR #10 sessions run #92 7/7 ; PR #11 auth locale run #104 7/7. OIDC et challenge MFA restent TODO. |
 | P1-A3 — RBAC | TODO | Le rôle reste une chaîne contrôlée par CHECK ; permissions serveur non implémentées. |
 | P1-A4 — isolation multi-tenant | TODO | Les lectures P1-A1 sont limitées par membership ; pas encore de contexte tenant issu d'une session ni de RLS. |
 | P1-A5 — audit trail | TODO | Aucun journal d'audit métier append-only. |
@@ -135,3 +135,12 @@ Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et a
 - **P1-A3 RBAC, P1-A4 contexte tenant/RLS et P1-A5 audit trail :** restent à construire.
 - **Démonstration :** PR #6 navigable, mais données métier simulées ; seul le healthcheck API est réel.
 - Toutes les PR #2 à #12 restent ouvertes/non fusionnées à ce contrôle. Aucune contribution n'est attribuée à Ruby sans preuve de compte, commit ou commentaire vérifiable.
+
+
+## Actualisation post-CI — 25/11/2026
+
+- **PR #11 / P1-A2.2 :** run #104 terminé 7/7 jobs ; API 55 tests passés, 1 avertissement. L'audit report-only du même run reste à 16 occurrences Python (Starlette 0.41.3, pytest 8.3.4) et 7 vulnérabilités npm.
+- **PR #12 / dépendances Python :** run #98 7/7, pip-audit propre. Commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 en cours, API vert et avertissement Starlette/TestClient absent des logs API.
+- **npm :** Next.js (critique), glob et PostCSS (élevées), Zod (élevée), minimatch (modérée). Le correctif automatique proposé impose Next 16.4.6 et Zod 4.6.7 ; migration majeure à planifier avec tests, sans `npm audit fix --force` aveugle.
+- **PR #9 documentation :** run #106 sur la tête `0cfab788`, 7/7 jobs réussis.
+- **PR #11 reste draft et non fusionnée ;** la combinaison des dépendances PR #11/#12 doit être testée avant acceptation.
