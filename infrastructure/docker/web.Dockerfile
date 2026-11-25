@@ -15,9 +15,12 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
+# Utilisateur non-root (audit sécurité 25/11) : le serveur ne tourne jamais
+# en root ; l'utilisateur `node` (uid 1000) existe dans l'image de base.
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/next.config.mjs ./next.config.mjs
 EXPOSE 3000
+USER node
 CMD ["npm", "run", "start"]
