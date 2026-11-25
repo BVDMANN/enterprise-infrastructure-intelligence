@@ -1,7 +1,11 @@
 """Local email/password authentication endpoints (P1-A2.2)."""
 
 from datetime import timedelta
+from hashlib import sha256
 from uuid import UUID
+
+from redis import Redis
+from redis.exceptions import RedisError
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
@@ -47,6 +51,40 @@ def _require_trusted_origin(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Untrusted origin")
 
 
+def _enforce_login_rate_limit(request: Request, email: str) -> None:
+    """Apply distributed IP and account limits; fail closed if Redis is unavailable."""
+    client_ip = request.client.host if request.client else "unknown"
+    ip_key = "eii:auth:login:ip:" + sha256(client_ip.encode()).hexdigest()
+    email_key = "eii:auth:login:email:" + sha256(email.strip().lower().encode()).hexdigest()
+    script = (
+        "local ip_count = redis.call('INCR', KEYS[1]); "
+        "if ip_count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[3]); end; "
+        "local email_count = redis.call('INCR', KEYS[2]); "
+        "if email_count == 1 then redis.call('EXPIRE', KEYS[2], ARGV[3]); end; "
+        "if ip_count > tonumber(ARGV[2]) or email_count > tonumber(ARGV[1]) "
+        "then return 1 else return 0 end"
+    )
+    try:
+        redis = Redis.from_url(
+            settings.redis_url, socket_connect_timeout=1, socket_timeout=1
+        )
+        try:
+            limited = redis.eval(script, 2, ip_key, email_key, 5, 20, 300)
+        finally:
+            redis.close()
+    except RedisError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication temporarily unavailable",
+        ) from exc
+    if limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts; try again later",
+            headers={"Retry-After": "300"},
+        )
+
+
 def _set_session_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key=SESSION_COOKIE,
@@ -68,6 +106,7 @@ def login(
 ) -> LoginResponse:
     """Authenticate a local user and issue an opaque server-side session."""
     _require_trusted_origin(request)
+    _enforce_login_rate_limit(request, payload.email)
     user = authenticate_user(db, payload.email, payload.password)
     if user is None:
         raise HTTPException(
