@@ -175,4 +175,5 @@ def logout(
         httponly=True,
         samesite="lax",
     )
+    response.status_code = status.HTTP_204_NO_CONTENT
     return response
