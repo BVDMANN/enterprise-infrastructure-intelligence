@@ -35,14 +35,18 @@ def client(monkeypatch):
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr(auth_router, "_enforce_login_rate_limit", lambda _request, _email: None)
+    monkeypatch.setattr(
+        auth_router, "_enforce_login_rate_limit", lambda _request, _email: None
+    )
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
     engine.dispose()
 
 
-def _create_user(client: TestClient, *, active: bool = True, deleted: bool = False) -> None:
+def _create_user(
+    client: TestClient, *, active: bool = True, deleted: bool = False
+) -> None:
     dependency = app.dependency_overrides[get_db]()
     db = next(dependency)
     try:
@@ -89,7 +93,9 @@ def test_login_me_and_logout_round_trip(client: TestClient) -> None:
     assert client.get("/api/v1/auth/me").status_code == 401
 
 
-def test_login_rejects_invalid_credentials_without_enumeration(client: TestClient) -> None:
+def test_login_rejects_invalid_credentials_without_enumeration(
+    client: TestClient,
+) -> None:
     _create_user(client)
     wrong = client.post(
         "/api/v1/auth/login",
