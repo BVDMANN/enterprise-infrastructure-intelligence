@@ -117,9 +117,7 @@ def test_csrf_token_is_bound_to_live_session(db: Session) -> None:
     db.commit()
 
     assert verify_csrf_token(db, credentials.session_token, credentials.csrf_token)
-    assert not verify_csrf_token(
-        db, credentials.session_token, "wrong-csrf-token"
-    )
+    assert not verify_csrf_token(db, credentials.session_token, "wrong-csrf-token")
     assert not verify_csrf_token(db, credentials.session_token, None)
 
 
