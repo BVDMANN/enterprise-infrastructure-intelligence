@@ -129,7 +129,7 @@ Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et a
 - **P1-A2.1 sessions serveur :** PR #10 ouverte/non fusionnée, run #92 7/7 jobs réussis.
 - **P1-A2.2 authentification locale :** PR #11 draft ; Argon2id et routes login/me/logout présents ; run #104 terminé 7/7 jobs, API 55 tests passés et 1 avertissement. L'audit report-only signale encore 16 occurrences Python + 7 vulnérabilités npm.
 - **P1-A2.3 OIDC/MFA :** non livré. Aucun fournisseur OIDC, validation issuer/audience/signature/nonce/state ou challenge MFA.
-- **Dépendances Python :** PR #12 ouverte/non fusionnée, run #98 7/7 ; pip-audit propre sur cette branche. Le commit `8b1e157` ajoute `httpx2==2.16.2` ; run #107 en cours, job API vert sans avertissement Starlette/TestClient. La synchronisation avec `argon2-cffi` de PR #11 doit préserver les deux changements.
+- **Dépendances Python :** PR #12 ouverte/non fusionnée, run #98 7/7 ; pip-audit propre sur cette branche. Le commit `8b1e157` ajoute `httpx2==2.16.2` ; run #107 terminé 7/7, pip-audit propre et aucun avertissement Starlette/TestClient dans les logs API. La synchronisation avec `argon2-cffi` de PR #11 doit préserver les deux changements.
 - **Dépendances npm :** 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), audit report-only ; aucune correction revendiquée.
 - **Actions GitHub :** PR #7 Node 24, run #77 7/7 ; la migration n'est pas encore présente sur toutes les branches empilées.
 - **P1-A3 RBAC, P1-A4 contexte tenant/RLS et P1-A5 audit trail :** restent à construire.
