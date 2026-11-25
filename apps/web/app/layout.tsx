@@ -3,9 +3,12 @@ import Providers from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Enterprise Infrastructure Intelligence",
+  title: {
+    default: "EII — Enterprise Infrastructure Intelligence",
+    template: "%s | EII",
+  },
   description:
-    "Centralized infrastructure intelligence platform (PHASE 0 skeleton).",
+    "Console de pilotage des organisations et infrastructures informatiques.",
 };
 
 export default function RootLayout({
@@ -14,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-navy-950 text-slate-100 antialiased">
+    <html lang="fr">
+      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
