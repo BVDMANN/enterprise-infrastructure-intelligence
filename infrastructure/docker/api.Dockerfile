@@ -6,12 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # System dependency: libpq for psycopg (binary wheel needs none, kept minimal).
-COPY requirements.txt .
+# Contexte de build = racine du dépôt (docker-compose.yml) : chemins relatifs à la racine.
+COPY apps/api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
-COPY alembic.ini .
-COPY alembic ./alembic
+COPY apps/api/app ./app
+COPY apps/api/alembic.ini ./alembic.ini
+COPY apps/api/alembic ./alembic
 
 EXPOSE 8000
 

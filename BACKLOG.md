@@ -11,11 +11,11 @@
 |---|---|
 | Audit du repository existant (greenfield confirmé) | ACCEPTED |
 | Structure du repository (§6) | ACCEPTED |
-| Documentation de base (9 docs + 5 ADR) | ACCEPTED |
-| Environnements Docker (compose + Dockerfiles) | IN_REVIEW — build non testé (Docker absent de la VM) |
-| CI initiale (GitHub Actions) | IN_REVIEW — non exécutée (pas de dépôt distant) |
-| Squelettes api / web / worker / connecteur-sim | TESTED (syntaxe + tests unitaires locaux, voir PROJECT_STATUS §6) |
-| Vérification de l'environnement de dev | ACCEPTED — écart Docker documenté |
+| Documentation de base (15 fichiers : 9 docs + ADR_INDEX + 5 ADR) | ACCEPTED |
+| Environnements Docker (compose + Dockerfiles) | IN_REVIEW — compose config OK ; COPY corrigés (PR audit) ; build non testé (pull Hub impossible ici) ; `compose up` non testable dans la VM (sandbox) |
+| CI initiale (GitHub Actions) | TESTED — 33 runs ; 4 derniers verts, dernier run 4/4 jobs (gitleaks, API, Web, Compose) |
+| Squelettes api / web / worker / connecteur-sim | TESTED — re-vérifiés pendant l'audit (pytest 3 passed, build web OK, API live OK, connecteur-sim OK, worker OK) |
+| Vérification de l'environnement de dev | ACCEPTED — Docker installé 24/11 (29.1.3 + Compose v5.8.0) ; limites sandbox documentées (PROJECT_STATUS §5) |
 
 ## PHASE 1 — MVP fonctionnel (à venir)
 
@@ -25,7 +25,7 @@ métriques fiables.
 
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
-| P1-01 | Installer Docker sur la machine de dev ; `docker compose up --build` vert | TODO | — (bloque P1-02+) |
+| P1-01 | Valider `docker compose up --build` sur une machine Docker normale (Docker déjà installé sur la VM d'audit ; build/up non testables ici — sandbox sans bridge, pull Hub impossible) | TODO | — (bloque P1-02+) |
 | P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
