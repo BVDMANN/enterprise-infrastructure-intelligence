@@ -329,18 +329,19 @@ fusionner dans `main`). Rapport complet :
   sessions). **Entrées :** les 2 endpoints ne prennent aucun paramètre.
   **Logs :** défaut uvicorn, aucun secret vérifié. **`/docs` et
   `/openapi.json`** exposés (dev OK, à restreindre avant exposition publique).
-  **Ports 5432/6379** exposés en dev local (à retirer avant déploiement exposé).
+  **Ports 5432/6379/8000/3000** désormais liés à `127.0.0.1` ; assertion CI active (run #54).
 
 ### Limites explicites
 
-- Le build des images et le smoke test `compose up` **n'ont pas pu être
-  exécutés dans cette VM** (pull Docker Hub en TLS timeout, pas de bridge) —
-  ils seront validés par la CI de la PR distincte (runners GitHub) et restent
-  à confirmer sur une machine Docker normale (P1-01).
-- `npm audit` n'a pas pu être exécuté localement (proxy) — première exécution
-  attendue en CI.
-- La montée FastAPI (starlette) et la montée Node 22 / Next 16 ne sont **pas**
-  effectuées ici : lots dédiés à planifier, avec re-tests.
+- Le build des 4 images et le smoke test `compose up` sont désormais
+  **validés par la CI GitHub (run #54)** : les services démarrent et passent
+  leurs healthchecks. La VM d'audit locale conserve ses limites réseau ; la
+  confirmation sur le poste de développement reste à consigner (P1-01).
+- `npm audit` reste bloqué localement par le proxy, mais a été exécuté en CI
+  (run #54) : 7 vulnérabilités détectées ; le job reste report-only.
+- Le runtime Web Node 22 est migré et testé (run #54). La montée Next 16 /
+  React 19 / ESLint 10 et la montée FastAPI/Starlette restent des lots dédiés,
+  à exécuter avec re-tests et sans mise à niveau majeure automatique.
 
 
 ## 12. Revalidation de la revue — 25/11/2026
