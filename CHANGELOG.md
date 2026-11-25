@@ -34,3 +34,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - CI : PR #7 migre les actions GitHub et Gitleaks vers des versions Node 24 ; run #77 : 7/7 jobs réussis, aucun avertissement runtime Node 20 dans les logs.
 - Audits : pip-audit signale encore 16 occurrences dans pytest 8.3.4 et Starlette 0.41.3 ; npm audit signale 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). Les audits restent report-only.
 - Les PR #2 à #8 sont ouvertes et non fusionnées ; aucune authentification OIDC/session ni route métier tenantée n'est revendiquée comme terminée.
+
+
+### Updated — 2026-11-25 (23:58 CET)
+
+- P1-A2.1 : PR #10 ajoute des sessions serveur opaques, hashées, expirables et révocables ; run #92 : 7/7 jobs CI réussis. PR ouverte/non fusionnée.
+- P1-A2.2 : PR #11 ajoute l'authentification locale Argon2id et les routes login/me/logout avec cookie HttpOnly et CSRF. Run #104 : job API vert sur la tête `acb12af`, validation globale encore en cours.
+- OIDC provider et challenge MFA non implémentés ; RBAC, contexte tenant/RLS et audit trail restent à construire.
+- PR #12 met à niveau FastAPI, pytest et pytest-asyncio ; run #98 : 7/7 jobs réussis et pip-audit sans vulnérabilité Python sur cette branche. L'audit npm signale toujours 7 vulnérabilités et reste report-only.
+- La PR #11 ajoute aussi `argon2-cffi` dans `apps/api/requirements.txt` : les mises à niveau des PR #11 et #12 doivent être combinées et revalidées avant acceptation.
+- Aucune PR n'a été fusionnée et aucun déploiement n'a été effectué.
