@@ -369,7 +369,7 @@ fusionner dans `main`). Rapport complet :
 
 **PR #4 :** https://github.com/BVDMANN/enterprise-infrastructure-intelligence/pull/4  
 **Branche :** `phase1/p1-a0-alembic-foundation` (empilée sur PR #3)  
-**Run CI #61 :** tous les jobs sont terminés avec succès ; le job de dépendances reste report-only.
+**Run CI #64 :** tous les jobs sont terminés avec succès ; le job de dépendances reste report-only. Le run #64 revalide aussi le cycle Alembic upgrade → downgrade base → nouvel upgrade sur PostgreSQL 16.
 
 - Révision initiale `0001_pg_extensions` ajoutée : installe `citext`, sans table métier.
 - `env.py` compare les types lors des migrations offline/online.
