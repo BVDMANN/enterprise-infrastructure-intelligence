@@ -1,13 +1,13 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026, 23:23 CET** (revue GitHub des PR #2 à #8 et des runs CI #67, #73, #74, #76 et #77).
+> Dernière mise à jour : **25 novembre 2026, 23:58 CET** (revue GitHub des PR #2 à #12, de l'issue #1 et des runs CI #92, #98 et #104).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
 > validations CI manquantes ajoutées (build images + smoke test compose),
 > corrections dans une PR distincte (non fusionnée).
 > Spécification de référence : **MASTER PROMPT V3**.
-> Statut global : **PHASE 0 livrée dans des PR ouvertes, non acceptée/non fusionnée ; PHASE 1 en cours avec P1-A0 et P1-A1 en revue.**
+> Statut global : **PHASE 0 en revue dans des PR ouvertes/non fusionnées ; PHASE 1 en cours avec P1-A0, P1-A1 et P1-A2 en PR ouvertes. Aucune acceptation produit ni aucun déploiement.**
 
 ## 1. État initial (audit du repository existant)
 
@@ -434,4 +434,31 @@ Les comparaisons GitHub confirment que les têtes des PR #6, #7 et #8 incluent l
 
 ### Coordination
 
-Au moment de ce contrôle, les PR #2 à #8 et leurs commentaires/révisions consultés ne montrent aucun commit, commentaire, review ou branche attribuable avec certitude à Ruby. Les auteurs vérifiés des PR et des commits examinés sont `BVDMANN`. Aucune contribution ne lui est attribuée sans preuve.
+Au contrôle du 25/11 à 23:58, les PR #2 à #12, l'issue #1, les commentaires/révisions consultés, les branches visibles et les recherches de commits `author:Ruby` / `committer:Ruby` ne fournissent aucune preuve attribuable à Ruby. Les PR visibles sont publiées sous le compte `BVDMANN`, ce qui ne suffit pas à attribuer un travail à Ruby. Aucune contribution ne lui est attribuée sans preuve vérifiable.
+
+
+## 12. Actualisation du pilotage — 25/11/2026, 23:58 CET
+
+Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:23 ; les anciennes observations restent conservées comme historique.
+
+| Lot | Statut vérifié | Preuve et limite |
+|---|---|---|
+| Phase 0 — PR #2 à #4 | IN_REVIEW | PR ouvertes, non fusionnées. La description de #2 est corrigée ; #3 conserve les audits report-only. La confirmation `docker compose up --build` sur le poste développeur reste attendue, même si les smoke tests CI passent. |
+| P1-A0 | IN_REVIEW / TESTED | PR #4, migration `0001_pg_extensions`, run #67 : 7/7 jobs réussis ; cycle PostgreSQL upgrade/downgrade/upgrade vérifié. |
+| P1-A1 | IN_REVIEW / TESTED | PR #5 (run #73) et PR #8 (run #76, 32 tests API) : modèles et lectures membership-scoped. Aucune route HTTP d'organisation ou d'identité n'est livrée par ces lots. |
+| Interface de démonstration | IN_REVIEW / DEMO | PR #6, run #74 : pages Dashboard, Organisations, Utilisateurs, Infrastructure et Audit navigables ; données métier simulées, seul le healthcheck API est réel. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 : 7/7 jobs réussis, actions checkout/setup-node/setup-python mises à jour. Les branches non empilées sur #7 peuvent encore afficher les avertissements Node 20. Le runtime applicatif Web Node 22 reste distinct et validé. |
+| P1-A2.1 — sessions serveur | IN_REVIEW / TESTED | PR #10, tête `fff99f4`, run #92 : 7/7 jobs réussis. Sessions opaques, hashées, expirables et révocables ; PR ouverte, non fusionnée. |
+| P1-A2.2 — authentification locale | IN_REVIEW / CI PARTIELLE | PR #11, draft, tête `acb12af`. Argon2id, login/me/logout, cookies HttpOnly et CSRF présents dans la branche. Run #104 : job API vert ; Docker build et Compose smoke encore en cours au moment de cette mise à jour. Aucun OIDC provider ni challenge MFA n'est livré. |
+| P1-A2.3 — OIDC / MFA | TODO | Validation issuer/audience/signature/nonce/state et flux MFA à implémenter ; un compte avec MFA activée est refusé au login local, sans second facteur disponible à ce stade. |
+| P1-A3 — RBAC | TODO | `memberships.role` reste une chaîne avec CHECK ; permissions serveur et matrice d'autorisation non implémentées. |
+| P1-A4 — isolation multi-tenant | IN_PROGRESS / INCOMPLETE | Les helpers P1-A1 filtrent par membership, utilisateur actif et soft-delete ; pas encore de contexte tenant dérivé d'une session, de routes métier ni de RLS. |
+| P1-A5 — audit trail | TODO | Aucun journal métier append-only implémenté. |
+| Dépendances Python | IN_REVIEW / TESTED | PR #12, tête `3adf2f9`, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found » sur le périmètre Python de cette branche. PR ouverte, non fusionnée. |
+| Dépendances npm | TODO / REPORT-ONLY | Le même run #98 signale encore 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). L'étape `npm audit` sort en erreur mais reste explicitement `continue-on-error` ; le job vert ne signifie pas audit propre. |
+
+### Coordination des dépendances et limites
+
+- PR #11 ajoute `argon2-cffi==25.1.0` dans `apps/api/requirements.txt`, tandis que PR #12 met à niveau FastAPI dans ce même fichier et pytest/pytest-asyncio dans `requirements-dev.txt`. La résolution combinée doit conserver les deux apports et être revalidée après synchronisation ; aucune fusion automatique n'a été effectuée.
+- Les runs CI #98 et #104 utilisent encore les anciennes actions GitHub héritées de leurs bases ; la migration Node 24 de la PR #7 n'est pas encore intégrée à toutes les branches.
+- Aucun merge, déploiement, ajout de secret réel, changement de permission sensible ou suppression n'a été réalisé.
