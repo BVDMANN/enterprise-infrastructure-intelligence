@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  # Toutes les PR, quelle que soit la branche cible : la restriction à
+  # main/develop faisait que la PR #3 (cible audit/phase-0) n'avait AUCUN
+  # check — les validations ajoutées ne s'exécutaient pas (constaté le 25/11).
   pull_request:
-    branches: [main, develop]
 
 jobs:
   web:
