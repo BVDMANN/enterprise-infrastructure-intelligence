@@ -17,6 +17,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.config import settings  # noqa: E402
 from app.db.session import Base  # noqa: E402
 
+# Importing the models package registers every model on Base.metadata.
+# Without this import, target_metadata stays empty and autogenerate (and
+# any metadata comparison) would silently ignore the real tables.
+import app.models  # noqa: E402,F401
+
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
