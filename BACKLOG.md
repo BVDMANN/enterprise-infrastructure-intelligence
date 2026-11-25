@@ -17,6 +17,21 @@
 | Squelettes api / web / worker / connecteur-sim | TESTED — re-vérifiés pendant l'audit (pytest 3 passed, build web OK, API live OK, connecteur-sim OK, worker OK) |
 | Vérification de l'environnement de dev | ACCEPTED — Docker installé 24/11 (29.1.3 + Compose v5.8.0) ; limites sandbox documentées (PROJECT_STATUS §5) |
 
+### Audit suite — instruction ChatGPT du 25/11 (PR de suivi distincte, non fusionnée)
+
+| Tâche | Statut |
+|---|---|
+| CI : build des 4 images Docker (`docker-build`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier (jamais exécuté nulle part avant) |
+| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
+| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | IN_REVIEW — implémenté, première exécution attendue en CI (`npm audit` non exécutable dans la VM d'audit) |
+| Conteneurs non-root (USER app / USER node) + `--reload` retiré | IN_REVIEW — implémenté, vérification `id -u` en CI à confirmer |
+| Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
+| Split requirements API (runtime vs dev) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
+| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — 8 vulnérabilités Python signalées (starlette, pytest), npm audit non vérifiable ici, écarts description PR #2 documentés |
+| Correction de la description de la PR #2 (affirmations inexactes) | TODO — à faire avant fusion de la PR #2 (voir audit sécurité §9) |
+| Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
+| Montée Node 22 / Next 16 / React 19 / ESLint 10 — lot dédié | TODO — planifié (ESLint 8 en fin de vie) |
+
 ## PHASE 1 — MVP fonctionnel (à venir)
 
 Critère de sortie : un utilisateur peut connecter un environnement de
@@ -25,7 +40,7 @@ métriques fiables.
 
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
-| P1-01 | Valider `docker compose up --build` sur une machine Docker normale (Docker déjà installé sur la VM d'audit ; build/up non testables ici — sandbox sans bridge, pull Hub impossible) | TODO | — (bloque P1-02+) |
+| P1-01 | Valider `docker compose up --build` sur une machine Docker normale (Docker déjà installé sur la VM d'audit ; build/up non testables ici — sandbox sans bridge, pull Hub impossible ; la CI valide désormais build + smoke test, reste la confirmation du workflow dev local) | TODO | — (bloque P1-02+) |
 | P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
