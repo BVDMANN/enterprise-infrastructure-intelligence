@@ -103,7 +103,7 @@ export default function InfrastructurePage() {
       <p className="mt-5 text-xs text-slate-400">
         <Cpu aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />
         <HardDrive aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />
-        Les métriques CPU et mémoire sont des valeurs d'exemple, non collectées en temps réel.
+        Les métriques CPU et mémoire sont des valeurs d&apos;exemple, non collectées en temps réel.
       </p>
     </AppShell>
   );
