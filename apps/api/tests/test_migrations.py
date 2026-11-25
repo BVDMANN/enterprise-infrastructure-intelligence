@@ -37,7 +37,7 @@ def test_identity_migration_follows_foundation() -> None:
 
 def test_session_migration_follows_identity() -> None:
     """0003_auth_sessions must descend directly from 0002_identity."""
-    revision = _script_directory().get_revision("0004_user_password_hash")
+    revision = _script_directory().get_revision("0003_auth_sessions")
     assert revision is not None
     assert revision.down_revision == "0002_identity"
 
