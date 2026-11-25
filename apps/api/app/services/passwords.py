@@ -47,6 +47,6 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
         user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
     )
     valid = verify_password(password, stored_hash)
-    if not valid or user is None or not user.is_active or user.deleted_at is not None:
+    if not valid or user is None or not user.is_active or user.deleted_at is not None or user.mfa_enabled:
         return None
     return user
