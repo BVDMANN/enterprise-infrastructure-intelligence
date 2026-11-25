@@ -37,7 +37,7 @@ def _user(
     *,
     active: bool = True,
     deleted: bool = False,
-    mfa_enabled: bool = False
+    mfa_enabled: bool = False,
 ) -> User:
     user = User(
         email="local@example.com",
