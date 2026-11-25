@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from app.db.session import Base, get_db
 from app.main import app
@@ -20,7 +21,11 @@ ORIGIN = "http://localhost:3000"
 
 @pytest.fixture()
 def client(monkeypatch):
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
     @event.listens_for(engine, "connect")
     def _enable_foreign_keys(dbapi_connection, _connection_record):  # noqa: ANN001, ANN202
