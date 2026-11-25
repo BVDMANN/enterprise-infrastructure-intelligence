@@ -449,16 +449,17 @@ Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:2
 | Interface de démonstration | IN_REVIEW / DEMO | PR #6, run #74 : pages Dashboard, Organisations, Utilisateurs, Infrastructure et Audit navigables ; données métier simulées, seul le healthcheck API est réel. |
 | Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 : 7/7 jobs réussis, actions checkout/setup-node/setup-python mises à jour. Les branches non empilées sur #7 peuvent encore afficher les avertissements Node 20. Le runtime applicatif Web Node 22 reste distinct et validé. |
 | P1-A2.1 — sessions serveur | IN_REVIEW / TESTED | PR #10, tête `fff99f4`, run #92 : 7/7 jobs réussis. Sessions opaques, hashées, expirables et révocables ; PR ouverte, non fusionnée. |
-| P1-A2.2 — authentification locale | IN_REVIEW / CI PARTIELLE | PR #11, draft, tête `acb12af`. Argon2id, login/me/logout, cookies HttpOnly et CSRF présents dans la branche. Run #104 : job API vert ; Docker build et Compose smoke encore en cours au moment de cette mise à jour. Aucun OIDC provider ni challenge MFA n'est livré. |
+| P1-A2.2 — authentification locale | IN_REVIEW / TESTED | PR #11, draft, tête `acb12af`. Argon2id, login/me/logout, cookies HttpOnly et CSRF présents dans la branche. Run #104 : 7/7 jobs réussis ; API 55 tests passés, 1 avertissement. Le job d'audit reste report-only et signale 16 occurrences Python + 7 vulnérabilités npm. Aucun OIDC provider ni challenge MFA n'est livré. |
 | P1-A2.3 — OIDC / MFA | TODO | Validation issuer/audience/signature/nonce/state et flux MFA à implémenter ; un compte avec MFA activée est refusé au login local, sans second facteur disponible à ce stade. |
 | P1-A3 — RBAC | TODO | `memberships.role` reste une chaîne avec CHECK ; permissions serveur et matrice d'autorisation non implémentées. |
-| P1-A4 — isolation multi-tenant | IN_PROGRESS / INCOMPLETE | Les helpers P1-A1 filtrent par membership, utilisateur actif et soft-delete ; pas encore de contexte tenant dérivé d'une session, de routes métier ni de RLS. |
+| P1-A4 — isolation multi-tenant | TODO / SOCLE PARTIEL | Les helpers P1-A1 filtrent par membership, utilisateur actif et soft-delete ; pas encore de contexte tenant dérivé d'une session, de routes métier ni de RLS. |
 | P1-A5 — audit trail | TODO | Aucun journal métier append-only implémenté. |
-| Dépendances Python | IN_REVIEW / TESTED | PR #12, tête `3adf2f9`, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found » sur le périmètre Python de cette branche. PR ouverte, non fusionnée. |
-| Dépendances npm | TODO / REPORT-ONLY | Le même run #98 signale encore 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). L'étape `npm audit` sort en erreur mais reste explicitement `continue-on-error` ; le job vert ne signifie pas audit propre. |
+| Dépendances Python | IN_REVIEW / TESTED | PR #12, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found ». Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 en cours, job API vert et sans avertissement Starlette/TestClient dans ses logs. PR ouverte, non fusionnée. |
+| Dépendances npm | TODO / REPORT-ONLY | 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) : `next` critique, `glob`/`postcss` élevés, `zod` élevé et `minimatch` modéré. `npm audit fix --force` propose Next 16.4.6 et Zod 4.6.7 (breaking changes) ; aucune mise à niveau majeure aveugle. L'étape sort en erreur mais reste `continue-on-error` ; job vert ≠ audit propre. |
 
 ### Coordination des dépendances et limites
 
 - PR #11 ajoute `argon2-cffi==25.1.0` dans `apps/api/requirements.txt`, tandis que PR #12 met à niveau FastAPI dans ce même fichier et pytest/pytest-asyncio dans `requirements-dev.txt`. La résolution combinée doit conserver les deux apports et être revalidée après synchronisation ; aucune fusion automatique n'a été effectuée.
-- Les runs CI #98 et #104 utilisent encore les anciennes actions GitHub héritées de leurs bases ; la migration Node 24 de la PR #7 n'est pas encore intégrée à toutes les branches.
+- Le run #104 de la PR #11 est terminé 7/7 ; ses logs montrent encore `checkout@v4` et `setup-python@v5` (avertissement runtime Node 20). La migration Node 24 de la PR #7 n'est pas encore intégrée à toutes les branches.
+- Le run #106 de cette PR documentaire est terminé 7/7 sur la tête `0cfab788`.
 - Aucun merge, déploiement, ajout de secret réel, changement de permission sensible ou suppression n'a été réalisé.
