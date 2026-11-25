@@ -17,8 +17,8 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_initial_head() -> None:
-    """The identity migration must be the only head."""
-    assert _script_directory().get_heads() == ["0002_identity"]
+    """The session migration must be the only head."""
+    assert _script_directory().get_heads() == ["0003_auth_sessions"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -35,8 +35,19 @@ def test_identity_migration_follows_foundation() -> None:
     assert revision.down_revision == "0001_pg_extensions"
 
 
+def test_session_migration_follows_identity() -> None:
+    """0003_auth_sessions must descend directly from 0002_identity."""
+    revision = _script_directory().get_revision("0003_auth_sessions")
+    assert revision is not None
+    assert revision.down_revision == "0002_identity"
+
+
 def test_migration_history_is_linear() -> None:
-    """The history must be a single chain: 0001 -> 0002 (head)."""
+    """The history must be one chain: 0001 -> 0002 -> 0003 (head)."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
-    assert revisions == ["0002_identity", "0001_pg_extensions"]
+    assert revisions == [
+        "0003_auth_sessions",
+        "0002_identity",
+        "0001_pg_extensions",
+    ]
