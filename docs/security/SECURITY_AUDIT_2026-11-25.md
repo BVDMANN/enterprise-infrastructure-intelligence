@@ -173,12 +173,30 @@ ruff) ont été sorties de `apps/api/requirements.txt` vers un nouveau
 `requirements-dev.txt` — l'image Docker n'installe plus pytest/ruff
 (surface réduite ; pytest vulnérable hors de l'image).
 
-### 7.2 Node — `npm audit` NON EXÉCUTABLE ici, `npm outdated` exécuté
+### 7.2 Node — `npm audit` exécuté en CI (run #39, PR #3, 25/11)
 
-- `npm audit` : **bloqué dans cette VM** (le proxy refuse
+- `npm audit` : **bloqué dans la VM d'audit** (le proxy refuse
   `POST registry.npmjs.org/-/npm/v1/security/audits/quick`, 403
-  `policy_denied`). **Non vérifié localement — à exécuter en CI**
-  (job `security-audit` ajouté, en `continue-on-error`, voir §9).
+  `policy_denied`). **Première exécution réelle en CI** (job
+  `security-audit`, run #39, 25/11 11h06) : **`npm audit --audit-level=high`
+  → 7 vulnérabilités (1 moderate, 5 high, 1 critical)** :
+
+| Package | Plage affectée | Sévérité | Vulnérabilité (GHSA) |
+|---|---|---|---|
+| glob | 9.0.0 – 14.0.1 | High | Injection de commande via `-c/--cmd` (`shell:true`) — GHSA-5j98-mcp5-4vw2 ; contournement d'annulation AbortSignal (traversée du système de fichiers après timeout) — GHSA-3g3m-2fjr-6pw4 |
+| minimatch | 7.0.0 – 11.0.0 | Moderate | Déni de service via amplification `globparts` — GHSA-g3hv-75wg-m249 |
+| next | ≤ 16.3.0-preview.10 | **Critical** | 26 avis, dont RCE non authentifiée (serveurs Windows — GHSA-p293-qw3h-jr36 ; Image Optimization API AVIF/SVG — GHSA-2xp9-vwfh-vxw4, GHSA-2464-fhr4-w9xw), SSRF (WebSocket — GHSA-c4j6-fc7j-m34r ; Server Actions — GHSA-89xv-2m56-2m9x), XSS (CSP nonces — GHSA-ffhc-5mcf-pf4q), DoS Image Optimizer — GHSA-9g9p-9gw9-jx7f |
+| postcss | ≤ 8.5.22 | High | XSS via `</style>` non échappé — GHSA-qx2v-qp2m-jg93 ; lecture de fichier arbitraire via `sourceMappingURL` — GHSA-6g55-p6wh-862q ; correctif incomplet — GHSA-fxqj-rqcc-2cmp ; path traversal via `sourceMappingURL` — GHSA-r28c-9q8g-f849 |
+| zod | < 4.6.6 | High | Épuisement mémoire sur collections contraintes surdimensionnées — GHSA-mrhx-c7xc-m3w5 |
+
+**Contexte honnête :** le correctif proposé par npm (`npm audit fix --force`)
+installe next@16.4.6, eslint-config-next@16.4.6 et zod@4.6.7 — des **breaking
+changes** (montée majeure). La surface exploitable actuelle est limitée : le
+squelette web n'utilise ni Server Actions, ni Image Optimization, ni
+formulaires (aucune donnée réelle, aucune exposition publique). **Aucune mise
+à niveau effectuée ici** (instruction : pas de mise à niveau majeure non
+maîtrisée) — la montée Next 16 / React 19 / ESLint 10 / Zod 4 / Tailwind 4
+est un **lot dédié à planifier** (voir §11), avec re-tests complets.
 - `npm outdated` : **aucune dépendance en retard dans les plages déclarées**
   (chaque `Current` == `Wanted`). Les versions `Latest` sont des majeures
   (Next 16, React 19, ESLint 10, Tailwind 4, Zod 4, TypeScript 7) —
