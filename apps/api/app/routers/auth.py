@@ -168,5 +168,11 @@ def logout(
         )
     revoke_session(db, token)
     db.commit()
-    response.delete_cookie(key=SESSION_COOKIE, path="/api/v1/auth")
+    response.delete_cookie(
+        key=SESSION_COOKIE,
+        path="/api/v1/auth",
+        secure=settings.api_env != "development",
+        httponly=True,
+        samesite="lax",
+    )
     return response
