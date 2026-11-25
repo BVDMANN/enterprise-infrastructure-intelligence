@@ -146,7 +146,9 @@ def current_user(
         )
     user = db.get(User, session.user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     return UserResponse(id=user.id, email=user.email, display_name=user.display_name)
 
 
