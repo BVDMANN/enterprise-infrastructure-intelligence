@@ -43,7 +43,9 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     """Return an active local-auth user, or None for every invalid case."""
     normalized_email = email.strip().lower()
     user = db.scalars(select(User).where(User.email == normalized_email)).one_or_none()
-    stored_hash = user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
+    stored_hash = (
+        user.password_hash if user and user.password_hash else _DUMMY_PASSWORD_HASH
+    )
     valid = verify_password(password, stored_hash)
     if not valid or user is None or not user.is_active or user.deleted_at is not None:
         return None
