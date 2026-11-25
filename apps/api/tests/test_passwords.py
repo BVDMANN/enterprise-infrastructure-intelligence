@@ -32,12 +32,15 @@ def db() -> Session:
         engine.dispose()
 
 
-def _user(db: Session, *, active: bool = True, deleted: bool = False) -> User:
+def _user(
+    db: Session, *, active: bool = True, deleted: bool = False, mfa_enabled: bool = False
+) -> User:
     user = User(
         email="local@example.com",
         display_name="Local User",
         password_hash=hash_password("correct-horse-battery"),
         is_active=active,
+        mfa_enabled=mfa_enabled,
         deleted_at=datetime.now(timezone.utc) if deleted else None,
     )
     db.add(user)
@@ -75,11 +78,14 @@ def test_authentication_rejects_wrong_password_and_unknown_user(db: Session) -> 
     assert authenticate_user(db, "unknown@example.com", "wrong-password") is None
 
 
-@pytest.mark.parametrize("active,deleted", [(False, False), (True, True)])
-def test_authentication_rejects_inactive_or_deleted_user(
-    db: Session, active: bool, deleted: bool
+@pytest.mark.parametrize(
+    "active,deleted,mfa_enabled",
+    [(False, False, False), (True, True, False), (True, False, True)],
+)
+def test_authentication_rejects_inactive_deleted_or_mfa_user(
+    db: Session, active: bool, deleted: bool, mfa_enabled: bool
 ) -> None:
-    _user(db, active=active, deleted=deleted)
+    _user(db, active=active, deleted=deleted, mfa_enabled=mfa_enabled)
     assert authenticate_user(db, "local@example.com", "correct-horse-battery") is None
 
 
