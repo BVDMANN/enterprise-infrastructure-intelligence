@@ -66,7 +66,7 @@ Tests :
 - impossible de rattacher un membership à une organisation inexistante ;
 - suppression logique et intégrité référentielle.
 
-**État : implémenté (25/11/2026, branche `phase1/p1-a1-organisations-utilisateurs`, PR à créer empilée sur PR #4).** Aucune route publique ouverte, conformément au but du lot. Écarts documentés par rapport à `docs/architecture/DATABASE_DESIGN.md` : pas de `plan_id` sur `organizations` (la table `plans` n'existe pas encore — la FK viendra avec la facturation) ; `memberships.role` est une chaîne avec CHECK (owner/admin/member/viewer) en attendant la table `roles` de P1-A3 ; `oidc_subject` nullable (rempli à la première connexion OIDC, P1-A2) ; IDs générés côté Python (`uuid.uuid4`, équivalent de `gen_random_uuid()`).
+**État : implémenté (25/11/2026, branche `phase1/p1-a1-organisations-utilisateurs`, PR #5 ouverte et non fusionnée, empilée sur PR #4 ; correctif de sécurité complémentaire PR #8 ouvert et non fusionné).** Aucune route publique ouverte, conformément au but du lot. Écarts documentés par rapport à `docs/architecture/DATABASE_DESIGN.md` : pas de `plan_id` sur `organizations` (la table `plans` n'existe pas encore — la FK viendra avec la facturation) ; `memberships.role` est une chaîne avec CHECK (owner/admin/member/viewer) en attendant la table `roles` de P1-A3 ; `oidc_subject` nullable (rempli à la première connexion OIDC, P1-A2) ; IDs générés côté Python (`uuid.uuid4`, équivalent de `gen_random_uuid()`).
 
 ### P1-A2 — Sessions et OIDC
 
@@ -173,10 +173,19 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 - compte rendu PR avec commit, fichiers, commandes, résultats et limites ;
 - aucune fusion ou mise en production sans accord explicite.
 
-## 7. Prochain lot
+## 7. Prochain lot — P1-A2 Sessions et OIDC
 
-**P1-A0 — Fondation Alembic** est implémenté dans la PR #4, branche `phase1/p1-a0-alembic-foundation`, empilée sur la PR #3. GitHub indique que la PR est ouverte et non-draft. Run CI #64 : 5 tests API passed (1 avertissement pytest-asyncio), build des 4 images, Web, gitleaks, validation Compose et smoke réussis. Le smoke PostgreSQL confirme `alembic upgrade head`, présence de `citext`, `alembic downgrade base`, puis nouvel upgrade vers `0001_pg_extensions (head)`. La migration ne crée aucune table métier. **Limite importante :** le downgrade retire la révision Alembic mais conserve volontairement l'extension partagée `citext` ; ce n'est donc pas un retour complet à une base strictement vierge. La PR reste ouverte et non fusionnée.
+P1-A0 est livré dans la PR #4 (ouverte, non fusionnée ; run #67 : 7/7 jobs réussis). P1-A1 est livré dans la PR #5 (ouverte, non fusionnée ; run #73 : 7/7 jobs réussis), avec un correctif de sécurité complémentaire dans la PR #8 (ouverte, non fusionnée ; run #76 : 7/7 jobs réussis et 32 tests API passés).
 
-**P1-A1 — Organisations, utilisateurs et memberships** est implémenté sur la branche `phase1/p1-a1-organisations-utilisateurs`, empilée sur P1-A0 (PR à créer, empilée sur PR #4). Modèles SQLAlchemy 2, migration `0002_identity` (tables `organizations`, `users`, `memberships`), lectures limitées au membership, tests unitaires + intégration + négatifs (30 tests API passed en local, 1 avertissement pytest-asyncio préexistant), vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive). Aucune route métier n'est ouverte. Détails : PROJECT_STATUS.md §14.
+**Le prochain lot fonctionnel est P1-A2 — sessions et OIDC.** Il n'est pas encore implémenté : le point d'entrée FastAPI expose actuellement les sondes de santé uniquement. Avant d'ouvrir des routes métier, le lot doit inclure :
 
-**Prochain sous-lot : P1-A2 — sessions et OIDC**, sur une PR empilée après revue de P1-A1.
+- une interface OIDC indépendante du fournisseur, avec validation issuer, audience, signature, nonce, state et expiration ;
+- des sessions serveur utilisant un identifiant opaque dont seul le hash est stocké, avec expiration et révocation ;
+- cookies Secure, HttpOnly et SameSite adaptés ; protection CSRF et contrôle Origin sur les mutations ;
+- aucun bearer token brut en base ou dans les logs ;
+- tests positifs et négatifs pour issuer/audience/signature/nonce/state/expiration, session expirée/révoquée, cookie absent et CSRF invalide ;
+- migration, documentation, CI complète verte et séparation explicite entre comportement intégré et non implémenté.
+
+La PR #6 fournit en parallèle une interface de démonstration navigable, mais ses données métier restent simulées. Les endpoints réels remplaceront les jeux de démonstration au fur et à mesure de leur livraison. La PR #7 traite les actions GitHub Node 24 séparément.
+
+Aucune fusion ni aucun déploiement n'est effectué sans accord explicite.
