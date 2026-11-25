@@ -173,4 +173,6 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 
 ## 7. Prochain lot
 
-**P1-A0 — Fondation Alembic** est le premier lot de code à ouvrir sur une branche/PR distincte empilée sur la PR #3. Il reste limité à la migration foundation et aux tests PostgreSQL en CI ; il ne crée pas encore les routes d'identité ou d'organisation.
+**P1-A0 — Fondation Alembic** est implémenté dans la PR #4 (brouillon), branche `phase1/p1-a0-alembic-foundation`, empilée sur la PR #3. Run CI #61 : 5 tests API passed (1 avertissement pytest-asyncio), build des 4 images, Web, gitleaks, validation Compose et smoke réussis. Le smoke PostgreSQL confirme `alembic upgrade head`, `citext` présent, `alembic downgrade base`, puis nouvel upgrade vers `0001_pg_extensions (head)`. La migration ne crée aucune table métier ; le downgrade conserve volontairement l'extension partagée. La PR reste en brouillon et n'est pas fusionnée.
+
+**Prochain sous-lot : P1-A1 — organisations, utilisateurs et memberships**, sur une PR empilée après revue de P1-A0. Les tables et contraintes seront ajoutées sans exposer de routes métier avant l'authentification.
