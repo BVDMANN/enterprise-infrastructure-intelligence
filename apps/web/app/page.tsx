@@ -181,7 +181,7 @@ export default function DashboardPage() {
           </div>
           <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3 text-xs text-slate-400">
             <Activity aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
-            Les états et métriques ci-dessus ne proviennent pas d'équipements réels.
+            Les états et métriques ci-dessus ne proviennent pas d&apos;équipements réels.
           </div>
         </section>
 
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                 {health?.api_version ? ` · Version ${health.api_version}` : ""}
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                Seul cet indicateur interroge actuellement l'API réelle.
+                Seul cet indicateur interroge actuellement l&apos;API réelle.
               </p>
             </div>
           </div>
