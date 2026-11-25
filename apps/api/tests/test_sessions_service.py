@@ -24,9 +24,7 @@ def db() -> Session:
     engine = create_engine("sqlite:///:memory:")
 
     @event.listens_for(engine, "connect")
-    def _enable_foreign_keys(
-        dbapi_connection, _connection_record
-    ):  # noqa: ANN001, ANN202
+    def _enable_foreign_keys(dbapi_connection, _connection_record):  # noqa: ANN001, ANN202
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
