@@ -50,6 +50,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate docker-compose.yml
         run: docker compose config --quiet
+      - name: Assert published ports bind only to localhost
+        run: |
+          docker compose config --format json > /tmp/eii-compose.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("/tmp/eii-compose.json").read_text())
+          expected = {"db": "5432", "redis": "6379", "api": "8000", "web": "3000"}
+          for service, port in expected.items():
+              bindings = config["services"][service].get("ports", [])
+              matching = [
+                  item for item in bindings
+                  if str(item.get("target")) == port
+                  and str(item.get("published")) == port
+              ]
+              if len(matching) != 1 or matching[0].get("host_ip") != "127.0.0.1":
+                  raise SystemExit(
+                      f"{service}: expected exactly one {port}:{port} binding on 127.0.0.1; got {bindings}"
+                  )
+          print("All published development ports are bound to 127.0.0.1.")
+          PY
 
   gitleaks:
     name: Secret scan (gitleaks)
