@@ -304,8 +304,14 @@ fusionner dans `main`). Rapport complet :
   l'image worker). **Correctif : `packaging==26.4` ajouté à
   `services/worker/requirements.txt` et `apps/api/requirements.txt`**
   (l'API installe aussi Celery) ; reproduit et vérifié en local dans un venv
-  propre (sans packaging → même erreur ; avec → worker prêt). Nouveau run CI
-  en attente.
+  propre (sans packaging → même erreur ; avec → worker prêt). Run #46 :
+  packaging validé (worker démarre, tâche enregistrée) mais **nouvel échec :
+  `kombu.exceptions.VersionMismatch` — le transport Redis exige redis-py
+  >= 6.1.0, le projet épinglait 5.2.1**. **Correctif : `redis==6.1.0`**
+  (minimum exigé, 0 vulnérabilité connue per pip-audit) dans les deux
+  requirements ; vérifié en local (5.2.1 → VersionMismatch ; 6.1.0 → la
+  porte de version passe, seule erreur = pas de serveur Redis local, normal).
+  Nouveau run CI en attente.
 - **Dépendances Node :** `npm audit` **exécuté en CI** (run #39, PR #3,
   25/11 11h06) : **7 vulnérabilités (1 moderate, 5 high, 1 critical)** —
   glob (high), minimatch (moderate), next ≤ 16.3.0-preview.10 (**critical**,
