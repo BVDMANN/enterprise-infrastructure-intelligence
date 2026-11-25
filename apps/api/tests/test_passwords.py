@@ -33,7 +33,11 @@ def db() -> Session:
 
 
 def _user(
-    db: Session, *, active: bool = True, deleted: bool = False, mfa_enabled: bool = False
+    db: Session,
+    *,
+    active: bool = True,
+    deleted: bool = False,
+    mfa_enabled: bool = False
 ) -> User:
     user = User(
         email="local@example.com",
