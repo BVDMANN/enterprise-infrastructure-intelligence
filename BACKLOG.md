@@ -41,7 +41,7 @@ métriques fiables.
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
-| P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
+| P1-02 | Authentification locale + sessions + OIDC/MFA | IN_PROGRESS — PR #10 sessions (run #92 7/7) ; PR #11 login local Argon2id (run #104 : API verte, full CI encore en cours). OIDC provider et challenge MFA non implémentés. | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
@@ -122,3 +122,16 @@ métriques fiables.
 | Vulnérabilités pip/npm | TODO / REPORT-ONLY | Run #77 : 16 occurrences Python dans pytest/Starlette et 7 vulnérabilités npm ; aucune correction revendiquée. |
 
 Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et acceptation produit : les lots restent en revue jusqu'à validation humaine.
+
+
+## Actualisation du pilotage — 25/11/2026, 23:58 CET
+
+- **P1-A2.1 sessions serveur :** PR #10 ouverte/non fusionnée, run #92 7/7 jobs réussis.
+- **P1-A2.2 authentification locale :** PR #11 draft ; Argon2id et routes login/me/logout présents ; run #104 job API vert, validation Docker/Compose complète encore en cours.
+- **P1-A2.3 OIDC/MFA :** non livré. Aucun fournisseur OIDC, validation issuer/audience/signature/nonce/state ou challenge MFA.
+- **Dépendances Python :** PR #12 ouverte/non fusionnée, run #98 7/7 ; pip-audit propre sur cette branche. La synchronisation avec `argon2-cffi` de PR #11 doit préserver les deux changements.
+- **Dépendances npm :** 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), audit report-only ; aucune correction revendiquée.
+- **Actions GitHub :** PR #7 Node 24, run #77 7/7 ; la migration n'est pas encore présente sur toutes les branches empilées.
+- **P1-A3 RBAC, P1-A4 contexte tenant/RLS et P1-A5 audit trail :** restent à construire.
+- **Démonstration :** PR #6 navigable, mais données métier simulées ; seul le healthcheck API est réel.
+- Toutes les PR #2 à #12 restent ouvertes/non fusionnées à ce contrôle. Aucune contribution n'est attribuée à Ruby sans preuve de compte, commit ou commentaire vérifiable.
