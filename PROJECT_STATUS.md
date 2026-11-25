@@ -272,6 +272,9 @@ fusionner dans `main`). Rapport complet :
    de requirements + `npm audit --audit-level=high` (en `continue-on-error` :
    les vulnérabilités connues sont signalées sans bloquer la PR — les
    corrections sont planifiées, voir ci-dessous).
+   **Correctif déclencheur (25/11 11h04) :** la PR #3 n'avait AUCUN check car
+   le workflow ne se déclenchait que sur main/develop — `pull_request:` est
+   désormais sans filtre de branche (toute PR obtient la CI).
 4. **Conteneurs non-root** : `USER app` (images Python) / `USER node` (web),
    vérifié en CI (`id -u` ≠ 0 pour les 4 images).
 5. **`--reload` retiré** du CMD de l'image API (outil de dev, pas dans l'image
