@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
   Building2,
   LayoutDashboard,
   ScrollText,
@@ -23,7 +22,7 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Navigation principale" className="space-y-1 px-3">
+    <nav aria-label="Navigation principale" className="flex gap-1 overflow-x-auto px-3 pb-2 lg:block lg:space-y-1 lg:overflow-visible">
       {navigation.map(({ href, label, icon: Icon }) => {
         const active =
           href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -33,7 +32,7 @@ export function SidebarNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`group flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-xs font-medium transition-colors lg:w-full lg:gap-3 lg:text-sm ${
               active
                 ? "bg-white/10 text-white shadow-sm"
                 : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
