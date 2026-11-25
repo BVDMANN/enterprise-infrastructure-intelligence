@@ -151,6 +151,7 @@ jobs:
           docker compose exec -T api alembic upgrade head
           docker compose exec -T api alembic current
           docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('organizations','users','memberships');" | tr -d '[:space:]' | grep -qx 3
+          docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='password_hash';" | tr -d '[:space:]' | grep -qx 1
       - name: Check simulation connector ran once
         run: |
           code=$(docker inspect --format='{{.State.ExitCode}}' "$(docker compose ps -aq connector-sim)")

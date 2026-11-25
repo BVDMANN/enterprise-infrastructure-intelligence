@@ -17,3 +17,5 @@ celery==5.4.0
 # plante au démarrage (ModuleNotFoundError).
 packaging==26.4
 httpx==0.28.1
+# Argon2id password hashing for local authentication.
+argon2-cffi==25.1.0
