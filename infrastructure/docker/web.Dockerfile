@@ -1,8 +1,10 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 # Contexte de build = racine du dépôt (docker-compose.yml) : chemins relatifs à la racine.
-COPY apps/web/package.json apps/web/package-lock.json* ./
-RUN npm install --no-audit --no-fund
+# npm ci (et non npm install) : installation reproductible à partir du
+# package-lock.json — le lockfile est donc obligatoire (sans glob *).
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 FROM node:20-alpine AS builder
 WORKDIR /app
