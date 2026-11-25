@@ -1,4 +1,4 @@
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 # Contexte de build = racine du dépôt (docker-compose.yml) : chemins relatifs à la racine.
 # npm ci (et non npm install) : installation reproductible à partir du
@@ -6,13 +6,13 @@ WORKDIR /app
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/. ./
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # Utilisateur non-root (audit sécurité 25/11) : le serveur ne tourne jamais
