@@ -12,7 +12,7 @@
 | Audit du repository existant (greenfield confirmé) | ACCEPTED |
 | Structure du repository (§6) | ACCEPTED |
 | Documentation de base (15 fichiers : 9 docs + ADR_INDEX + 5 ADR) | ACCEPTED |
-| Environnements Docker (compose + Dockerfiles) | IN_REVIEW — compose config OK ; COPY corrigés (PR audit) ; build non testé (pull Hub impossible ici) ; `compose up` non testable dans la VM (sandbox) |
+| Environnements Docker (compose + Dockerfiles) | TESTED — run #54 : build des 4 images, config Compose, healthchecks et smoke complets réussis ; confirmation du poste local encore à consigner |
 | CI initiale (GitHub Actions) | TESTED — 33 runs ; 4 derniers verts, dernier run 4/4 jobs (gitleaks, API, Web, Compose) |
 | Squelettes api / web / worker / connecteur-sim | TESTED — re-vérifiés pendant l'audit (pytest 3 passed, build web OK, API live OK, connecteur-sim OK, worker OK) |
 | Vérification de l'environnement de dev | ACCEPTED — Docker installé 24/11 (29.1.3 + Compose v5.8.0) ; limites sandbox documentées (PROJECT_STATUS §5) |
