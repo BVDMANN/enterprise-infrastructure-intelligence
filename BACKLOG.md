@@ -53,7 +53,7 @@ métriques fiables.
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
 | P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 draft, run #61 : 5 tests API passed ; migration/extension/upgrade-downgrade validés en Compose | P1-01 |
-| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TODO — prochain sous-lot P1-A1 après revue de P1-A0 | P1-A0 |
+| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TESTED — lot P1-A1 livré sur `phase1/p1-a1-organisations-utilisateurs` (PR à créer, empilée sur PR #4) : migration 0002_identity, 30 tests API passed en local, vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive) | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | TODO | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
 | P1-16 | Documentation mise à jour (API, déploiement, opérations) | TODO | P1-15 |
