@@ -27,3 +27,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
   non testé (voir PROJECT_STATUS.md §5).
 - Aucun module métier implémenté ; aucune migration Alembic créée ;
   OIDC/RBAC non implémentés (squelettes uniquement).
+
+
+### Updated — 2026-11-25
+
+- P1-A1 : PR #8 ajoute les contrôles `is_active` et `deleted_at` aux deux lectures tenant-scoped et deux tests négatifs ; run CI #76 : 7/7 jobs réussis, 32 tests API.
+- Interface : PR #6 livre les pages de démonstration navigables ; les données métier restent explicitement fictives et seul le healthcheck appelle l'API.
+- CI : PR #7 migre les actions GitHub et Gitleaks vers des versions Node 24 ; run #77 : 7/7 jobs réussis, aucun avertissement runtime Node 20 dans les logs.
+- Audits : pip-audit signale encore 16 occurrences dans pytest 8.3.4 et Starlette 0.41.3 ; npm audit signale 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). Les audits restent report-only.
+- Les PR #2 à #8 sont ouvertes et non fusionnées ; aucune authentification OIDC/session ni route métier tenantée n'est revendiquée comme terminée.
