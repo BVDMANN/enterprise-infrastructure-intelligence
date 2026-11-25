@@ -1,8 +1,8 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **24 novembre 2026** (audit PHASE 0, soir).
+> Dernière mise à jour : **25 novembre 2026** (audit PHASE 0 + round 2, revue indépendante).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
-> 2 corrections (Dockerfiles COPY + `.dockerignore`) dans la PR `audit/phase-0`.
+> 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Spécification de référence : **MASTER PROMPT V3**.
 > Statut global : **PHASE 0 TERMINÉE — en attente de validation humaine
 > avant PHASE 1.**
@@ -152,7 +152,7 @@ mais cette VM (sandbox) bloque la création de réseaux :
 ## 7. Risques identifiés
 
 | # | Risque | Gravité | Mitigation |
-|---|---|---|
+|---|---|---|---|
 | R1 | `docker compose up` non testé (VM sandbox sans bridge ; pull Hub impossible) → l'environnement de référence n'est pas testé de bout en bout | **Haute** | Docker installé le 24/11 ; valider `docker compose up --build` sur une machine Docker normale avant de démarrer le MVP |
 | R2 | Périmètre très large (15 modules) → tentation de tout coder d'un coup | Haute | Phases strictes ; PHASE 1 = MVP seulement (voir BACKLOG.md) |
 | R3 | Données simulées confondues avec des données réelles | Moyenne | Marquage `simulated: true` obligatoire ; UI : badge SIMULÉ ; interdiction de présenter la simulation comme réelle |
@@ -213,6 +213,15 @@ Dockerfiles et de `docker-compose.yml`, analyse des 33 runs CI.
 4. **`BACKLOG.md`** : Docker et CI passés à leurs statuts réels,
    P1-01 reformulée (Docker installé ; reste `compose up` à valider).
 
+### Round 2 — revue technique indépendante (25/11/2026)
+
+Revue de Randy : CI verte (4/4 jobs), 2 points corrigés dans la PR :
+
+1. **`web.Dockerfile` : `npm install` → `npm ci`** (installation reproductible, lockfile désormais obligatoire). Vérifié localement : `npm ci` exit 0 (435 packages, 24 s), puis `npm run build` OK.
+2. **Worker : commande de démarrage harmonisée.** `docker-compose.yml` surchargeait avec `celery -A app.celery_app worker`, le CMD de l'image dit `celery -A app.celery_app.celery_app worker`. **Les deux formes ont été testées en live : elles démarrent le worker avec la bonne application `eii_worker`** (la forme courte marche via le balayage d'instance de Celery 5.4, mais elle est implicite). Retenu : la forme explicite comme seule source de vérité (CMD de l'image) ; le `command:` est retiré de `docker-compose.yml`. `docker compose config` OK après la modification.
+
+Autres vérifications du 25/11 : chemins COPY des 4 Dockerfiles tous existants ; tests locaux re-exécutés (pytest 3 passed, ruff OK, tsc 0, build web OK, API live OK, sim OK, worker OK).
+
 ### Non testé (honnêtement)
 
 - Build des images Docker : pull Docker Hub impossible depuis le daemon
@@ -221,3 +230,4 @@ Dockerfiles et de `docker-compose.yml`, analyse des 33 runs CI.
   (sandbox sans CAP_NET_ADMIN).
 - Les deux sont à valider sur une machine Docker normale ou via la CI
   (qui tourne déjà à chaque push).
+- **Précisions du 25/11 :** la VM a été remplacée entre le 24/11 et le 25/11 (Docker avait disparu) ; Docker 29.1.3 + Compose v5.8.0 réinstallés le 25/11, daemon `--bridge=none --iptables=false`. Build `api` tenté le 25/11 : échec étape 1/10 (pull `python:3.12-slim`, TLS handshake timeout vers `registry-1.docker.io`). **Mesure directe :** contexte de build **568,5 Mo** avec l'ancien `.dockerignore` contre **572,9 kB** avec le corrigé (~1000× de moins).
