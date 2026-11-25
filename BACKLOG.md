@@ -12,10 +12,25 @@
 | Audit du repository existant (greenfield confirmé) | ACCEPTED |
 | Structure du repository (§6) | ACCEPTED |
 | Documentation de base (15 fichiers : 9 docs + ADR_INDEX + 5 ADR) | ACCEPTED |
-| Environnements Docker (compose + Dockerfiles) | IN_REVIEW — compose config OK ; COPY corrigés (PR audit) ; build non testé (pull Hub impossible ici) ; `compose up` non testable dans la VM (sandbox) |
+| Environnements Docker (compose + Dockerfiles) | TESTED — run #54 : build des 4 images, config Compose, healthchecks et smoke complets réussis ; confirmation du poste local encore à consigner |
 | CI initiale (GitHub Actions) | TESTED — 33 runs ; 4 derniers verts, dernier run 4/4 jobs (gitleaks, API, Web, Compose) |
 | Squelettes api / web / worker / connecteur-sim | TESTED — re-vérifiés pendant l'audit (pytest 3 passed, build web OK, API live OK, connecteur-sim OK, worker OK) |
 | Vérification de l'environnement de dev | ACCEPTED — Docker installé 24/11 (29.1.3 + Compose v5.8.0) ; limites sandbox documentées (PROJECT_STATUS §5) |
+
+### Audit suite — instruction ChatGPT du 25/11 (PR de suivi distincte, non fusionnée)
+
+| Tâche | Statut |
+|---|---|
+| CI : build des 4 images Docker (`docker-build`) | TESTED — run #54, 4 images construites ; contrôle non-root réussi (uid 999/1000) |
+| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | TESTED — run #54 : API/Web/Worker healthy, endpoints vérifiés, connecteur-sim exit 0, ports hôte sur 127.0.0.1 |
+| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | TESTED / REPORT-ONLY — run #54 : pip-audit 16 occurrences / 8 avis uniques ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical). Job vert grâce à `continue-on-error`, pas « zéro vulnérabilité » |
+| Conteneurs non-root (USER app / USER node) + `--reload` retiré | TESTED — run #54 : API/Worker/Connector uid 999, Web uid 1000 |
+| Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | TESTED — run #54 : healthchecks API/Web/Worker verts ; règles `.env*.local` conservées |
+| Split requirements API (runtime vs dev) | TESTED — run #54 : installation requirements-dev, ruff et pytest réussis |
+| Audit sécurité concret (`docs/security/SECURITY_AUDIT_2026-11-25.md`) | TESTED — revalidé run #54 : pip-audit 16 occurrences / 8 avis uniques (Starlette 0.41.3, pytest 8.3.4) ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical) ; report-only documenté |
+| Correction de la description de la PR #2 (affirmations inexactes) | DONE — corps de PR #2 corrigé le 25/11, affirmations fausses retirées |
+| Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
+| Runtime Node 22 (Docker + CI) | TESTED — run #54 : npm ci/lint/typecheck/build + image Docker Web + Compose smoke réussis sur Node 22 |
 
 ## PHASE 1 — MVP fonctionnel (à venir)
 
@@ -25,7 +40,7 @@ métriques fiables.
 
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
-| P1-01 | Valider `docker compose up --build` sur une machine Docker normale (Docker déjà installé sur la VM d'audit ; build/up non testables ici — sandbox sans bridge, pull Hub impossible) | TODO | — (bloque P1-02+) |
+| P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
 | P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
@@ -79,3 +94,12 @@ métriques fiables.
 | Documentation utilisateur / administrateur / déploiement | TODO |
 | Démonstration, onboarding, support | TODO |
 | Dossier de sécurité, dossier technique, maintenance | TODO |
+
+
+## Suivi de revue du 25/11/2026 — run CI #54
+
+- Ports Compose 5432/6379/8000/3000 liés à `127.0.0.1`, avec assertion automatisée sur `docker compose config --format json` — TESTED.
+- Node 22 (Dockerfile Web + CI) — TESTED : install, lint, typecheck, build, build image et Compose smoke verts.
+- Les vulnérabilités Starlette/Pytest et npm restent ouvertes et suivies en report-only ; aucune mise à niveau majeure automatique n'a été appliquée.
+- Runtime des actions GitHub encore averti (checkout@v4/setup-node@v4/setup-python@v5 Node 20 forcé vers Node 24) — lot CI séparé.
+- Phase 1 : voir `PHASE1_PLAN.md`. L'implémentation métier ne démarre pas avant les critères de sécurité et la validation locale P1-01.

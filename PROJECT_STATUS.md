@@ -1,8 +1,11 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026** (audit PHASE 0 + round 2, revue indépendante).
+> Dernière mise à jour : **25 novembre 2026** (revue sécurité, ports loopback et Node 22 validés par CI run #54).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
+> Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
+> validations CI manquantes ajoutées (build images + smoke test compose),
+> corrections dans une PR distincte (non fusionnée).
 > Spécification de référence : **MASTER PROMPT V3**.
 > Statut global : **PHASE 0 TERMINÉE — en attente de validation humaine
 > avant PHASE 1.**
@@ -30,8 +33,8 @@ La PHASE 0 demandait d'abord un audit du repository existant. Résultat :
 | Worker (squelette) | Celery : `celery_app.py`, tâche `healthcheck` (réelle, pas de fausse donnée) |
 | Connecteur (squelette) | Connecteur de **simulation** : implémente le contrat commun, données marquées `simulated: true` partout, bannière SIMULATION |
 | Types partagés | `packages/shared-types` : `Organization`, `User`, `Resource`, `Alert`, `Incident`, etc. |
-| Docker | `docker-compose.yml` (PostgreSQL 16, Redis 7, api, worker, web, connector-sim) + 4 Dockerfiles sous `infrastructure/docker/` (COPY corrigés pour le contexte racine — audit §10) + `.dockerignore` |
-| CI | `.github/workflows/ci.yml` : lint/typecheck/build web, lint/tests backend, scan secrets (gitleaks), validation `docker compose config` |
+| Docker | `docker-compose.yml` (PostgreSQL 16, Redis 7, api, worker, web, connector-sim) + 4 Dockerfiles sous `infrastructure/docker/` (COPY corrigés pour le contexte racine — audit §10 ; images non-root + healthchecks api/web/worker — audit suite §11) + `.dockerignore` (`.env.local` / `.env.*.local` exclus — §11) |
+| CI | `.github/workflows/ci.yml` : lint/typecheck/build web, lint/tests backend, scan secrets (gitleaks), validation `docker compose config` **+ build des 4 images Docker + smoke test `compose up` (healthchecks) + audit de dépendances (report-only) — §11** |
 | Scripts | `scripts/check-env.sh` : vérification de l'environnement de dev |
 
 ## 3. Éléments validés (PHASE 0)
@@ -231,3 +234,132 @@ Autres vérifications du 25/11 : chemins COPY des 4 Dockerfiles tous existants ;
 - Les deux sont à valider sur une machine Docker normale ou via la CI
   (qui tourne déjà à chaque push).
 - **Précisions du 25/11 :** la VM a été remplacée entre le 24/11 et le 25/11 (Docker avait disparu) ; Docker 29.1.3 + Compose v5.8.0 réinstallés le 25/11, daemon `--bridge=none --iptables=false`. Build `api` tenté le 25/11 : échec étape 1/10 (pull `python:3.12-slim`, TLS handshake timeout vers `registry-1.docker.io`). **Mesure directe :** contexte de build **568,5 Mo** avec l'ancien `.dockerignore` contre **572,9 kB** avec le corrigé (~1000× de moins).
+
+## 11. Audit suite — instruction ChatGPT du 25/11 (PR #2)
+
+Audit ordonné par ChatGPT (commentaire PR #2, 25/11 10h41, via ChatGPT Codex
+Connector) : vérifier l'état réel de la PR et de `main`, ajouter les
+validations CI manquantes, compléter `.dockerignore`, vérifier versions et
+dépendances, produire un audit sécurité concret, publier les résultats ici et
+dans `BACKLOG.md`, ouvrir une **PR distincte** pour les corrections (sans
+fusionner dans `main`). Rapport complet :
+`docs/security/SECURITY_AUDIT_2026-11-25.md`.
+
+### État réel vérifié
+
+- **PR #2 : Open, non fusionnée** — 6 commits, tête `ec7c797`, base `main`
+  `076535c`, `mergeable_state: clean`. **Main HEAD : `076535c`** (« Phase 0 :
+  fondations — worker Celery », 24/11 22h05).
+- **Écarts relevés dans la description de la PR #2** (à corriger avant fusion) :
+  « PYTHONPATH corrigé » — faux (zéro occurrence de `PYTHONPATH` dans le code,
+  le diff ne change que les COPY) ; « GET /v1/assets, POST /v1/simulate 200 » —
+  faux (l'API n'expose que `GET /health` et `GET /api/v1/health`) ;
+  chemins de tests inexacts (le seul fichier est
+  `apps/api/tests/test_health.py`, 3 tests — le nombre est correct, les chemins
+  non) ; affirmation sur `.dockerignore` inexacte (les motifs existaient déjà
+  à la racine, le problème était l'absence de `**/`).
+
+### Corrections apportées (PR distincte, non fusionnée)
+
+1. **CI — job `docker-build`** : build des 4 images Docker à chaque push/PR
+   (les builds n'avaient jamais été exécutés nulle part ; les runners GitHub
+   ont un accès Docker Hub complet, contrairement à cette VM).
+2. **CI — job `compose-smoke`** : `docker compose up -d --build`, attente des
+   healthchecks api/web/worker, vérification `GET /health`, `GET /` web,
+   `celery inspect ping`, exit code 0 du connecteur-sim (one-shot), puis
+   `docker compose down -v`.
+3. **CI — job `security-audit` (report-only)** : `pip-audit` sur les 4 fichiers
+   de requirements + `npm audit --audit-level=high` (en `continue-on-error` :
+   les vulnérabilités connues sont signalées sans bloquer la PR — les
+   corrections sont planifiées, voir ci-dessous).
+   **Correctif déclencheur (25/11 11h04) :** la PR #3 n'avait AUCUN check car
+   le workflow ne se déclenchait que sur main/develop — `pull_request:` est
+   désormais sans filtre de branche (toute PR obtient la CI).
+4. **Conteneurs non-root** : `USER app` (images Python) / `USER node` (web),
+   vérifié en CI (`id -u` ≠ 0 pour les 4 images).
+5. **`--reload` retiré** du CMD de l'image API (outil de dev, pas dans l'image
+   livrée).
+6. **Healthchecks ajoutés** : api (`/health` via urllib), web (`/` via wget),
+   worker (`celery inspect ping`) ; `connector-sim` exempté (one-shot, exit 0).
+7. **`.dockerignore`** : `.env.local` et `.env.*.local` ajoutés
+   (`.env.example` reste inclus).
+8. **Split des requirements API** : `requirements.txt` = exécution uniquement
+   (pytest/ruff déplacés vers `requirements-dev.txt`) — l'image Docker ne
+   contient plus les outils de dev.
+
+### Audit sécurité (résumé — détail dans `docs/security/SECURITY_AUDIT_2026-11-25.md`)
+
+- **Secrets :** aucun secret réel (gitleaks vert, grep vérifié) ; placeholders
+  dev uniquement ; `.env` exclu du contexte ; aucun vrai `.env` dans le dépôt.
+- **Dépendances Python (`pip-audit`, 25/11) : 8 vulnérabilités uniques** —
+  starlette 0.41.3 (7, transitive de FastAPI 0.115.6 qui exige
+  `starlette<0.42.0`) et pytest 8.3.4 (1, dev-only). Surface exploitable
+  actuelle limitée (2 endpoints health) ; correction = montée FastAPI à
+  planifier en lot dédié (pas de patch silencieux). Worker + connecteur :
+  aucune vulnérabilité connue.
+- **Smoke test compose :** run #39 : worker sorti avec le code 1, cause
+  inconnue (le script mourait avant d'afficher les logs) ; run #42 :
+  **cause trouvée — `ModuleNotFoundError: No module named 'packaging'`**
+  (le transport Redis de kombu importe `packaging.version`, paquet absent de
+  l'image worker). **Correctif : `packaging==26.4` ajouté à
+  `services/worker/requirements.txt` et `apps/api/requirements.txt`**
+  (l'API installe aussi Celery) ; reproduit et vérifié en local dans un venv
+  propre (sans packaging → même erreur ; avec → worker prêt). Run #46 :
+  packaging validé (worker démarre, tâche enregistrée) mais **nouvel échec :
+  `kombu.exceptions.VersionMismatch` — le transport Redis exige redis-py
+  >= 6.1.0, le projet épinglait 5.2.1**. **Correctif : `redis==6.1.0`**
+  (minimum exigé, 0 vulnérabilité connue per pip-audit) dans les deux
+  requirements ; vérifié en local (5.2.1 → VersionMismatch ; 6.1.0 → la
+  porte de version passe, seule erreur = pas de serveur Redis local, normal).
+  Nouveau run CI en attente.
+- **Dépendances Node :** `npm audit` **exécuté en CI** (run #39, PR #3,
+  25/11 11h06) : **7 vulnérabilités (1 moderate, 5 high, 1 critical)** —
+  glob (high), minimatch (moderate), next ≤ 16.3.0-preview.10 (**critical**,
+  26 avis dont RCE non authentifiée), postcss ≤ 8.5.22 (high), zod < 4.6.6
+  (high) ; correctifs = breaking changes (next 16.4.6, zod 4.6.7) — montée
+  majeure à planifier en lot dédié, pas de patch silencieux. `npm outdated` :
+  aucune dépendance en retard dans les plages déclarées.
+- **Versions :** Python 3.12, Node 20 (LTS jusqu'en avril 2026 — passage en
+  Node 22 à planifier ; ESLint 8 en fin de vie).
+- **Authentification / isolation multi-tenant / journal d'audit : non
+  implémentés** (par conception, PHASE 0) — contrôles à construire en PHASE 1
+  (P1-02, P1-04, P1-14, P1-12), pas des failles présentes.
+- **CORS :** restrictif par défaut (`localhost:3000`), `allow_credentials=True`
+  à surveiller à chaque origine ajoutée. **CSRF :** non applicable (pas de
+  sessions). **Entrées :** les 2 endpoints ne prennent aucun paramètre.
+  **Logs :** défaut uvicorn, aucun secret vérifié. **`/docs` et
+  `/openapi.json`** exposés (dev OK, à restreindre avant exposition publique).
+  **Ports 5432/6379/8000/3000** désormais liés à `127.0.0.1` ; assertion CI active (run #54).
+
+### Limites explicites
+
+- Le build des 4 images et le smoke test `compose up` sont désormais
+  **validés par la CI GitHub (run #54)** : les services démarrent et passent
+  leurs healthchecks. La VM d'audit locale conserve ses limites réseau ; la
+  confirmation sur le poste de développement reste à consigner (P1-01).
+- `npm audit` reste bloqué localement par le proxy, mais a été exécuté en CI
+  (run #54) : 7 vulnérabilités détectées ; le job reste report-only.
+- Le runtime Web Node 22 est migré et testé (run #54). La montée Next 16 /
+  React 19 / ESLint 10 et la montée FastAPI/Starlette restent des lots dédiés,
+  à exécuter avec re-tests et sans mise à niveau majeure automatique.
+
+
+## 12. Revalidation de la revue — 25/11/2026
+
+**HEAD vérifié :** `15ad9b9050c1fe08687e8d7cc47a6a4f756426d4` — **CI run #54**.
+
+- **Compose / ports :** DB 5432, Redis 6379, API 8000 et Web 3000 sont publiés uniquement sur `127.0.0.1`. Le job `compose-validate` vérifie automatiquement le JSON rendu et confirme cette contrainte.
+- **Node 22 :** `infrastructure/docker/web.Dockerfile` utilise `node:22-alpine` dans ses trois stages ; les deux jobs `setup-node` utilisent Node 22. `npm ci`, lint, typecheck, build Web et build de l'image Web réussis.
+- **Images Docker :** les quatre images sont construites ; contrôle non-root réussi (API uid 999, Web uid 1000, Worker uid 999, connecteur uid 999).
+- **Compose smoke :** API, Web et Worker healthy ; endpoints API/Web vérifiés ; connecteur de simulation terminé avec exit code 0 ; ports hôte observés sur 127.0.0.1.
+- **API / secrets :** lint, format, pytest et gitleaks réussis.
+- **Audit dépendances :** job report-only terminé avec succès, mais les commandes d'audit ont trouvé des vulnérabilités : pip-audit 16 occurrences / 8 avis uniques (Starlette 0.41.3, pytest 8.3.4) ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical). Les étapes restent en `continue-on-error: true` ; le statut vert ne signifie pas absence de vulnérabilités.
+- **PR #2 :** description corrigée pour retirer les affirmations non vérifiées. PR #2 et PR #3 restent ouvertes et non fusionnées.
+- **Avertissement CI restant :** les actions GitHub `checkout@v4`, `setup-node@v4` et `setup-python@v5` émettent encore un avertissement de runtime Node 20 forcé vers Node 24. Le runtime applicatif Web est bien Node 22.
+
+### Suite proposée
+
+1. Mettre à niveau FastAPI/Starlette dans un lot dédié avec tests de compatibilité.
+2. Mettre à jour les versions des actions GitHub dans un lot CI séparé.
+3. Préparer Phase 1 par sous-lots : migrations Alembic, organisations/membres, sessions/OIDC, RBAC, isolation multi-tenant, audit log.
+4. La validation Compose sur un poste de développement Docker normal reste à consigner ; la CI hébergée a validé le build et le smoke test.

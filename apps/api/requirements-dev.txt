@@ -1,0 +1,8 @@
+# requirements-dev.txt — API EII (développement et tests uniquement)
+# Inclut les dépendances d'exécution ; installer ce fichier en dev et en CI :
+#   pip install -r requirements-dev.txt
+# L'image Docker n'installe QUE requirements.txt (pas de pytest/ruff en prod).
+-r requirements.txt
+pytest==8.3.4
+pytest-asyncio==0.24.0
+ruff==0.8.4

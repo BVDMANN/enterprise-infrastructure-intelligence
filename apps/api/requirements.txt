@@ -1,3 +1,6 @@
+# requirements.txt — API EII (dépendances d'exécution uniquement)
+# Les dépendances de développement (pytest, ruff) sont dans
+# requirements-dev.txt et ne doivent PAS être installées dans l'image Docker.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
@@ -5,9 +8,12 @@ pydantic-settings==2.7.0
 sqlalchemy==2.0.36
 alembic==1.14.0
 psycopg[binary]==3.2.3
-redis==5.2.1
+# kombu exige redis-py >= 6.1.0 (VersionMismatch sinon, constaté run CI #46).
+redis==6.1.0
 celery==5.4.0
+# Requis par le transport Redis de kombu (kombu/transport/redis.py fait
+# `from packaging.version import Version`) — kombu ne le déclare pas comme
+# dépendance : sans lui, tout processus Celery qui résout le broker Redis
+# plante au démarrage (ModuleNotFoundError).
+packaging==26.4
 httpx==0.28.1
-pytest==8.3.4
-pytest-asyncio==0.24.0
-ruff==0.8.4
