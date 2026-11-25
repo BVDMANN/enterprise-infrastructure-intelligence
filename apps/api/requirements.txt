@@ -10,4 +10,9 @@ alembic==1.14.0
 psycopg[binary]==3.2.3
 redis==5.2.1
 celery==5.4.0
+# Requis par le transport Redis de kombu (kombu/transport/redis.py fait
+# `from packaging.version import Version`) — kombu ne le déclare pas comme
+# dépendance : sans lui, tout processus Celery qui résout le broker Redis
+# plante au démarrage (ModuleNotFoundError).
+packaging==26.4
 httpx==0.28.1
