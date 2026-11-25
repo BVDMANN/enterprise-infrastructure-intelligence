@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import Base, get_db
 from app.main import app
+import app.routers.auth as auth_router
 from app.models.identity import User
 from app.services.passwords import hash_password
 
@@ -18,7 +19,7 @@ ORIGIN = "http://localhost:3000"
 
 
 @pytest.fixture()
-def client():
+def client(monkeypatch):
     engine = create_engine("sqlite:///:memory:")
 
     @event.listens_for(engine, "connect")
@@ -34,6 +35,7 @@ def client():
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(auth_router, "_enforce_login_rate_limit", lambda _request, _email: None)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
