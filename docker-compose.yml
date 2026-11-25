@@ -57,7 +57,11 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/worker.Dockerfile
-    command: celery -A app.celery_app worker --loglevel=info
+    # Démarrage : CMD de l'image (celery -A app.celery_app.celery_app worker).
+    # Ne pas surcharger avec `command:` ici : une seule source de vérité.
+    # (La forme courte `-A app.celery_app` démarre aussi — Celery retrouve
+    # l'instance par balayage du module — mais elle est implicite et fragile
+    # si une seconde instance Celery apparaît un jour dans le module.)
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eii}:${POSTGRES_PASSWORD:-change_me_dev_only}@db:5432/${POSTGRES_DB:-eii}
       REDIS_URL: redis://redis:6379/0
