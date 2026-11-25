@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
@@ -59,3 +59,87 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build api image
+        run: docker build -f infrastructure/docker/api.Dockerfile -t eii-api:test .
+      - name: Build web image
+        run: docker build -f infrastructure/docker/web.Dockerfile -t eii-web:test .
+      - name: Build worker image
+        run: docker build -f infrastructure/docker/worker.Dockerfile -t eii-worker:test .
+      - name: Build connector image
+        run: docker build -f infrastructure/docker/connector.Dockerfile -t eii-connector:test .
+      - name: Verify images run as non-root
+        run: |
+          for img in eii-api:test eii-web:test eii-worker:test eii-connector:test; do
+            user=$(docker run --rm --entrypoint="" "$img" id -u)
+            echo "$img runs as uid $user"
+            if [ "$user" = "0" ]; then echo "FAIL: $img runs as root"; exit 1; fi
+          done
+
+  compose-smoke:
+    name: Compose smoke test (up + healthchecks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the stack
+        run: docker compose up -d --build
+      - name: Wait for healthy services
+        run: |
+          for svc in api web worker; do
+            echo "Waiting for $svc to become healthy..."
+            for i in $(seq 1 30); do
+              status=$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || echo "unknown")
+              if [ "$status" = "healthy" ]; then echo "$svc is healthy"; break; fi
+              sleep 5
+            done
+            status=$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q "$svc")")
+            if [ "$status" != "healthy" ]; then
+              echo "$svc did not become healthy (status: $status)"
+              docker compose ps -a
+              docker compose logs "$svc"
+              exit 1
+            fi
+          done
+      - name: Check API and web endpoints
+        run: |
+          curl -f http://localhost:8000/health
+          curl -fs -o /dev/null http://localhost:3000/
+          docker compose exec -T worker celery -A app.celery_app.celery_app inspect ping --timeout 5
+      - name: Check simulation connector ran once
+        run: |
+          code=$(docker inspect --format='{{.State.ExitCode}}' "$(docker compose ps -aq connector-sim)")
+          echo "connector-sim exit code: $code"
+          if [ "$code" != "0" ]; then docker compose logs connector-sim; exit 1; fi
+      - name: Show stack status
+        if: always()
+        run: docker compose ps -a
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
+
+  security-audit:
+    name: Dependency audit (report only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Audit Python dependencies
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r apps/api/requirements.txt -r apps/api/requirements-dev.txt -r services/worker/requirements.txt -r services/connector/requirements.txt
+      - name: Audit Node dependencies
+        continue-on-error: true
+        working-directory: apps/web
+        run: npm audit --audit-level=high
