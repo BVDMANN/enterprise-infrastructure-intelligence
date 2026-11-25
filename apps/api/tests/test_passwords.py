@@ -63,7 +63,10 @@ def test_password_policy_rejects_short_and_long_values() -> None:
 
 def test_authentication_normalizes_email(db: Session) -> None:
     user = _user(db)
-    assert authenticate_user(db, "  LOCAL@EXAMPLE.COM ", "correct-horse-battery").id == user.id
+    assert (
+        authenticate_user(db, "  LOCAL@EXAMPLE.COM ", "correct-horse-battery").id
+        == user.id
+    )
 
 
 def test_authentication_rejects_wrong_password_and_unknown_user(db: Session) -> None:
