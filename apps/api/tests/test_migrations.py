@@ -12,6 +12,7 @@ from alembic.script import ScriptDirectory
 def _script_directory() -> ScriptDirectory:
     config_path = Path(__file__).resolve().parents[1] / "alembic.ini"
     config = Config(str(config_path))
+    config.set_main_option("script_location", str(config_path.parent / "alembic"))
     return ScriptDirectory.from_config(config)
 
 
