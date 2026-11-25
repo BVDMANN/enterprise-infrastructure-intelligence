@@ -18,5 +18,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove citext after all dependent schema revisions are downgraded."""
-    op.execute("DROP EXTENSION IF EXISTS citext")
+    """Retain the shared extension; removing it could break another schema."""
+    # CREATE EXTENSION IF NOT EXISTS is safe to replay. citext is deliberately
+    # retained on downgrade because extensions may be shared at database level.
+    pass
