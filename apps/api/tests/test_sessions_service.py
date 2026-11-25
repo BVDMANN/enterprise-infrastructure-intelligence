@@ -24,9 +24,7 @@ def db() -> Session:
     engine = create_engine("sqlite:///:memory:")
 
     @event.listens_for(engine, "connect")
-    def _enable_foreign_keys(
-        dbapi_connection, _connection_record
-    ):  # noqa: ANN001, ANN202
+    def _enable_foreign_keys(dbapi_connection, _connection_record):  # noqa: ANN001, ANN202
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
@@ -76,9 +74,12 @@ def test_expired_session_is_rejected(db: Session) -> None:
     credentials = create_session(db, user.id, ttl=timedelta(minutes=5), now=created)
     db.commit()
 
-    assert get_active_session(
-        db, credentials.session_token, now=created + timedelta(minutes=5)
-    ) is None
+    assert (
+        get_active_session(
+            db, credentials.session_token, now=created + timedelta(minutes=5)
+        )
+        is None
+    )
 
 
 def test_revoked_session_is_rejected_and_revocation_is_idempotent(db: Session) -> None:
