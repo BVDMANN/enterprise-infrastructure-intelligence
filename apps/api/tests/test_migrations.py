@@ -17,7 +17,7 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_initial_head() -> None:
-    """The session migration must be the only head."""
+    """The local-auth migration must be the only head."""
     assert _script_directory().get_heads() == ["0004_user_password_hash"]
 
 
@@ -50,7 +50,7 @@ def test_password_hash_migration_follows_sessions() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one chain: 0001 -> 0002 -> 0003 (head)."""
+    """The history must be one chain: 0001 -> 0002 -> 0003 -> 0004 (head)."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
