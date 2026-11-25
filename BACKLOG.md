@@ -119,6 +119,6 @@ métriques fiables.
 | P1-A5 — audit trail | TODO | Aucun journal d'audit métier append-only. |
 | Interface de démonstration | IN_REVIEW | PR #6, run #74 ; données métier simulées, healthcheck API réel uniquement. |
 | Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 7/7 ; aucun avertissement runtime Node 20 dans les 7 logs. |
-| Vulnérabilités pip/npm | BLOCKED / REPORT-ONLY | Run #77 : 16 occurrences Python dans pytest/Starlette et 7 vulnérabilités npm ; aucune correction revendiquée. |
+| Vulnérabilités pip/npm | TODO / REPORT-ONLY | Run #77 : 16 occurrences Python dans pytest/Starlette et 7 vulnérabilités npm ; aucune correction revendiquée. |
 
 Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et acceptation produit : les lots restent en revue jusqu'à validation humaine.
