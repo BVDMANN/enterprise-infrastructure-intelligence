@@ -3,4 +3,5 @@ celery==5.4.0
 # `from packaging.version import Version`) — kombu ne le déclare pas comme
 # dépendance : sans lui, le worker plante au démarrage (ModuleNotFoundError).
 packaging==26.4
-redis==5.2.1
+# kombu exige redis-py >= 6.1.0 (VersionMismatch sinon, constaté run CI #46).
+redis==6.1.0
