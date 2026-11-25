@@ -135,6 +135,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(EMAIL_TYPE, nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     oidc_subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
