@@ -41,9 +41,9 @@ def client():
 
 
 def _create_user(client: TestClient, *, active: bool = True, deleted: bool = False) -> None:
-    from app.db.session import SessionLocal
-
-    with SessionLocal() as db:
+    dependency = app.dependency_overrides[get_db]()
+    db = next(dependency)
+    try:
         db.add(
             User(
                 email="admin@example.com",
@@ -54,6 +54,8 @@ def _create_user(client: TestClient, *, active: bool = True, deleted: bool = Fal
             )
         )
         db.commit()
+    finally:
+        dependency.close()
 
 
 def test_login_me_and_logout_round_trip(client: TestClient) -> None:
