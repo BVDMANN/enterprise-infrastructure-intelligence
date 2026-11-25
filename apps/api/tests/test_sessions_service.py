@@ -71,9 +71,7 @@ def test_unknown_or_missing_session_is_rejected(db: Session) -> None:
 def test_expired_session_is_rejected(db: Session) -> None:
     user = _user(db)
     created = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    credentials = create_session(
-        db, user.id, ttl=timedelta(minutes=5), now=created
-    )
+    credentials = create_session(db, user.id, ttl=timedelta(minutes=5), now=created)
     db.commit()
 
     assert get_active_session(
@@ -116,9 +114,7 @@ def test_csrf_token_is_bound_to_live_session(db: Session) -> None:
     credentials = create_session(db, user.id)
     db.commit()
 
-    assert verify_csrf_token(
-        db, credentials.session_token, credentials.csrf_token
-    )
+    assert verify_csrf_token(db, credentials.session_token, credentials.csrf_token)
     assert not verify_csrf_token(
         db, credentials.session_token, "wrong-csrf-token"
     )
