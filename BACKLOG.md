@@ -22,7 +22,7 @@
 | Tâche | Statut |
 |---|---|
 | CI : build des 4 images Docker (`docker-build`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier (jamais exécuté nulle part avant) |
-| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | IN_REVIEW — run #42 : 5/6 services sains, worker sorti (1) ; **cause trouvée : `packaging` manquant dans l'image worker** (kombu redis) — correctif `packaging==26.4` appliqué, vérifié en local (venv propre), nouveau run CI en attente |
+| CI : smoke test `compose up` + healthchecks (`compose-smoke`) | IN_REVIEW — run #46 : packaging validé (worker démarre) mais **nouvel échec : kombu exige redis-py >= 6.1.0 (projet à 5.2.1)** — correctif `redis==6.1.0` appliqué, vérifié en local (porte de version OK, 0 vulnérabilité per pip-audit), nouveau run CI en attente |
 | CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | IN_REVIEW — implémenté, première exécution attendue en CI (`npm audit` non exécutable dans la VM d'audit) |
 | Conteneurs non-root (USER app / USER node) + `--reload` retiré | IN_REVIEW — implémenté, vérification `id -u` en CI à confirmer |
 | Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | IN_REVIEW — implémenté, CI de la PR de suivi à vérifier |
