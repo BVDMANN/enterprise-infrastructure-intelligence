@@ -454,7 +454,7 @@ Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:2
 | P1-A3 — RBAC | TODO | `memberships.role` reste une chaîne avec CHECK ; permissions serveur et matrice d'autorisation non implémentées. |
 | P1-A4 — isolation multi-tenant | TODO / SOCLE PARTIEL | Les helpers P1-A1 filtrent par membership, utilisateur actif et soft-delete ; pas encore de contexte tenant dérivé d'une session, de routes métier ni de RLS. |
 | P1-A5 — audit trail | TODO | Aucun journal métier append-only implémenté. |
-| Dépendances Python | IN_REVIEW / TESTED | PR #12, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found ». Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 en cours, job API vert et sans avertissement Starlette/TestClient dans ses logs. PR ouverte, non fusionnée. |
+| Dépendances Python | IN_REVIEW / TESTED | PR #12, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found ». Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 : 7/7 jobs réussis, pip-audit propre et aucun avertissement Starlette/TestClient dans les logs API. PR ouverte, non fusionnée. |
 | Dépendances npm | TODO / REPORT-ONLY | 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) : `next` critique, `glob`/`postcss` élevés, `zod` élevé et `minimatch` modéré. `npm audit fix --force` propose Next 16.4.6 et Zod 4.6.7 (breaking changes) ; aucune mise à niveau majeure aveugle. L'étape sort en erreur mais reste `continue-on-error` ; job vert ≠ audit propre. |
 
 ### Coordination des dépendances et limites
