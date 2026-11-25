@@ -5,7 +5,7 @@
 > `TESTED` · `ACCEPTED` · `DEPLOYED`.
 > Rappel : développé ≠ testé ≠ accepté ≠ déployé ≠ prêt pour la production.
 
-## PHASE 0 — Fondations (terminée, en attente de validation)
+## PHASE 0 — Fondations (implémentée et validée par CI sur des PR ouvertes ; revue humaine et fusion en attente)
 
 | Tâche | Statut |
 |---|---|
@@ -32,7 +32,7 @@
 | Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
 | Runtime Node 22 (Docker + CI) | TESTED — run #54 : npm ci/lint/typecheck/build + image Docker Web + Compose smoke réussis sur Node 22 |
 
-## PHASE 1 — MVP fonctionnel (à venir)
+## PHASE 1 — MVP fonctionnel (en cours ; P1-A0 et P1-A1 sont en PR ouvertes)
 
 Critère de sortie : un utilisateur peut connecter un environnement de
 test, synchroniser des ressources, les visualiser et consulter des
@@ -52,8 +52,8 @@ métriques fiables.
 | P1-10 | Première collecte de métriques (VictoriaMetrics) | TODO | P1-08/P1-09 |
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
-| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
-| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TESTED — lot P1-A1 livré sur `phase1/p1-a1-organisations-utilisateurs` (PR #5, empilée sur PR #4) : migration 0002_identity, 30 tests API passed en local, vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive) | P1-A0 |
+| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | IN_REVIEW / TESTED — PR #4 ouverte (non-draft), run #67 : 7/7 jobs réussis ; migration/extension/downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
+| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 ouverte, run #73 7/7 jobs réussis ; correctif de sécurité complémentaire PR #8 ouverte, run #76 7/7 jobs réussis, 32 tests API ; aucune route d'identité publique ni authentification n'est encore livrée | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | TODO | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
 | P1-16 | Documentation mise à jour (API, déploiement, opérations) | TODO | P1-15 |
@@ -104,3 +104,21 @@ métriques fiables.
 - Les vulnérabilités Starlette/Pytest et npm restent ouvertes et suivies en report-only ; aucune mise à niveau majeure automatique n'a été appliquée.
 - Runtime des actions GitHub encore averti (checkout@v4/setup-node@v4/setup-python@v5 Node 20 forcé vers Node 24) — lot CI séparé.
 - Phase 1 : voir `PHASE1_PLAN.md`. L'implémentation métier ne démarre pas avant les critères de sécurité et la validation locale P1-01.
+
+
+## Mise à jour de pilotage — 25/11/2026, 23:23 CET
+
+| Lot | Statut actuel | Preuve / limite |
+|---|---|---|
+| Phase 0 — PR #2 à #4 | IN_REVIEW | PR ouvertes, non fusionnées ; #4 run #67 7/7 jobs réussis. Confirmation Compose locale encore attendue. |
+| P1-A0 | IN_REVIEW / TESTED | PR #4, migration `0001_pg_extensions` ; seule `citext` est installée. |
+| P1-A1 | IN_REVIEW | PR #5 (run #73) et correctif ciblé PR #8 (run #76) ; modèles et lectures membership-scoped, sans routes publiques. |
+| P1-A2 — sessions/OIDC | TODO | Aucun flux login/logout, session serveur ou fournisseur OIDC intégré. |
+| P1-A3 — RBAC | TODO | Le rôle reste une chaîne contrôlée par CHECK ; permissions serveur non implémentées. |
+| P1-A4 — isolation multi-tenant | TODO | Les lectures P1-A1 sont limitées par membership ; pas encore de contexte tenant issu d'une session ni de RLS. |
+| P1-A5 — audit trail | TODO | Aucun journal d'audit métier append-only. |
+| Interface de démonstration | IN_REVIEW | PR #6, run #74 ; données métier simulées, healthcheck API réel uniquement. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 7/7 ; aucun avertissement runtime Node 20 dans les 7 logs. |
+| Vulnérabilités pip/npm | BLOCKED / REPORT-ONLY | Run #77 : 16 occurrences Python dans pytest/Starlette et 7 vulnérabilités npm ; aucune correction revendiquée. |
+
+Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et acceptation produit : les lots restent en revue jusqu'à validation humaine.
