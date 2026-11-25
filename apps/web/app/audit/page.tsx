@@ -13,7 +13,7 @@ export default function AuditPage() {
       />
 
       <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <strong>Journal simulé.</strong> {demoNotice} Aucun événement de sécurité réel n'est enregistré à ce stade.
+        <strong>Journal simulé.</strong> {demoNotice} Aucun événement de sécurité réel n&apos;est enregistré à ce stade.
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
