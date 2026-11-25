@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026** (audit PHASE 0 + round 2 + audit suite ChatGPT).
+> Dernière mise à jour : **25 novembre 2026** (revue sécurité, ports loopback et Node 22 validés par CI run #54).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
@@ -341,3 +341,24 @@ fusionner dans `main`). Rapport complet :
   attendue en CI.
 - La montée FastAPI (starlette) et la montée Node 22 / Next 16 ne sont **pas**
   effectuées ici : lots dédiés à planifier, avec re-tests.
+
+
+## 12. Revalidation de la revue — 25/11/2026
+
+**HEAD vérifié :** `15ad9b9050c1fe08687e8d7cc47a6a4f756426d4` — **CI run #54**.
+
+- **Compose / ports :** DB 5432, Redis 6379, API 8000 et Web 3000 sont publiés uniquement sur `127.0.0.1`. Le job `compose-validate` vérifie automatiquement le JSON rendu et confirme cette contrainte.
+- **Node 22 :** `infrastructure/docker/web.Dockerfile` utilise `node:22-alpine` dans ses trois stages ; les deux jobs `setup-node` utilisent Node 22. `npm ci`, lint, typecheck, build Web et build de l'image Web réussis.
+- **Images Docker :** les quatre images sont construites ; contrôle non-root réussi (API uid 999, Web uid 1000, Worker uid 999, connecteur uid 999).
+- **Compose smoke :** API, Web et Worker healthy ; endpoints API/Web vérifiés ; connecteur de simulation terminé avec exit code 0 ; ports hôte observés sur 127.0.0.1.
+- **API / secrets :** lint, format, pytest et gitleaks réussis.
+- **Audit dépendances :** job report-only terminé avec succès, mais les commandes d'audit ont trouvé des vulnérabilités : pip-audit 16 occurrences / 8 avis uniques (Starlette 0.41.3, pytest 8.3.4) ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical). Les étapes restent en `continue-on-error: true` ; le statut vert ne signifie pas absence de vulnérabilités.
+- **PR #2 :** description corrigée pour retirer les affirmations non vérifiées. PR #2 et PR #3 restent ouvertes et non fusionnées.
+- **Avertissement CI restant :** les actions GitHub `checkout@v4`, `setup-node@v4` et `setup-python@v5` émettent encore un avertissement de runtime Node 20 forcé vers Node 24. Le runtime applicatif Web est bien Node 22.
+
+### Suite proposée
+
+1. Mettre à niveau FastAPI/Starlette dans un lot dédié avec tests de compatibilité.
+2. Mettre à jour les versions des actions GitHub dans un lot CI séparé.
+3. Préparer Phase 1 par sous-lots : migrations Alembic, organisations/membres, sessions/OIDC, RBAC, isolation multi-tenant, audit log.
+4. La validation Compose sur un poste de développement Docker normal reste à consigner ; la CI hébergée a validé le build et le smoke test.
