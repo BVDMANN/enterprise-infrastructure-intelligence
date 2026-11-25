@@ -173,19 +173,44 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 - compte rendu PR avec commit, fichiers, commandes, résultats et limites ;
 - aucune fusion ou mise en production sans accord explicite.
 
-## 7. Prochain lot — P1-A2 Sessions et OIDC
+## 7. État courant et prochain lot — P1-A2 Sessions et authentification
 
-P1-A0 est livré dans la PR #4 (ouverte, non fusionnée ; run #67 : 7/7 jobs réussis). P1-A1 est livré dans la PR #5 (ouverte, non fusionnée ; run #73 : 7/7 jobs réussis), avec un correctif de sécurité complémentaire dans la PR #8 (ouverte, non fusionnée ; run #76 : 7/7 jobs réussis et 32 tests API passés).
+P1-A0 est en revue dans la PR #4 (run #67 : 7/7 jobs réussis). P1-A1 est en revue dans la PR #5 (run #73 : 7/7) et le correctif de lecture tenant-scoped PR #8 (run #76 : 7/7, 32 tests API). Ces PR restent ouvertes et non fusionnées.
 
-**Le prochain lot fonctionnel est P1-A2 — sessions et OIDC.** Il n'est pas encore implémenté : le point d'entrée FastAPI expose actuellement les sondes de santé uniquement. Avant d'ouvrir des routes métier, le lot doit inclure :
+### P1-A2.1 — Sessions serveur
 
-- une interface OIDC indépendante du fournisseur, avec validation issuer, audience, signature, nonce, state et expiration ;
-- des sessions serveur utilisant un identifiant opaque dont seul le hash est stocké, avec expiration et révocation ;
-- cookies Secure, HttpOnly et SameSite adaptés ; protection CSRF et contrôle Origin sur les mutations ;
-- aucun bearer token brut en base ou dans les logs ;
-- tests positifs et négatifs pour issuer/audience/signature/nonce/state/expiration, session expirée/révoquée, cookie absent et CSRF invalide ;
-- migration, documentation, CI complète verte et séparation explicite entre comportement intégré et non implémenté.
+**État :** implémenté dans la PR #10, branche `phase1/p1-a2-server-sessions`, tête `fff99f4`, ouverte/non fusionnée. Run #92 : 7/7 jobs CI réussis.
 
-La PR #6 fournit en parallèle une interface de démonstration navigable, mais ses données métier restent simulées. Les endpoints réels remplaceront les jeux de démonstration au fur et à mesure de leur livraison. La PR #7 traite les actions GitHub Node 24 séparément.
+- Jetons de session opaques ; seuls les hash des jetons session et CSRF sont persistés.
+- Expiration, révocation, refus des sessions expirées/révoquées et contrôle de l'état actif/supprimé de l'utilisateur.
+- Tests positifs et négatifs du cycle de vie, du TTL et du CSRF.
+- Pas encore de fournisseur OIDC ni de route login/logout dans ce sous-lot.
 
-Aucune fusion ni aucun déploiement n'est effectué sans accord explicite.
+### P1-A2.2 — Authentification locale
+
+**État :** en revue dans la PR #11, branche `phase1/p1-a2-local-auth`, draft, tête `acb12af`.
+
+- Hash des mots de passe Argon2id ; refus des comptes inactifs, supprimés, OIDC-only ou MFA-enabled pour éviter un contournement du second facteur.
+- Routes `POST /login`, `GET /me`, `POST /logout` avec cookie HttpOnly, SameSite, Origin, CSRF lié à la session et rate limiting Redis fail-closed.
+- Tests de hash, politique de mot de passe, comptes invalides, login/me/logout, Origin et CSRF.
+- Run #104 : job API vert sur la tête `acb12af` ; Docker build et Compose smoke encore en cours au moment de la mise à jour. La PR ne doit pas être déclarée verte avant la fin des autres jobs.
+- Le statut `mfa_enabled` bloque actuellement le login local ; aucun challenge OTP/MFA n'est encore disponible.
+
+### P1-A2.3 — OIDC et MFA
+
+**État : TODO.** Il reste à intégrer un fournisseur OIDC indépendant du fournisseur, avec validation stricte issuer, audience, signature, nonce, state et expiration, puis le flux MFA/challenge. Ne pas présenter l'authentification locale comme une intégration OIDC.
+
+### Dépendances de sécurité associées
+
+La PR #12 (`phase0/python-security-remediation`, tête `3adf2f9`) met à niveau FastAPI/pytest/pytest-asyncio. Run #98 : 7/7 jobs réussis ; `pip-audit` ne trouve aucune vulnérabilité Python sur cette branche. `npm audit` signale toujours 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) et reste report-only. La PR #11 ajoute également `argon2-cffi==25.1.0` dans `apps/api/requirements.txt` : les deux modifications doivent être conservées lors de la synchronisation, puis testées ensemble par pip install, Ruff, pytest, build Docker et Compose smoke.
+
+### Prochain lot concret
+
+1. Terminer et relire le run #104 de la PR #11 ; accepter uniquement si API, Web, Gitleaks, audit, Docker build, Compose config et smoke sont tous terminés sans échec.
+2. Synchroniser les dépendances PR #11/#12 sans écraser FastAPI ni `argon2-cffi`, puis relancer l'audit combiné. Les vulnérabilités npm restent à traiter séparément.
+3. Compléter OIDC/MFA et leurs tests négatifs avant de déclarer P1-A2 terminé.
+4. Ouvrir ensuite P1-A3 RBAC avec modèle de permissions, enforcement côté API et tests positifs/négatifs ; poursuivre avec contexte tenant/RLS (P1-A4), puis audit trail (P1-A5).
+
+La PR #6 fournit une interface de démonstration navigable, mais ses données métier restent simulées ; seul le healthcheck appelle l'API réelle. Les endpoints métier et l'authentification ne sont pas encore intégrés à l'interface. La PR #7 traite séparément les actions GitHub Node 24 (run #77 : 7/7 jobs réussis).
+
+Aucune fusion, aucun déploiement et aucun secret réel sans accord explicite.
