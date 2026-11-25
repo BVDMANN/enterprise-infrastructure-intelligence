@@ -297,6 +297,15 @@ fusionner dans `main`). Rapport complet :
   actuelle limitée (2 endpoints health) ; correction = montée FastAPI à
   planifier en lot dédié (pas de patch silencieux). Worker + connecteur :
   aucune vulnérabilité connue.
+- **Smoke test compose :** run #39 : worker sorti avec le code 1, cause
+  inconnue (le script mourait avant d'afficher les logs) ; run #42 :
+  **cause trouvée — `ModuleNotFoundError: No module named 'packaging'`**
+  (le transport Redis de kombu importe `packaging.version`, paquet absent de
+  l'image worker). **Correctif : `packaging==26.4` ajouté à
+  `services/worker/requirements.txt` et `apps/api/requirements.txt`**
+  (l'API installe aussi Celery) ; reproduit et vérifié en local dans un venv
+  propre (sans packaging → même erreur ; avec → worker prêt). Nouveau run CI
+  en attente.
 - **Dépendances Node :** `npm audit` **exécuté en CI** (run #39, PR #3,
   25/11 11h06) : **7 vulnérabilités (1 moderate, 5 high, 1 critical)** —
   glob (high), minimatch (moderate), next ≤ 16.3.0-preview.10 (**critical**,
