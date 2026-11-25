@@ -379,4 +379,4 @@ fusionner dans `main`). Rapport complet :
 - Les quatre images Docker, le build Web Node 22, Compose smoke, gitleaks et la validation des ports loopback sont verts.
 - Aucun endpoint métier, table d'organisation, mécanisme d'authentification ou secret réel n'a été ajouté.
 
-**Statut :** PR #4 reste en brouillon, non fusionnée. Prochain sous-lot prévu : P1-A1 organisations, utilisateurs et memberships, avec contraintes d'unicité et tests négatifs avant toute route métier.
+**Statut :** PR #4 est ouverte, non-draft et non fusionnée (état GitHub vérifié). Elle est prête pour revue. Prochain sous-lot prévu : P1-A1 organisations, utilisateurs et memberships, avec contraintes d'unicité et tests négatifs avant toute route métier.
