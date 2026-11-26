@@ -227,6 +227,7 @@ def test_audit_events_http_endpoint_enforces_session_tenant_and_permission(
             event_type="organization.updated",
             details={"field": "display_name"},
         )
+        stored_id = str(stored.id)
         db.commit()
 
     path = f"/api/v1/organizations/{organization_a}/audit-events"
@@ -235,7 +236,7 @@ def test_audit_events_http_endpoint_enforces_session_tenant_and_permission(
     csrf = _login(test_client, "audit-owner@example.com")
     response = test_client.get(path)
     assert response.status_code == 200
-    assert response.json()[0]["id"] == str(stored.id)
+    assert response.json()[0]["id"] == stored_id
     assert response.json()[0]["details"] == {"field": "display_name"}
     assert (
         test_client.get(
