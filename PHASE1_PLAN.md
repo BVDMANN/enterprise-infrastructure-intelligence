@@ -27,7 +27,7 @@ Principes non négociables :
 | G3 — Audit dépendances | Résultats actuels documentés, job explicitement report-only | TESTED / REPORT-ONLY — pip-audit propre sur P1-A1/P1-A3 ; npm audit 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit 1 |
 | G4 — Poste développeur | `docker compose up --build` validé sur le poste local | À confirmer localement |
 
-G0–G3 sont validées par les runs CI #120, #127 et #134. G4 reste une vérification locale non revendiquée par ce cycle. Les audits restent report-only : les arbres Python P1-A1/P1-A3 actuels sont propres, mais les arbres anciens gardent des avis ; npm reste à 7 vulnérabilités et doit être traité dans une migration web isolée. Les avertissements Gitleaks v3 DEP0040/DEP0169 restent visibles.
+G0–G3 sont validées par les runs CI #120, #127, #134 et #135. G4 reste une vérification locale non revendiquée par ce cycle. Les audits restent report-only : les arbres Python P1-A1/P1-A3 actuels sont propres, mais les arbres anciens gardent des avis ; npm reste à 7 vulnérabilités et doit être traité dans une migration web isolée. Les avertissements Gitleaks v3 DEP0040/DEP0169 restent visibles.
 
 ## 3. Découpage P1-A — fondations sécurité et données
 
@@ -66,7 +66,7 @@ Tests :
 - impossible de rattacher un membership à une organisation inexistante ;
 - suppression logique et intégrité référentielle.
 
-**État : implémenté (25/11/2026, branche `phase1/p1-a1-organisations-utilisateurs`, PR à créer empilée sur PR #4).** Aucune route publique ouverte, conformément au but du lot. Écarts documentés par rapport à `docs/architecture/DATABASE_DESIGN.md` : pas de `plan_id` sur `organizations` (la table `plans` n'existe pas encore — la FK viendra avec la facturation) ; `memberships.role` est une chaîne avec CHECK (owner/admin/member/viewer) en attendant la table `roles` de P1-A3 ; `oidc_subject` nullable (rempli à la première connexion OIDC, P1-A2) ; IDs générés côté Python (`uuid.uuid4`, équivalent de `gen_random_uuid()`).
+**État : livré dans la PR #5 ouverte (branche `phase1/p1-a1-organisations-utilisateurs`, non fusionnée).** Modèles SQLAlchemy 2, migration `0002_identity`, lectures limitées au membership ; aucune route publique d'organisation ou d'invitation n'est ouverte. La PR #17 ajoute la migration 0005 qui remplace le rôle texte par un `role_id` tenant-scoped et valide le backfill PostgreSQL ; la branche #5 reste la base historique P1-A1.
 
 ### P1-A2 — Sessions et OIDC
 
@@ -78,6 +78,8 @@ Travail :
 - sessions serveur avec token opaque, hashé en base, expiration et révocation ;
 - cookies Secure, HttpOnly, SameSite adaptés ; CSRF et vérification Origin pour les mutations ;
 - aucune conservation de bearer token brut en base ou dans les logs.
+
+État : sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14. L'adaptateur OIDC, la validation JWKS et le MFA effectif ne sont pas encore livrés ; aucun login fédéré n'est revendiqué.
 
 Tests négatifs :
 - issuer/audience incorrects ;
@@ -92,7 +94,7 @@ Tests négatifs :
 **But :** appliquer les permissions côté API, jamais uniquement dans l'interface.
 
 Modèle :
-- rôles globaux ou propres à une organisation ;
+- rôles strictement propres à une organisation (organization_id NOT NULL) ; rôles plateforme globaux différés ;
 - permissions nommées et table de liaison role_permissions ;
 - rôle effectif résolu à partir du membership actif.
 
@@ -100,7 +102,7 @@ Tests négatifs :
 - membre lecteur ne peut pas modifier ;
 - membre sans permission ne peut pas appeler l'action ;
 - rôle d'une organisation A non réutilisable dans B ;
-- tentative d'élévation de rôle refusée et journalisée.
+- tentative d'élévation de rôle refusée côté service ; journalisation métier à intégrer avec P1-A5.
 
 ### P1-A4 — Isolation multi-tenant
 
@@ -179,10 +181,10 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 
 **P1-A1 — Organisations, utilisateurs et memberships** est livré sur la branche `phase1/p1-a1-organisations-utilisateurs` (PR #5, ouverte, non fusionnée). Modèles SQLAlchemy 2, migration `0002_identity`, lectures limitées au membership ; aucune route métier d'organisation ou d'invitation n'est ouverte. Le rôle texte historique est remplacé par `role_id` tenant-scoped dans la migration 0005 proposée en PR #17. Détails : PROJECT_STATUS.md §14.
 
-**P1-A2 :** sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14 ; OIDC et MFA restent à livrer dans un module isolé. **P1-A3 core :** PR #17, modèle/migration/service validés par run #134 ; les guards HTTP restent à intégrer.
+**P1-A2 :** sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14 ; OIDC/JWKS et MFA restent à livrer dans un module isolé. **P1-A3 core :** PR #17, modèle/migration/service validés par runs #134/#135 ; les guards HTTP et endpoints de gestion des rôles restent à intégrer.
 
 
-### État de livraison P1-A3 — PR #17 (brouillon, validation CI en attente)
+### État de livraison P1-A3 — PR #17 (brouillon, CI 7/7 run #135, revue indépendante en attente)
 
 Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 validée (#14), sans modifier les branches #10 à #14 :
 
@@ -193,4 +195,4 @@ Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 va
 
 **Limite explicite :** cette PR livre le modèle, la migration et le service d'autorisation ; aucun endpoint métier ni dépendance FastAPI RBAC n'est encore branché. Les routes devront appeler require_permission dans un lot d'intégration distinct avant que RBAC soit considéré comme appliqué à l'API. Les rôles plateforme globaux sont différés ; les rôles de ce lot sont strictement organisationnels.
 
-Le run #134 sur la tête 7e37214 est vert 7/7 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.
+Les runs #134 (code/backfill) et #135 (tête documentaire) sont verts 7/7 ; le dernier teste la tête 0a724b6 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.
