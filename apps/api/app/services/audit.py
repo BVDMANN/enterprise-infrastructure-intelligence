@@ -18,23 +18,16 @@ from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 
 MAX_DETAILS_BYTES = 16 * 1024
-SENSITIVE_DETAIL_KEYS = {
+SENSITIVE_DETAIL_KEY_FRAGMENTS = (
     "password",
-    "passwordhash",
     "secret",
-    "secretkey",
     "token",
-    "tokenhash",
-    "sessiontoken",
-    "sessionhash",
-    "csrftoken",
-    "csrfhash",
-    "accesstoken",
-    "refreshtoken",
-    "apikey",
     "authorization",
     "cookie",
-}
+    "csrf",
+    "apikey",
+    "privatekey",
+)
 
 
 def _normalized_key(value: str) -> str:
@@ -46,7 +39,10 @@ def _contains_sensitive_key(value: Any) -> bool:
         for key, nested in value.items():
             if not isinstance(key, str):
                 raise ValueError("Audit detail keys must be strings")
-            if _normalized_key(key) in SENSITIVE_DETAIL_KEYS:
+            if any(
+                fragment in _normalized_key(key)
+                for fragment in SENSITIVE_DETAIL_KEY_FRAGMENTS
+            ):
                 return True
             if _contains_sensitive_key(nested):
                 return True
