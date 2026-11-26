@@ -14,8 +14,8 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import Base, get_db
 from app.main import app
 import app.routers.auth as auth_router
-from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
+from app.models.rbac import Role
 from app.services.audit import list_audit_events, record_audit_event
 from app.services.passwords import hash_password
 from app.services.rbac import create_default_roles_for_organization
@@ -93,7 +93,7 @@ def _add_member(engine, organization_id: str, email: str, role_name: str) -> str
         db.add(user)
         db.flush()
         role = (
-            db.query(__import__("app.models.rbac", fromlist=["Role"]).Role)
+            db.query(Role)
             .filter_by(organization_id=UUID(organization_id), name=role_name)
             .one()
         )
