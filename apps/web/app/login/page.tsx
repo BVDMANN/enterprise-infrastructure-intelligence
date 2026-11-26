@@ -47,7 +47,7 @@ export default function LoginPage() {
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
           Authentification locale par session serveur. Le cookie de session reste
-          HttpOnly et n'est jamais lu par le navigateur JavaScript.
+          HttpOnly et n’est jamais lu par le navigateur JavaScript.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <label className="block text-sm font-medium text-slate-700">
@@ -87,7 +87,7 @@ export default function LoginPage() {
         </form>
         <p className="mt-5 text-xs leading-5 text-slate-400">
           Un administrateur doit avoir initialisé un compte via le bootstrap
-          documenté. Aucun compte de démonstration ni mot de passe fictif n'est
+          documenté. Aucun compte de démonstration ni mot de passe fictif n’est
           fourni.
         </p>
         <Link href="/" className="mt-5 inline-block text-sm font-medium text-accent hover:underline">
