@@ -170,9 +170,7 @@ def test_owner_adds_existing_member_and_audit_event_atomically(client) -> None:
         "role_name": "member",
     }
 
-    listed = test_client.get(
-        f"/api/v1/organizations/{organization_id}/members"
-    )
+    listed = test_client.get(f"/api/v1/organizations/{organization_id}/members")
     assert listed.status_code == 200
     assert {item["user_id"] for item in listed.json()} == {
         str(seeded["owner_id"]),
@@ -191,6 +189,10 @@ def test_membership_mutation_requires_owner_permission_and_session_csrf(client) 
     organization_id = str(seeded["organization_id"])
     target_id = str(seeded["target_id"])
     role_id = str(seeded["roles"]["member"])
+
+    path = f"/api/v1/organizations/{organization_id}/memberships"
+    payload = {"user_id": target_id, "role_id": role_id}
+    assert test_client.post(path, json=payload).status_code == 401
 
     with Session(engine) as db:
         viewer = User(
@@ -214,10 +216,6 @@ def test_membership_mutation_requires_owner_permission_and_session_csrf(client) 
             )
         )
         db.commit()
-
-    path = f"/api/v1/organizations/{organization_id}/memberships"
-    payload = {"user_id": target_id, "role_id": role_id}
-    assert test_client.post(path, json=payload).status_code == 401
 
     viewer_csrf = _login(test_client, "membership-viewer@example.com")
     forbidden = test_client.post(
