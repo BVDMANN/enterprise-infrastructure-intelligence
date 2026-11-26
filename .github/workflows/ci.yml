@@ -40,6 +40,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
+      - name: Temporary formatter diff diagnostic (does not change the gate)
+        run: ruff format --diff app/routers/organizations.py tests/test_organization_routes.py || true
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
