@@ -1,4 +1,4 @@
-"""Local email/password authentication endpoints (P1-A2.2)."""
+""""Local email/password authentication endpoints (P1-A2.2)."""
 
 from datetime import timedelta
 from hashlib import sha256
@@ -9,12 +9,14 @@ from redis.exceptions import RedisError
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.session_constants import SESSION_COOKIE
 from app.db.session import get_db
-from app.models.identity import User
+from app.models.identity import Membership, Organization, User
+from app.services.audit import record_audit_event
 from app.services.passwords import authenticate_user
 from app.services.sessions import (
     create_session,
@@ -106,6 +108,39 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
+def _record_session_audit_events(
+    db: Session,
+    *,
+    user_id: UUID,
+    session_id: UUID,
+    event_type: str,
+) -> None:
+    """Write a session lifecycle event to each active tenant of the user.
+
+    Events are tenant-scoped: users without memberships create no audit rows,
+    and deleted organizations are excluded. The caller owns the transaction,
+    so the audit rows commit or roll back with the session change.
+    """
+    organization_ids = db.scalars(
+        select(Membership.organization_id)
+        .join(Organization, Organization.id == Membership.organization_id)
+        .where(Membership.user_id == user_id)
+        .where(Organization.deleted_at.is_(None))
+        .distinct()
+        .order_by(Membership.organization_id)
+    ).all()
+    for organization_id in organization_ids:
+        record_audit_event(
+            db,
+            organization_id=organization_id,
+            actor_user_id=user_id,
+            event_type=event_type,
+            target_type="auth_session",
+            target_id=str(session_id),
+            details={"method": "local_password"},
+        )
+
+
 @router.post("/login", response_model=LoginResponse)
 def login(
     payload: LoginRequest,
@@ -124,6 +159,12 @@ def login(
             headers={"WWW-Authenticate": "Cookie"},
         )
     credentials = create_session(db, user.id, ttl=SESSION_TTL)
+    _record_session_audit_events(
+        db,
+        user_id=user.id,
+        session_id=credentials.session_id,
+        event_type="auth.session.created",
+    )
     db.commit()
     _set_session_cookie(response, credentials.session_token)
     return LoginResponse(
@@ -162,10 +203,17 @@ def logout(
     _require_trusted_origin(request)
     token = request.cookies.get(SESSION_COOKIE)
     csrf_token = request.headers.get("x-csrf-token")
-    if not verify_csrf_token(db, token, csrf_token):
+    session = get_active_session(db, token)
+    if session is None or not verify_csrf_token(db, token, csrf_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
         )
+    _record_session_audit_events(
+        db,
+        user_id=session.user_id,
+        session_id=session.id,
+        event_type="auth.session.revoked",
+    )
     revoke_session(db, token)
     db.commit()
     response.delete_cookie(
