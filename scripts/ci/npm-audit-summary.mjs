@@ -31,6 +31,10 @@ export function summarizeNpmAudit(rawOutput, exitCode) {
       throw new Error("npm audit vulnerability metadata has an invalid " + field + " count");
     }
   }
+  const severityTotal = SEVERITIES.reduce((total, severity) => total + counts[severity], 0);
+  if (severityTotal !== counts.total) {
+    throw new Error("npm audit severity counts do not add up to the reported total");
+  }
 
   const vulnerabilities = report.vulnerabilities ?? {};
   if (
@@ -42,6 +46,9 @@ export function summarizeNpmAudit(rawOutput, exitCode) {
   }
 
   const packages = Object.entries(vulnerabilities);
+  if (counts.total === 0 && packages.length > 0) {
+    throw new Error("npm audit lists affected packages but reports zero vulnerabilities");
+  }
   for (const [name, finding] of packages) {
     if (!finding || typeof finding !== "object" || typeof finding.severity !== "string") {
       throw new Error("npm audit report has an invalid finding for package " + name);
