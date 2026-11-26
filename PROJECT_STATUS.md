@@ -411,7 +411,7 @@ fusionner dans `main`). Rapport complet :
 
 ## 16. P1-A3.1 — premières routes HTTP protégées (26/11/2026, PR #18)
 
-- Branche `phase1/p1-a3-rbac-http-api`, empilée sur PR #17 ; HEAD `c9755828cbeacb88344b585a4c36e1011b025141`, 21 commits en avance, 0 en retard, 10 fichiers modifiés.
+- Branche `phase1/p1-a3-rbac-http-api`, empilée sur PR #17 ; code HEAD validé `c9755828cbeacb88344b585a4c36e1011b025141` (run #145 7/7). HEAD actuel `7472459e794d96fa5707c130e9d8cfd458947427` après six commits documentaires ; 27 commits en avance, 0 en retard, 12 fichiers modifiés.
 - Dépendance de session opaque active et dépendance d'autorisation organisationnelle : le membership est vérifié avant la permission ; non-membre → 404, permission absente → 403.
 - Routes GET réelles : liste organisations (`organization.read`), détail (`organization.read`), membres (`members.read`), rôles (`roles.read`). Les comptes inactifs/supprimés sont exclus des membres.
 - Correction cookie : `eii_session` passe de `Path=/api/v1/auth` à `Path=/api/v1` pour être transmis aux ressources métier ; suppression avec le même chemin. HttpOnly, Secure hors développement, SameSite=Lax, Origin et CSRF logout conservés.
