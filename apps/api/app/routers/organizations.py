@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.core.authorization import (
@@ -36,8 +36,9 @@ class OrganizationResponse(BaseModel):
 
 
 class MemberResponse(BaseModel):
-    """Safe member identity and organization-local role."""
+    """Safe membership identity, user fields and organization-local role."""
 
+    membership_id: UUID
     user_id: UUID
     email: str
     display_name: str
@@ -53,12 +54,18 @@ class MembershipCreateRequest(BaseModel):
 
 
 class MembershipResponse(BaseModel):
-    """Safe identifiers and creation time for a new organization membership."""
+    """Safe identifiers and creation time for an organization membership."""
 
     id: UUID
     user_id: UUID
     role_id: UUID
     created_at: datetime
+
+
+class MembershipUpdateRequest(BaseModel):
+    """Move an existing membership to another role in the same organization."""
+
+    role_id: UUID
 
 
 class RoleResponse(BaseModel):
@@ -83,6 +90,74 @@ class AuditEventResponse(BaseModel):
     request_id: str | None
     details: dict[str, Any]
     occurred_at: datetime
+
+
+def _lock_organization_for_membership_mutation(
+    db: Session, organization_id: UUID
+) -> None:
+    """Serialize membership writes for one tenant on databases with row locks."""
+    db.scalar(
+        select(Organization.id)
+        .where(Organization.id == organization_id)
+        .with_for_update()
+    )
+
+
+def _active_owner_membership_count(
+    db: Session,
+    organization_id: UUID,
+    *,
+    excluding_membership_id: UUID | None = None,
+) -> int:
+    """Count only owner memberships belonging to active, non-deleted users."""
+    statement = (
+        select(func.count(Membership.id))
+        .select_from(Membership)
+        .join(User, User.id == Membership.user_id)
+        .join(
+            Role,
+            and_(
+                Role.id == Membership.role_id,
+                Role.organization_id == Membership.organization_id,
+            ),
+        )
+        .where(Membership.organization_id == organization_id)
+        .where(Role.name == "owner")
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    if excluding_membership_id is not None:
+        statement = statement.where(Membership.id != excluding_membership_id)
+    return int(db.scalar(statement) or 0)
+
+
+def _prevent_removing_last_active_owner(
+    db: Session,
+    organization_id: UUID,
+    membership: Membership,
+    current_role: Role,
+    target_user: User | None,
+) -> None:
+    """Keep at least one active owner while demoting or removing a membership."""
+    if (
+        current_role.name != "owner"
+        or target_user is None
+        or not target_user.is_active
+        or target_user.deleted_at is not None
+    ):
+        return
+    if (
+        _active_owner_membership_count(
+            db,
+            organization_id,
+            excluding_membership_id=membership.id,
+        )
+        == 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organization must retain at least one active owner",
+        )
 
 
 @router.get("", response_model=list[OrganizationResponse])
@@ -134,6 +209,7 @@ def list_organization_members(
     """List active, non-deleted users belonging to the selected organization."""
     statement = (
         select(
+            Membership.id,
             User.id,
             User.email,
             User.display_name,
@@ -157,11 +233,12 @@ def list_organization_members(
     rows = db.execute(statement).all()
     return [
         MemberResponse(
-            user_id=row[0],
-            email=row[1],
-            display_name=row[2],
-            role=row[3],
-            joined_at=row[4],
+            membership_id=row[0],
+            user_id=row[1],
+            email=row[2],
+            display_name=row[3],
+            role=row[4],
+            joined_at=row[5],
         )
         for row in rows
     ]
@@ -182,6 +259,7 @@ def create_organization_membership(
     db: Session = Depends(get_db),
 ) -> MembershipResponse:
     """Add an existing user and append the audit event in the same transaction."""
+    _lock_organization_for_membership_mutation(db, organization.id)
     target_user = db.scalar(
         select(User)
         .where(User.id == payload.user_id)
@@ -245,6 +323,187 @@ def create_organization_membership(
     )
     db.commit()
     return response
+
+
+@router.patch(
+    "/{organization_id}/memberships/{membership_id}",
+    response_model=MembershipResponse,
+)
+def update_organization_membership(
+    payload: MembershipUpdateRequest,
+    membership_id: UUID,
+    actor: User = Depends(get_current_user),
+    organization: Organization = Depends(
+        require_organization_permission("members.manage")
+    ),
+    _csrf: None = Depends(require_session_csrf),
+    db: Session = Depends(get_db),
+) -> MembershipResponse:
+    """Change a tenant-local role and append its audit event atomically."""
+    _lock_organization_for_membership_mutation(db, organization.id)
+    membership = db.scalar(
+        select(Membership)
+        .where(Membership.id == membership_id)
+        .where(Membership.organization_id == organization.id)
+    )
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership not found",
+        )
+
+    target_user = db.get(User, membership.user_id)
+    if (
+        target_user is None
+        or not target_user.is_active
+        or target_user.deleted_at is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active member not found",
+        )
+
+    current_role = db.scalar(
+        select(Role)
+        .where(Role.id == membership.role_id)
+        .where(Role.organization_id == organization.id)
+    )
+    if current_role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership role is invalid for this organization",
+        )
+
+    new_role = db.scalar(
+        select(Role)
+        .where(Role.id == payload.role_id)
+        .where(Role.organization_id == organization.id)
+    )
+    if new_role is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Role not found in organization",
+        )
+
+    if current_role.id == new_role.id:
+        return MembershipResponse(
+            id=membership.id,
+            user_id=membership.user_id,
+            role_id=membership.role_id,
+            created_at=membership.created_at,
+        )
+
+    if current_role.name == "owner" and new_role.name != "owner":
+        _prevent_removing_last_active_owner(
+            db,
+            organization.id,
+            membership,
+            current_role,
+            target_user,
+        )
+
+    previous_role_id = str(current_role.id)
+    previous_role_name = current_role.name
+    membership.role_id = new_role.id
+    db.flush()
+
+    record_audit_event(
+        db,
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="membership.role_changed",
+        target_type="membership",
+        target_id=str(membership.id),
+        details={
+            "target_user_id": str(target_user.id),
+            "previous_role_id": previous_role_id,
+            "previous_role_name": previous_role_name,
+            "role_id": str(new_role.id),
+            "role_name": new_role.name,
+        },
+    )
+    response = MembershipResponse(
+        id=membership.id,
+        user_id=membership.user_id,
+        role_id=membership.role_id,
+        created_at=membership.created_at,
+    )
+    db.commit()
+    return response
+
+
+@router.delete(
+    "/{organization_id}/memberships/{membership_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_organization_membership(
+    membership_id: UUID,
+    actor: User = Depends(get_current_user),
+    organization: Organization = Depends(
+        require_organization_permission("members.manage")
+    ),
+    _csrf: None = Depends(require_session_csrf),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Remove a tenant membership and append its audit event atomically."""
+    _lock_organization_for_membership_mutation(db, organization.id)
+    membership = db.scalar(
+        select(Membership)
+        .where(Membership.id == membership_id)
+        .where(Membership.organization_id == organization.id)
+    )
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership not found",
+        )
+    if membership.user_id == actor.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A member cannot remove their own membership",
+        )
+
+    current_role = db.scalar(
+        select(Role)
+        .where(Role.id == membership.role_id)
+        .where(Role.organization_id == organization.id)
+    )
+    if current_role is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership role is invalid for this organization",
+        )
+    target_user = db.get(User, membership.user_id)
+    _prevent_removing_last_active_owner(
+        db,
+        organization.id,
+        membership,
+        current_role,
+        target_user,
+    )
+
+    membership_id_value = str(membership.id)
+    target_user_id = str(membership.user_id)
+    role_id = str(current_role.id)
+    role_name = current_role.name
+    db.delete(membership)
+    db.flush()
+
+    record_audit_event(
+        db,
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="membership.deleted",
+        target_type="membership",
+        target_id=membership_id_value,
+        details={
+            "target_user_id": target_user_id,
+            "role_id": role_id,
+            "role_name": role_name,
+        },
+    )
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{organization_id}/roles", response_model=list[RoleResponse])

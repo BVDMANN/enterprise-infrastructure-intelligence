@@ -1,12 +1,12 @@
-# Tenant membership creation API
+# Tenant membership lifecycle API
 
-This P1-A5.2 endpoint is the first business mutation connected to the append-only audit writer.
+These P1-A5 endpoints mutate organization memberships and append tenant-scoped audit events in the same database transaction.
 
-## Endpoint
+## Add an existing user
 
 `POST /api/v1/organizations/{organization_id}/memberships`
 
-Request body:
+Request:
 
 ```json
 {
@@ -15,40 +15,76 @@ Request body:
 }
 ```
 
-The endpoint returns HTTP 201 with the new membership UUID, user UUID, role UUID and creation timestamp.
+Returns HTTP 201 with the membership UUID, user UUID, role UUID and creation timestamp. The existing `GET /api/v1/organizations/{organization_id}/members` response also exposes `membership_id`, so authorized clients can address a specific membership without guessing or reusing a user ID.
+
+## Change a membership role
+
+`PATCH /api/v1/organizations/{organization_id}/memberships/{membership_id}`
+
+Request:
+
+```json
+{
+  "role_id": "new-role-uuid-from-the-same-organization"
+}
+```
+
+Returns HTTP 200 with the membership identifiers and creation timestamp. The membership and selected role are both resolved inside the path organization. A role from another organization is not accepted. Repeating the current role is an idempotent no-op and does not create a duplicate audit event.
+
+## Remove a membership
+
+`DELETE /api/v1/organizations/{organization_id}/memberships/{membership_id}`
+
+Returns HTTP 204 after the membership is removed and its audit event is committed. Self-removal returns HTTP 409: the audit schema requires the event actor to remain an active member of the organization, so another authorized owner/admin must remove that membership.
+
+A membership ID belonging to another organization is indistinguishable from a missing membership and returns HTTP 404.
 
 ## Authorization and CSRF
 
-The caller must:
+All three mutations require:
 
-1. have a live server-side session;
-2. be an active member of the requested organization;
-3. hold the existing organization-local `members.manage` permission;
-4. send an exact configured `Origin` and a valid session-bound `X-CSRF-Token`.
+1. a live server-side session;
+2. an active membership in the path organization;
+3. the organization-local `members.manage` permission;
+4. an exact configured `Origin` and a valid session-bound `X-CSRF-Token`.
 
-No permission is granted by this endpoint. The default RBAC policy keeps `members.manage` limited to the existing owner/admin roles.
+The endpoint does not grant permissions. The existing default RBAC policy limits `members.manage` to owner/admin roles.
 
-## Target validation
+## Target and role validation
 
-- Only an already-existing, active, non-deleted user can be added.
-- The selected role must belong to the requested organization.
-- A user already in the organization receives HTTP 409.
-- A missing/inactive/deleted user or a role from another organization receives HTTP 404.
-- The composite membership foreign key remains the database-level tenant/role constraint.
+- Creation accepts only an existing, active, non-deleted user.
+- Role changes require an active, non-deleted target user.
+- The selected role must belong to the path organization.
+- Duplicate creation returns HTTP 409.
+- Missing/inactive/deleted users and roles from another organization return HTTP 404.
+- Missing or foreign memberships return HTTP 404.
+- A membership whose persisted role is inconsistent with its organization fails closed with HTTP 409.
 
-This is **not** an invitation workflow: it does not create users, send email, provision credentials, change roles, or remove memberships.
+These endpoints are not an invitation workflow: they do not create users, send email or provision credentials.
+
+## Last active owner safeguard
+
+A tenant must retain at least one active, non-deleted owner membership. Demoting or removing the final active owner returns HTTP 409.
+
+Each membership mutation locks the organization row with `SELECT ... FOR UPDATE` before reading or changing memberships. The create path takes the same lock, so concurrent membership writes for a tenant are serialized on PostgreSQL. The safeguard counts only memberships whose user is active and not soft-deleted.
+
+SQLite-based route tests validate the business rules but do not prove PostgreSQL row-lock behavior; the Compose PostgreSQL integration suite remains the required runtime verification.
 
 ## Audit and transaction
 
-On success, the route appends `membership.created` with:
+Successful mutations append one of:
 
-- actor: the authenticated caller;
-- tenant: the authorized organization;
-- target: the newly created membership UUID;
-- details: target user UUID, organization-local role UUID and role name.
+- `membership.created`
+- `membership.role_changed`
+- `membership.deleted`
 
-The membership insert and audit row are flushed and committed in the same SQL transaction. If audit validation or insertion fails, the transaction is not committed. No password, token, cookie, CSRF value, IP or user-agent is stored.
+Each event records the authenticated actor, organization, membership target and non-secret identifiers/role names. Role changes include both previous and new role identifiers/names.
 
-## Current limitations
+The membership write and audit row are flushed and committed in the same SQL transaction. If audit validation or insertion fails, the membership change is rolled back. No password, session token, cookie, CSRF value, IP address or user-agent is stored.
 
-The endpoint supports creation only. Membership updates/removals, invitations, role changes, last-owner safeguards, RLS enforcement and UI integration remain separate work. The existing members list remains the read API; the frontend is not yet wired to this mutation.
+## Remaining limitations
+
+- Invitations and email delivery are not implemented.
+- Role catalogue administration remains a separate `roles.manage` capability.
+- PostgreSQL RLS enforcement under a dedicated non-superuser runtime role remains a separate infrastructure/security task.
+- The UI may expose only actions backed by these API endpoints; demo fixtures must not be represented as persisted memberships.
