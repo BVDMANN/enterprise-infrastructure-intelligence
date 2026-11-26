@@ -120,7 +120,7 @@ export default function UsersPage() {
       roleId: string;
     }) => {
       if (!csrfToken) {
-        throw new ApiError(403, "Missing session CSRF token");
+        throw new MembershipApiError(403, "Missing session CSRF token");
       }
       return updateOrganizationMembership(
         organizationId,
@@ -141,7 +141,7 @@ export default function UsersPage() {
   const removeMembership = useMutation({
     mutationFn: (membershipId: string) => {
       if (!csrfToken) {
-        throw new ApiError(403, "Missing session CSRF token");
+        throw new MembershipApiError(403, "Missing session CSRF token");
       }
       return deleteOrganizationMembership(
         organizationId,
@@ -226,7 +226,7 @@ export default function UsersPage() {
                               aria-label={`Nouveau rôle pour ${member.display_name}`}
                               value={selectedRoleId}
                               onChange={(event) => setRoleSelections((current) => ({ ...current, [member.membership_id]: event.target.value }))}
-                              disabled={!csrfToken || !roles.data || updateMembership.isPending || removeMembership.isPending}
+                              disabled={!csrfToken || !currentUser.data || !roles.data || updateMembership.isPending || removeMembership.isPending}
                               className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs disabled:bg-slate-100"
                             >
                               {(roles.data ?? []).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
@@ -234,7 +234,7 @@ export default function UsersPage() {
                             <button
                               type="button"
                               onClick={() => updateMembership.mutate({ membershipId: member.membership_id, roleId: selectedRoleId })}
-                              disabled={!csrfToken || !roleChanged || updateMembership.isPending || removeMembership.isPending}
+                              disabled={!csrfToken || !currentUser.data || !roleChanged || updateMembership.isPending || removeMembership.isPending}
                               className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {updateMembership.isPending ? "Enregistrement…" : "Enregistrer"}
@@ -246,7 +246,7 @@ export default function UsersPage() {
                                   removeMembership.mutate(member.membership_id);
                                 }
                               }}
-                              disabled={!csrfToken || isSelf || removeMembership.isPending || updateMembership.isPending}
+                              disabled={!csrfToken || !currentUser.data || isSelf || removeMembership.isPending || updateMembership.isPending}
                               title={isSelf ? "Un membre ne peut pas retirer son propre membership" : "Retirer ce membership"}
                               className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                             >
