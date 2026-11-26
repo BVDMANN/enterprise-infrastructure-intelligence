@@ -1,7 +1,8 @@
 /**
- * Explicitly simulated content for the first navigable EII demonstration.
- * Replace each collection with its API query as the corresponding backend
- * endpoint becomes available. Never present these records as customer data.
+ * Explicitly simulated values retained only for dashboard summary tiles,
+ * infrastructure and audit demonstration screens. The Organizations and
+ * Users pages now read their records from the authenticated API. Never present
+ * these arrays as customer data or as the source of truth for tenant records.
  */
 
 export const demoNotice =
