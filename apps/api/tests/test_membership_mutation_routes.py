@@ -375,6 +375,7 @@ def test_membership_mutation_rejects_foreign_role_inactive_user_and_duplicates(
     ]
     assert len(created_events) == 1
 
+
 def test_owner_changes_member_role_and_audit_event_atomically(client) -> None:
     test_client, engine = client
     seeded = _seed_organization(
@@ -439,8 +440,7 @@ def test_last_active_owner_cannot_be_demoted_or_removed(client) -> None:
     csrf_token = _login(test_client, "membership-last-owner@example.com")
     headers = {"Origin": ORIGIN, "X-CSRF-Token": csrf_token}
     path = (
-        f"/api/v1/organizations/{organization_id}/memberships/"
-        f"{owner_membership_id}"
+        f"/api/v1/organizations/{organization_id}/memberships/" f"{owner_membership_id}"
     )
 
     demote = test_client.patch(
@@ -553,8 +553,7 @@ def test_membership_lifecycle_enforces_permission_csrf_and_tenant_scope(client) 
         db.commit()
 
     path = (
-        f"/api/v1/organizations/{organization_a}/memberships/"
-        f"{target_membership_a}"
+        f"/api/v1/organizations/{organization_a}/memberships/" f"{target_membership_a}"
     )
     viewer_csrf = _login(test_client, "membership-lifecycle-viewer@example.com")
     viewer_headers = {"Origin": ORIGIN, "X-CSRF-Token": viewer_csrf}
@@ -594,8 +593,7 @@ def test_membership_lifecycle_enforces_permission_csrf_and_tenant_scope(client) 
     )
 
     foreign_path = (
-        f"/api/v1/organizations/{organization_a}/memberships/"
-        f"{foreign_membership}"
+        f"/api/v1/organizations/{organization_a}/memberships/" f"{foreign_membership}"
     )
     assert (
         test_client.patch(
@@ -607,9 +605,12 @@ def test_membership_lifecycle_enforces_permission_csrf_and_tenant_scope(client) 
     )
     assert test_client.delete(foreign_path, headers=owner_headers).status_code == 404
     assert _membership_count(engine, organization_a, target_a) == 1
-    assert _membership_count(
-        engine, str(tenant_b["organization_id"]), str(tenant_b["target_id"])
-    ) == 1
+    assert (
+        _membership_count(
+            engine, str(tenant_b["organization_id"]), str(tenant_b["target_id"])
+        )
+        == 1
+    )
 
 
 def test_membership_role_change_rolls_back_when_audit_write_fails(
@@ -654,4 +655,3 @@ def test_membership_role_change_rolls_back_when_audit_write_fails(
         for item in _audit_events(engine, organization_id)
         if item.event_type == "membership.role_changed"
     ]
-
