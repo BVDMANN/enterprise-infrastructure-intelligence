@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -90,13 +92,15 @@ def _seed_membership(
         return str(organization.id), str(user.id)
 
 
-def _login(client: TestClient, email: str) -> None:
+def _login(client: TestClient, email: str) -> str:
     response = client.post(
         "/api/v1/auth/login",
         headers={"Origin": ORIGIN},
         json={"email": email, "password": PASSWORD},
     )
     assert response.status_code == 200
+    assert "path=/api/v1" in response.headers["set-cookie"].lower()
+    return response.json()["csrf_token"]
 
 
 def test_organization_api_requires_a_live_session(client) -> None:
@@ -118,6 +122,29 @@ def test_owner_can_read_only_its_tenant_and_role_catalog(client) -> None:
         email="owner-b@example.com",
         role_name="owner",
     )
+    with Session(engine) as db:
+        organization = db.get(Organization, UUID(organization_a))
+        viewer = (
+            db.query(Role)
+            .filter_by(organization_id=organization.id, name="viewer")
+            .one()
+        )
+        inactive = User(
+            email="inactive-a@example.com",
+            display_name="Inactive member",
+            is_active=False,
+        )
+        db.add(inactive)
+        db.flush()
+        db.add(
+            Membership(
+                organization_id=organization.id,
+                user_id=inactive.id,
+                role_id=viewer.id,
+            )
+        )
+        db.commit()
+
     _login(test_client, "owner-a@example.com")
 
     listed = test_client.get("/api/v1/organizations")
@@ -181,3 +208,23 @@ def test_membership_without_organization_read_is_not_listed(client) -> None:
     assert (
         test_client.get(f"/api/v1/organizations/{organization_id}").status_code == 403
     )
+
+
+def test_logout_revokes_session_for_organization_api(client) -> None:
+    test_client, engine = client
+    _seed_membership(
+        engine,
+        slug="logout-org",
+        email="logout@example.com",
+        role_name="owner",
+    )
+    csrf_token = _login(test_client, "logout@example.com")
+    assert test_client.get("/api/v1/organizations").status_code == 200
+
+    logout = test_client.post(
+        "/api/v1/auth/logout",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+    )
+    assert logout.status_code == 204
+    assert "path=/api/v1" in logout.headers["set-cookie"].lower()
+    assert test_client.get("/api/v1/organizations").status_code == 401
