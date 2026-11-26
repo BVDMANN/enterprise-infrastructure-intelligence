@@ -66,6 +66,8 @@ Tests :
 - impossible de rattacher un membership à une organisation inexistante ;
 - suppression logique et intégrité référentielle.
 
+**État : implémenté (25/11/2026, branche `phase1/p1-a1-organisations-utilisateurs`, PR à créer empilée sur PR #4).** Aucune route publique ouverte, conformément au but du lot. Écarts documentés par rapport à `docs/architecture/DATABASE_DESIGN.md` : pas de `plan_id` sur `organizations` (la table `plans` n'existe pas encore — la FK viendra avec la facturation) ; `memberships.role` est une chaîne avec CHECK (owner/admin/member/viewer) en attendant la table `roles` de P1-A3 ; `oidc_subject` nullable (rempli à la première connexion OIDC, P1-A2) ; IDs générés côté Python (`uuid.uuid4`, équivalent de `gen_random_uuid()`).
+
 ### P1-A2 — Sessions et OIDC
 
 **But :** authentifier les utilisateurs sans implémenter un fournisseur propriétaire.
@@ -175,4 +177,6 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 
 **P1-A0 — Fondation Alembic** est implémenté dans la PR #4, branche `phase1/p1-a0-alembic-foundation`, empilée sur la PR #3. GitHub indique que la PR est ouverte et non-draft. Run CI #64 : 5 tests API passed (1 avertissement pytest-asyncio), build des 4 images, Web, gitleaks, validation Compose et smoke réussis. Le smoke PostgreSQL confirme `alembic upgrade head`, présence de `citext`, `alembic downgrade base`, puis nouvel upgrade vers `0001_pg_extensions (head)`. La migration ne crée aucune table métier. **Limite importante :** le downgrade retire la révision Alembic mais conserve volontairement l'extension partagée `citext` ; ce n'est donc pas un retour complet à une base strictement vierge. La PR reste ouverte et non fusionnée.
 
-**Prochain sous-lot : P1-A1 — organisations, utilisateurs et memberships**, sur une PR empilée après revue de P1-A0. Les tables et contraintes seront ajoutées sans exposer de routes métier avant l'authentification.
+**P1-A1 — Organisations, utilisateurs et memberships** est implémenté sur la branche `phase1/p1-a1-organisations-utilisateurs`, empilée sur P1-A0 (PR à créer, empilée sur PR #4). Modèles SQLAlchemy 2, migration `0002_identity` (tables `organizations`, `users`, `memberships`), lectures limitées au membership, tests unitaires + intégration + négatifs (30 tests API passed en local, 1 avertissement pytest-asyncio préexistant), vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive). Aucune route métier n'est ouverte. Détails : PROJECT_STATUS.md §14.
+
+**Prochain sous-lot : P1-A2 — sessions et OIDC**, sur une PR empilée après revue de P1-A1.

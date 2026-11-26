@@ -1,7 +1,9 @@
-"""Database session and declarative base (PHASE 0 skeleton).
+"""Database session and declarative base.
 
-No models exist yet: the first models and migrations arrive in PHASE 1
-(see docs/architecture/DATABASE_DESIGN.md).
+Models live in ``app.models`` (identity tables since P1-A1) and are
+registered on ``Base.metadata``; Alembic migrations are the source of
+truth for the schema — never ``Base.metadata.create_all()`` outside
+tests.
 """
 
 from sqlalchemy import create_engine
