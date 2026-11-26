@@ -168,7 +168,10 @@ def list_organization_roles(
     ]
 
 
-@router.get("/{organization_id}/audit-events", response_model=list[AuditEventResponse])
+@router.get(
+    "/{organization_id}/audit-events",
+    response_model=list[AuditEventResponse],
+)
 def list_organization_audit_events(
     organization: Organization = Depends(
         require_organization_permission("audit.read")
