@@ -92,3 +92,9 @@ The membership write and audit row are flushed and committed in the same SQL tra
 ## Member listing contract
 
 `GET /api/v1/organizations/{organization_id}/members` returns the stable `membership_id` and `role_id` alongside `user_id`, email, display name, role name and join timestamp. Clients must target mutations with `membership_id` and submit the selected role's `role_id`; role names are presentation labels, not identifiers. Both identifiers are scoped by the organization path and the server verifies tenant membership and `members.manage` before any mutation.
+
+## Frontend integration
+
+The Utilisateurs & rôles page uses the dedicated `apps/web/lib/membership-api.ts` client for the member listing and membership mutations. It submits role identifiers, not display names, includes the HttpOnly session cookie with `credentials: include`, and sends the session-bound `X-CSRF-Token` header on PATCH/DELETE. A missing CSRF token is rejected before a request is sent.
+
+After a successful mutation, the member query is invalidated and reloaded from the API. The UI disables mutations until the current server session is resolved, prevents presenting self-removal as an available action, asks for confirmation before removal, and displays server 401/403/404/409 responses. These client-side affordances are not authorization controls: the API remains authoritative for `members.manage`, trusted Origin, CSRF and the last-active-owner invariant.
