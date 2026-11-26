@@ -457,6 +457,11 @@ def delete_organization_membership(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
         )
+    if membership.user_id == actor.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A member cannot remove their own membership",
+        )
 
     current_role = db.scalar(
         select(Role)
