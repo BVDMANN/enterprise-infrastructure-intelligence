@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Users } from "lucide-react";
@@ -28,6 +28,11 @@ function AccessError({ error }: { error: unknown }) {
 
 export default function UsersPage() {
   const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
+
+  useEffect(() => {
+    const requestedOrganization = new URLSearchParams(window.location.search).get("organization");
+    if (requestedOrganization) setSelectedOrganizationId(requestedOrganization);
+  }, []);
   const organizations = useQuery({
     queryKey: ["organizations"],
     queryFn: getOrganizations,
