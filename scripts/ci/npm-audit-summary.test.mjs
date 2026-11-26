@@ -28,7 +28,7 @@ test("high and critical findings are report-only and list affected packages", ()
     "high-package": { severity: "high" },
   };
   const summary = summarizeNpmAudit(report({ counts, vulnerabilities }), 1);
-  assert.match(summary, /FINDINGS \(report-only\)/);
+  assert.ok(summary.includes("FINDINGS (report-only)"));
   assert.match(summary, /critical-package: critical/);
   assert.match(summary, /high-package: high/);
   assert.match(summary, /not evidence that this audit is clean/i);
