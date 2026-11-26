@@ -184,30 +184,63 @@ def test_membership_mutation_requires_owner_permission_and_session_csrf(client) 
     test_client, engine = client
     seeded = _seed_organization(
         engine,
-        slug="membership-viewer",
-        owner_email="membership-viewer@example.com",
-        target_email="viewer-target@example.com",
-        owner_role="viewer",
+        slug="membership-security",
+        owner_email="membership-owner-security@example.com",
+        target_email="security-target@example.com",
     )
     organization_id = str(seeded["organization_id"])
     target_id = str(seeded["target_id"])
     role_id = str(seeded["roles"]["member"])
 
-    assert (
-        test_client.post(
-            f"/api/v1/organizations/{organization_id}/memberships",
-            json={"user_id": target_id, "role_id": role_id},
-        ).status_code
-        == 401
-    )
+    with Session(engine) as db:
+        viewer = User(
+            email="membership-viewer@example.com",
+            display_name="Membership viewer",
+            password_hash=hash_password(PASSWORD),
+        )
+        db.add(viewer)
+        db.flush()
+        viewer_role = db.scalar(
+            select(Role)
+            .where(Role.organization_id == UUID(organization_id))
+            .where(Role.name == "viewer")
+        )
+        assert viewer_role is not None
+        db.add(
+            Membership(
+                organization_id=UUID(organization_id),
+                user_id=viewer.id,
+                role_id=viewer_role.id,
+            )
+        )
+        db.commit()
 
-    csrf_token = _login(test_client, "membership-viewer@example.com")
     path = f"/api/v1/organizations/{organization_id}/memberships"
     payload = {"user_id": target_id, "role_id": role_id}
+    assert test_client.post(path, json=payload).status_code == 401
 
+    viewer_csrf = _login(test_client, "membership-viewer@example.com")
+    forbidden = test_client.post(
+        path,
+        headers={"Origin": ORIGIN, "X-CSRF-Token": viewer_csrf},
+        json=payload,
+    )
+    assert forbidden.status_code == 403
+    assert _membership_count(engine, organization_id, target_id) == 0
+
+    viewer_logout = test_client.post(
+        "/api/v1/auth/logout",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": viewer_csrf},
+    )
+    assert viewer_logout.status_code == 204
+
+    owner_csrf = _login(test_client, "membership-owner-security@example.com")
     invalid_origin = test_client.post(
         path,
-        headers={"Origin": "https://attacker.example", "X-CSRF-Token": csrf_token},
+        headers={
+            "Origin": "https://attacker.example",
+            "X-CSRF-Token": owner_csrf,
+        },
         json=payload,
     )
     assert invalid_origin.status_code == 403
@@ -218,13 +251,6 @@ def test_membership_mutation_requires_owner_permission_and_session_csrf(client) 
         json=payload,
     )
     assert invalid_csrf.status_code == 403
-
-    forbidden = test_client.post(
-        path,
-        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
-        json=payload,
-    )
-    assert forbidden.status_code == 403
     assert _membership_count(engine, organization_id, target_id) == 0
     assert not [
         item
