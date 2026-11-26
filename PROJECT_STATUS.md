@@ -363,3 +363,20 @@ fusionner dans `main`). Rapport complet :
 2. Mettre à jour les versions des actions GitHub dans un lot CI séparé.
 3. Préparer Phase 1 par sous-lots : migrations Alembic, organisations/membres, sessions/OIDC, RBAC, isolation multi-tenant, audit log.
 4. La validation Compose sur un poste de développement Docker normal reste à consigner ; la CI hébergée a validé le build et le smoke test.
+
+
+## 13. Phase 1 — P1-A0 Fondation Alembic (25/11/2026)
+
+**PR #4 :** https://github.com/BVDMANN/enterprise-infrastructure-intelligence/pull/4  
+**Branche :** `phase1/p1-a0-alembic-foundation` (empilée sur PR #3)  
+**Run CI #64 :** tous les jobs sont terminés avec succès ; le job de dépendances reste report-only. Le run #64 revalide aussi le cycle Alembic upgrade → downgrade base → nouvel upgrade sur PostgreSQL 16.
+
+- Révision initiale `0001_pg_extensions` ajoutée : installe `citext`, sans table métier.
+- `env.py` compare les types lors des migrations offline/online.
+- Deux tests structurels Alembic ajoutés ; résultat API : **5 passed, 1 warning** (avertissement de configuration pytest-asyncio).
+- Smoke PostgreSQL 16 : `alembic upgrade head` → `0001_pg_extensions (head)`, extension `citext` présente, `alembic downgrade base`, nouvel upgrade vers `head` — réussite.
+- Le downgrade conserve volontairement l'extension PostgreSQL partagée pour éviter de la supprimer si d'autres objets l'utilisent.
+- Les quatre images Docker, le build Web Node 22, Compose smoke, gitleaks et la validation des ports loopback sont verts.
+- Aucun endpoint métier, table d'organisation, mécanisme d'authentification ou secret réel n'a été ajouté.
+
+**Statut :** PR #4 est ouverte, non-draft et non fusionnée (état GitHub vérifié). Elle est prête pour revue. Prochain sous-lot prévu : P1-A1 organisations, utilisateurs et memberships, avec contraintes d'unicité et tests négatifs avant toute route métier.

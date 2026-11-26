@@ -1,6 +1,7 @@
-"""Alembic environment (PHASE 0 skeleton — no migrations yet).
+"""Alembic environment for the EII PostgreSQL schema.
 
-The first migrations arrive in PHASE 1 (see docs/architecture/DATABASE_DESIGN.md).
+The database URL is supplied by application settings. Migration history is
+kept under alembic/versions and is the source of truth for schema changes.
 """
 
 import os
@@ -33,6 +34,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -46,7 +48,11 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+        )
         with context.begin_transaction():
             context.run_migrations()
 
