@@ -72,15 +72,7 @@ def _seed_user(
 
         organizations: dict[str, str] = {}
         for slug in (*organization_slugs, *deleted_organization_slugs):
-            organization = Organization(
-                name=slug.title(),
-                slug=slug,
-                deleted_at=(
-                    datetime.now(timezone.utc)
-                    if slug in deleted_organization_slugs
-                    else None
-                ),
-            )
+            organization = Organization(name=slug.title(), slug=slug)
             db.add(organization)
             db.flush()
             roles = create_default_roles_for_organization(db, organization.id)
@@ -92,6 +84,8 @@ def _seed_user(
                     role_id=owner_role.id,
                 )
             )
+            if slug in deleted_organization_slugs:
+                organization.deleted_at = datetime.now(timezone.utc)
             organizations[slug] = str(organization.id)
 
         user_id = str(user.id)
