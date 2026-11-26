@@ -519,3 +519,13 @@ Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:2
 2. Préparer une remédiation npm contrôlée : vérifier les versions correctives compatibles Next.js 14/React 18 avant tout changement majeur, puis tests lint/typecheck/build et audit complet.
 3. Poursuivre OIDC/MFA avec validation cryptographique et tests négatifs, puis RBAC réellement appliqué côté API.
 4. Garder P1-A4/P1-A5 bloquants avant toute exposition de données métier multi-tenant.
+
+
+### Contrôle complémentaire — 26/11/2026, 03:36 CET
+
+- **PR #9 / documentation :** les runs #118 (ID `45742481866`, commit `86c5144`) et #119 (ID `45742493310`, commit `75d2bfb`) sont terminés, chacun avec 7/7 jobs réussis. Ce vert concerne la CI, pas les audits de dépendances : sur cette branche documentaire, `pip-audit` retourne encore 16 vulnérabilités connues dans 2 paquets et `npm audit` 7 (1 modérée, 5 élevées, 1 critique), avec exit code 1 ; les deux étapes restent report-only.
+- **Différence de périmètre Python :** PR #13 (run #114) est propre pour `pip-audit` sur son arbre combiné Python. Le run #119 de PR #9 utilise une branche documentaire plus ancienne, qui n'intègre pas la synchronisation Python #13 ; ses 16 avis ne contredisent donc pas le résultat de #13.
+- **Avertissements CI sur la branche documentaire :** les logs #119 signalent encore Node 20 forcé vers Node 24 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`, ainsi que les avertissements Node `punycode` et pytest/Starlette TestClient. Ils restent visibles.
+- **Propagation Node 24 vers P1-A2 :** PR #14 ouverte en brouillon, branche `phase1/p1-a2-node24-actions`, tête `a27f7efe5d842f1503773597aa692694b70d0a5e`, base PR #13 (`a92ae9f`). Un seul fichier est modifié : `.github/workflows/ci.yml`. Références : checkout v7.0.1 (7), setup-node v7.1.0 (2), setup-python v7.1.0 (2), Gitleaks v3 (1). Node applicatif 22 et contrôles spécifiques P1-A2 conservés. CI de #14 (run ID `45743664932`) en cours ; aucun résultat n'est anticipé.
+- **Coordination :** commentaires de propagation publiés sur PR #7 et #13 ; leurs branches ne sont pas modifiées. Les recherches GitHub `author:Ruby` sur les PR et commits n'ont retourné aucun résultat ; aucune contribution n'est attribuée à Ruby sans preuve.
+- **P1-A1 :** PR #5 reste à 11 commits en avance et 1 en retard sur sa base, sans chevauchement de fichier avec le correctif P1-A0 ; aucune synchronisation poussée.
