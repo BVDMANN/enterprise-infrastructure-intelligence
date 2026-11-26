@@ -51,7 +51,7 @@ métriques fiables.
 | P1-09 | Connecteur Debian lecture seule (OS, CPU, RAM, stockage, services) | TODO | P1-06 |
 | P1-10 | Première collecte de métriques (VictoriaMetrics) | TODO | P1-08/P1-09 |
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
-| P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
+| P1-12 | Audit de base (journal des opérations sensibles) | IN_REVIEW — PR #31 : migration 0006, writer tenant-scoped, GET audit.read et triggers PostgreSQL ; aucune mutation métier n'émet encore automatiquement d'événement | P1-02/P1-04 |
 | P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
 | P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 migration 0002_identity ; PR #17 migration 0005_rbac_core : run #135 valide backfill owner, 9 permissions, rejet inter-tenant, downgrade/restauration du rôle texte et re-upgrade PostgreSQL | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | IN_PROGRESS — FK composite role/tenant testée en PostgreSQL ; isolation de toutes les lectures/écritures et RLS restent à livrer | P1-04, P1-13 |
