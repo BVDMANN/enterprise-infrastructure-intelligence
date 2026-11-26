@@ -97,3 +97,12 @@ test("zero total cannot be paired with affected package entries", () => {
     /lists affected packages but reports zero/,
   );
 });
+
+test("exit code 0 cannot hide high or critical findings at the configured threshold", () => {
+  const counts = { total: 1, critical: 0, high: 1, moderate: 0, low: 0, info: 0 };
+  const vulnerabilities = { "high-package": { severity: "high" } };
+  assert.throws(
+    () => summarizeNpmAudit(report({ counts, vulnerabilities }), 0),
+    /exited 0 despite high or critical findings/,
+  );
+});
