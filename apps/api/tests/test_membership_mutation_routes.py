@@ -205,6 +205,7 @@ def test_owner_adds_existing_member_and_audit_event_atomically(client) -> None:
     members_by_user = {item["user_id"]: item for item in listed.json()}
     assert set(members_by_user) == {str(seeded["owner_id"]), target_id}
     assert members_by_user[target_id]["membership_id"] == payload["id"]
+    assert members_by_user[target_id]["role_id"] == role_id
 
 
 def test_membership_mutation_requires_owner_permission_and_session_csrf(client) -> None:
