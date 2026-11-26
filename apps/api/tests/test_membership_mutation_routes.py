@@ -478,9 +478,7 @@ def test_owner_can_remove_one_of_two_active_owners(client) -> None:
     )
     csrf_token = _login(test_client, "membership-two-owner-a@example.com")
     headers = {"Origin": ORIGIN, "X-CSRF-Token": csrf_token}
-    own_membership_id = _membership_id(
-        engine, organization_id, str(seeded["owner_id"])
-    )
+    own_membership_id = _membership_id(engine, organization_id, str(seeded["owner_id"]))
     self_remove = test_client.delete(
         f"/api/v1/organizations/{organization_id}/memberships/{own_membership_id}",
         headers=headers,
