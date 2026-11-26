@@ -44,3 +44,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - PR #12 met à niveau FastAPI, pytest et pytest-asyncio ; run #98 : 7/7 jobs réussis et pip-audit sans vulnérabilité Python sur cette branche. Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 terminé 7/7, pip-audit propre et aucun avertissement Starlette/TestClient dans les logs API. L'audit npm signale toujours 7 vulnérabilités et reste report-only.
 - La PR #11 ajoute aussi `argon2-cffi` dans `apps/api/requirements.txt` : les mises à niveau des PR #11 et #12 doivent être combinées et revalidées avant acceptation.
 - Aucune PR n'a été fusionnée et aucun déploiement n'a été effectué.
+
+
+### Updated — 2026-11-26 (01:34 CET)
+
+- PR #13 synchronise les dépendances Python avec l'authentification locale de PR #11 sans toucher au code métier : FastAPI 0.162.0, Argon2id 25.1.0 conservé, pytest 9.0.3, pytest-asyncio 1.4.1, httpx2 2.16.2 et configuration explicite des fixtures asyncio.
+- Run CI #114 (ID `45727322292`) sur `a92ae9f` : 7/7 jobs réussis ; API 55 tests, Web lint/typecheck/build, Docker build, Compose config/smoke, Gitleaks. API/Web/Worker healthy et connecteur de simulation exit 0 ; ports hôte liés à 127.0.0.1.
+- pip-audit ne trouve aucun avis connu sur l'arbre Python combiné. npm audit reste en échec (exit code 1) avec 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) ; audit global report-only, aucune correction npm revendiquée.
+- PR #7 valide séparément les actions Node 24 (run #77, 7/7), mais PR #13 n'en descend pas et conserve les avertissements Node 20 des actions checkout/setup-node/setup-python.
+- OIDC/MFA, RBAC, isolation tenant/RLS et audit trail métier restent non implémentés. Aucune PR fusionnée ni aucun déploiement.
