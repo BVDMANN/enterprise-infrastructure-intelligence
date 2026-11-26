@@ -33,7 +33,7 @@ export default function OrganisationsPage() {
       <PageHeading
         eyebrow="Administration"
         title="Organisations"
-        description="Espaces auxquels votre session dispose d'un accès explicite. Les données proviennent de l'API et de PostgreSQL."
+        description="Espaces auxquels votre session dispose d'un accès explicite. Les données proviennent de l’API et de PostgreSQL."
       />
 
       {query.isLoading && <p aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Chargement des organisations…</p>}
@@ -44,7 +44,7 @@ export default function OrganisationsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
               <h2 className="font-semibold text-slate-900">Espaces accessibles</h2>
-              <p className="mt-1 text-xs text-slate-500">{query.data.length} organisation(s) retournée(s) par l'API</p>
+              <p className="mt-1 text-xs text-slate-500">{query.data.length} organisation(s) retournée(s) par l’API</p>
             </div>
             <span className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">API réelle · lecture seule</span>
           </div>
