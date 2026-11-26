@@ -97,9 +97,7 @@ def _events(engine) -> list[AuditEvent]:
     with Session(engine) as db:
         return list(
             db.scalars(
-                select(AuditEvent).order_by(
-                    AuditEvent.occurred_at, AuditEvent.id
-                )
+                select(AuditEvent).order_by(AuditEvent.occurred_at, AuditEvent.id)
             ).all()
         )
 
@@ -139,9 +137,9 @@ def test_successful_session_lifecycle_is_audited_per_active_tenant(client) -> No
         organizations["auth-tenant-a"],
         organizations["auth-tenant-b"],
     }
-    assert {str(item.organization_id) for item in created_events} == (
-        active_organization_ids
-    )
+    assert {
+        str(item.organization_id) for item in created_events
+    } == active_organization_ids
     assert all(str(item.actor_user_id) == user_id for item in created_events)
     assert all(item.target_type == "auth_session" for item in created_events)
     assert all(item.target_id == session_id for item in created_events)
@@ -157,9 +155,9 @@ def test_successful_session_lifecycle_is_audited_per_active_tenant(client) -> No
     revoked_events = [
         item for item in all_events if item.event_type == "auth.session.revoked"
     ]
-    assert {str(item.organization_id) for item in revoked_events} == (
-        active_organization_ids
-    )
+    assert {
+        str(item.organization_id) for item in revoked_events
+    } == active_organization_ids
     assert all(item.target_id == session_id for item in revoked_events)
 
     with Session(engine) as db:
@@ -194,18 +192,14 @@ def test_failed_login_and_invalid_csrf_do_not_emit_success_events(client) -> Non
 
     login = _login(test_client, "auth-negative@example.com")
     assert login.status_code == 200
-    assert [
-        item.event_type for item in _events(engine)
-    ] == ["auth.session.created"]
+    assert [item.event_type for item in _events(engine)] == ["auth.session.created"]
 
     invalid_csrf = test_client.post(
         "/api/v1/auth/logout",
         headers={"Origin": ORIGIN, "X-CSRF-Token": "forged"},
     )
     assert invalid_csrf.status_code == 403
-    assert [
-        item.event_type for item in _events(engine)
-    ] == ["auth.session.created"]
+    assert [item.event_type for item in _events(engine)] == ["auth.session.created"]
 
     valid_logout = test_client.post(
         "/api/v1/auth/logout",
