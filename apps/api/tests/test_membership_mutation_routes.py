@@ -404,6 +404,12 @@ def test_owner_changes_member_role_and_audit_event_atomically(client) -> None:
     assert response.status_code == 200
     assert response.json()["id"] == membership_id
     assert response.json()["role_id"] == viewer_role_id
+    repeated = test_client.patch(
+        f"/api/v1/organizations/{organization_id}/memberships/{membership_id}",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+        json={"role_id": viewer_role_id},
+    )
+    assert repeated.status_code == 200
     with Session(engine) as db:
         membership = db.get(Membership, UUID(membership_id))
         assert membership is not None
@@ -611,6 +617,12 @@ def test_membership_lifecycle_enforces_permission_csrf_and_tenant_scope(client) 
         == 404
     )
     assert test_client.delete(foreign_path, headers=owner_headers).status_code == 404
+    foreign_role_change = test_client.patch(
+        path,
+        headers=owner_headers,
+        json={"role_id": str(tenant_b["roles"]["viewer"])},
+    )
+    assert foreign_role_change.status_code == 404
     assert _membership_count(engine, organization_a, target_a) == 1
     assert (
         _membership_count(
