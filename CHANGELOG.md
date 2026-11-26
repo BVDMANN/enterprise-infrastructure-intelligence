@@ -31,7 +31,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 
 ### Known issues
 
-- Docker absent de la VM de développement : `docker compose up`
-  non testé (voir PROJECT_STATUS.md §5).
-- Aucun module métier implémenté ; aucune migration Alembic créée ;
-  OIDC/RBAC non implémentés (squelettes uniquement).
+- L'audit npm reste report-only avec 7 vulnérabilités : 1 critique Next.js, 5 élevées (dont PostCSS, glob et Zod), 1 modérée minimatch ; npm audit retourne 1. Ne pas exposer le frontend à un environnement non maîtrisé avant remédiation.
+- Les arbres Python P1-A1/P1-A3 actuels passent pip-audit sans avis connus ; les branches plus anciennes peuvent encore conserver les 8 avis uniques de pytest/Starlette.
+- P1-A3 livre les modèles, migration 0005 et service de permissions dans PR #17, mais aucun endpoint métier n'appelle encore require_permission ; RBAC HTTP n'est donc pas considéré comme intégré.
+- OIDC/MFA, isolation RLS complète, audit trail métier append-only et connecteurs Proxmox/Debian réels ne sont pas livrés.
+- Le frontend de démonstration conserve des données simulées ; seul le healthcheck API est réellement connecté.
+- La validation Compose sur le poste de développement n'a pas été effectuée dans ce cycle ; les preuves actuelles proviennent de GitHub Actions.

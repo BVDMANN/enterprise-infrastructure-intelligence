@@ -1,6 +1,6 @@
 # PHASE1_PLAN.md — Enterprise Infrastructure Intelligence
 
-> Version : 1.0 — 25 novembre 2026
+> Version : 1.1 — 26 novembre 2026
 > Branche de préparation : `audit/phase-0-followup`
 > Statut : plan préparé ; aucun endpoint métier ni accès infrastructure réelle ajouté.
 
@@ -21,13 +21,13 @@ Principes non négociables :
 
 | Porte | Critère | État au 25/11 |
 |---|---|---|
-| G0 — CI/Compose | Build des 4 images, configuration Compose et smoke test complets | TESTED — run #54 |
-| G1 — Ports locaux | DB/Redis/API/Web publiés uniquement sur 127.0.0.1 ; assertion CI | TESTED — run #54 |
-| G2 — Runtime Web | Node 22 sur Docker et CI ; lint, typecheck, build et smoke | TESTED — run #54 |
-| G3 — Audit dépendances | Résultats actuels documentés, job explicitement report-only | TESTED / REPORT-ONLY — vulnérabilités encore ouvertes |
+| G0 — CI/Compose | Build des 4 images, configuration Compose et smoke test complets | TESTED — run #134, 7/7 jobs |
+| G1 — Ports locaux | DB/Redis/API/Web publiés uniquement sur 127.0.0.1 ; assertion CI | TESTED — run #134, assertions Compose et smoke |
+| G2 — Runtime Web | Node applicatif 22 sur Docker ; actions GitHub Node 24 ; lint, typecheck, build et smoke | TESTED — runs #120/#127/#134 |
+| G3 — Audit dépendances | Résultats actuels documentés, job explicitement report-only | TESTED / REPORT-ONLY — pip-audit propre sur P1-A1/P1-A3 ; npm audit 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit 1 |
 | G4 — Poste développeur | `docker compose up --build` validé sur le poste local | À confirmer localement |
 
-G0–G3 sont validées par la CI hébergée. G4 reste une vérification locale, mais ne doit pas conduire à brancher un environnement réel. Les vulnérabilités Starlette/Pytest et npm sont suivies dans `docs/security/SECURITY_AUDIT_2026-11-25.md` ; toute montée de version est un lot isolé avec tests.
+G0–G3 sont validées par les runs CI #120, #127 et #134. G4 reste une vérification locale non revendiquée par ce cycle. Les audits restent report-only : les arbres Python P1-A1/P1-A3 actuels sont propres, mais les arbres anciens gardent des avis ; npm reste à 7 vulnérabilités et doit être traité dans une migration web isolée. Les avertissements Gitleaks v3 DEP0040/DEP0169 restent visibles.
 
 ## 3. Découpage P1-A — fondations sécurité et données
 
@@ -177,9 +177,9 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 
 **P1-A0 — Fondation Alembic** est implémenté dans la PR #4, branche `phase1/p1-a0-alembic-foundation`, empilée sur la PR #3. GitHub indique que la PR est ouverte et non-draft. Run CI #64 : 5 tests API passed (1 avertissement pytest-asyncio), build des 4 images, Web, gitleaks, validation Compose et smoke réussis. Le smoke PostgreSQL confirme `alembic upgrade head`, présence de `citext`, `alembic downgrade base`, puis nouvel upgrade vers `0001_pg_extensions (head)`. La migration ne crée aucune table métier. **Limite importante :** le downgrade retire la révision Alembic mais conserve volontairement l'extension partagée `citext` ; ce n'est donc pas un retour complet à une base strictement vierge. La PR reste ouverte et non fusionnée.
 
-**P1-A1 — Organisations, utilisateurs et memberships** est implémenté sur la branche `phase1/p1-a1-organisations-utilisateurs`, empilée sur P1-A0 (PR à créer, empilée sur PR #4). Modèles SQLAlchemy 2, migration `0002_identity` (tables `organizations`, `users`, `memberships`), lectures limitées au membership, tests unitaires + intégration + négatifs (30 tests API passed en local, 1 avertissement pytest-asyncio préexistant), vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive). Aucune route métier n'est ouverte. Détails : PROJECT_STATUS.md §14.
+**P1-A1 — Organisations, utilisateurs et memberships** est livré sur la branche `phase1/p1-a1-organisations-utilisateurs` (PR #5, ouverte, non fusionnée). Modèles SQLAlchemy 2, migration `0002_identity`, lectures limitées au membership ; aucune route métier d'organisation ou d'invitation n'est ouverte. Le rôle texte historique est remplacé par `role_id` tenant-scoped dans la migration 0005 proposée en PR #17. Détails : PROJECT_STATUS.md §14.
 
-**Prochain sous-lot : P1-A2 — sessions et OIDC**, sur une PR empilée après revue de P1-A1.
+**P1-A2 :** sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14 ; OIDC et MFA restent à livrer dans un module isolé. **P1-A3 core :** PR #17, modèle/migration/service validés par run #134 ; les guards HTTP restent à intégrer.
 
 
 ### État de livraison P1-A3 — PR #17 (brouillon, validation CI en attente)
@@ -193,4 +193,4 @@ Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 va
 
 **Limite explicite :** cette PR livre le modèle, la migration et le service d'autorisation ; aucun endpoint métier ni dépendance FastAPI RBAC n'est encore branché. Les routes devront appeler require_permission dans un lot d'intégration distinct avant que RBAC soit considéré comme appliqué à l'API. Les rôles plateforme globaux sont différés ; les rôles de ce lot sont strictement organisationnels.
 
-Le lot reste IN_REVIEW jusqu'à validation des tests API, du cycle PostgreSQL Alembic et de la CI complète.
+Le run #134 sur la tête 7e37214 est vert 7/7 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.

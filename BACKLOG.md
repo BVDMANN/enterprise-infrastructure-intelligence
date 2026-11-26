@@ -12,8 +12,8 @@
 | Audit du repository existant (greenfield confirmé) | ACCEPTED |
 | Structure du repository (§6) | ACCEPTED |
 | Documentation de base (15 fichiers : 9 docs + ADR_INDEX + 5 ADR) | ACCEPTED |
-| Environnements Docker (compose + Dockerfiles) | TESTED — run #54 : build des 4 images, config Compose, healthchecks et smoke complets réussis ; confirmation du poste local encore à consigner |
-| CI initiale (GitHub Actions) | TESTED — 33 runs ; 4 derniers verts, dernier run 4/4 jobs (gitleaks, API, Web, Compose) |
+| Environnements Docker (compose + Dockerfiles) | TESTED — run #134 : 4 images, non-root, config Compose, ports loopback, healthchecks et smoke complets ; confirmation du poste local encore à consigner |
+| CI initiale (GitHub Actions) | TESTED — run #134 : 7/7 jobs verts (API 67 tests, Web, Docker, Compose, audit, Gitleaks) |
 | Squelettes api / web / worker / connecteur-sim | TESTED — re-vérifiés pendant l'audit (pytest 3 passed, build web OK, API live OK, connecteur-sim OK, worker OK) |
 | Vérification de l'environnement de dev | ACCEPTED — Docker installé 24/11 (29.1.3 + Compose v5.8.0) ; limites sandbox documentées (PROJECT_STATUS §5) |
 
@@ -23,7 +23,7 @@
 |---|---|
 | CI : build des 4 images Docker (`docker-build`) | TESTED — run #54, 4 images construites ; contrôle non-root réussi (uid 999/1000) |
 | CI : smoke test `compose up` + healthchecks (`compose-smoke`) | TESTED — run #54 : API/Web/Worker healthy, endpoints vérifiés, connecteur-sim exit 0, ports hôte sur 127.0.0.1 |
-| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | TESTED / REPORT-ONLY — run #54 : pip-audit 16 occurrences / 8 avis uniques ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical). Job vert grâce à `continue-on-error`, pas « zéro vulnérabilité » |
+| CI : audit de dépendances report-only (`security-audit` : pip-audit + npm audit) | TESTED / REPORT-ONLY — run #134 : pip-audit sans avis connus sur P1-A3 ; npm audit 7 vulnérabilités (1 moderate, 5 high, 1 critical), exit 1 visible dans les logs ; job vert report-only, pas « zéro vulnérabilité » |
 | Conteneurs non-root (USER app / USER node) + `--reload` retiré | TESTED — run #54 : API/Worker/Connector uid 999, Web uid 1000 |
 | Healthchecks api / web / worker (+ `.dockerignore` `.env*.local`) | TESTED — run #54 : healthchecks API/Web/Worker verts ; règles `.env*.local` conservées |
 | Split requirements API (runtime vs dev) | TESTED — run #54 : installation requirements-dev, ruff et pytest réussis |
@@ -40,10 +40,10 @@ métriques fiables.
 
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
-| P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
+| P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #134 : 4 images + Compose smoke validés, reste la confirmation locale | IN_REVIEW — CI 7/7 ; validation locale non revendiquée | — (bloque P1-02+) |
 | P1-02 | Authentification OIDC + sessions + MFA | IN_PROGRESS — sessions serveur et login local présents dans PR #10/#11/#13/#14 ; OIDC/MFA restent à livrer | P1-01 |
 | P1-03 | Organisations, membres, invitations | TESTED — modèles/migration/lectures P1-A1 dans PR #5 ; routes et invitations non livrées | P1-02 |
-| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — modèle, migration 0005 et service de permissions dans PR #17 ; intégration aux routes non livrée | P1-02/P1-03 |
+| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — PR #17 run #134 7/7, 67 tests API ; backfill PostgreSQL, 9 permissions owner et rejet inter-tenant validés ; guards HTTP/gestion des rôles non livrés | P1-02/P1-03 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
 | P1-06 | Infrastructure Manager (inventaire, recherche, filtres, détails) | TODO | P1-04 |
 | P1-07 | Connecteur de simulation (intégré au dashboard) | TODO | P1-06 |
@@ -53,8 +53,8 @@ métriques fiables.
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
 | P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
-| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TESTED — lot P1-A1 livré sur `phase1/p1-a1-organisations-utilisateurs` (PR #5, empilée sur PR #4) : migration 0002_identity, 30 tests API passed en local, vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive) | P1-A0 |
-| P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | TODO | P1-04, P1-13 |
+| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 migration 0002_identity ; PR #17 migration 0005_rbac_core : run #134 valide backfill owner, 9 permissions, rejet inter-tenant, downgrade/restauration du rôle texte et re-upgrade PostgreSQL | P1-A0 |
+| P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | IN_PROGRESS — FK composite role/tenant testée en PostgreSQL ; isolation de toutes les lectures/écritures et RLS restent à livrer | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
 | P1-16 | Documentation mise à jour (API, déploiement, opérations) | TODO | P1-15 |
 
@@ -111,5 +111,5 @@ métriques fiables.
 - PR #14 : actions Node 24 sur P1-A2, run #120 7/7 ; runtime applicatif Node 22 conservé.
 - PR #15 : propagation Node 24 sur P1-A1/documentation, run #127 7/7 ; pip-audit ancien arbre 8 avis uniques, npm audit 7 vulnérabilités, report-only.
 - PR #16 : remédiation Python P1-A1, run #128 7/7 ; 32 tests API, pip-audit propre sur cet arbre. npm audit reste 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only.
-- PR #17 : P1-A3 RBAC core en brouillon ; validation CI requise avant de passer à TESTED/ACCEPTED.
+- PR #17 : P1-A3 RBAC core en brouillon ; run #134 7/7, 67 tests API et smoke PostgreSQL backfill/tenant/downgrade réussis ; endpoints RBAC non intégrés.
 - Phase 0 reste ouverte tant que le lot npm et la confirmation Compose sur poste développeur normal ne sont pas traités/documentés.

@@ -404,7 +404,10 @@ fusionner dans `main`). Rapport complet :
 - Service serveur : provisioning des rôles système et résolution des permissions à partir du compte et du membership actifs dans l'organisation demandée.
 - Tests ajoutés : unicité, rôle inter-tenant refusé, utilisateur sans membership, compte inactif/supprimé, organisation supprimée, permission accordée/refusée.
 - **Non livré dans ce lot :** routes HTTP métier et enforcement dans les endpoints ; ces routes devront appeler require_permission. OIDC/MFA, isolation RLS complète et audit trail restent distincts.
-- La validation CI et le smoke PostgreSQL de la migration 0005 sont en attente ; aucun test local n'est revendiqué.
+- Run #134 : 7/7 jobs réussis sur 7e37214 ; 67 tests API, Ruff check/format, Web lint/typecheck/build, 4 images Docker, non-root, Compose config/smoke et Gitleaks.
+- Smoke PostgreSQL : ancien membership owner créé sous 0004, backfill 0005 validé, rôle lié à la même organisation, 9 permissions owner, tentative inter-tenant rejetée par fk_memberships_organization_role, downgrade 0005 restaure owner, fixtures éphémères nettoyées, downgrade base puis nouvel upgrade head réussis.
+- pip-audit : aucun avis connu sur cet arbre ; npm audit : 7 avis (1 modéré, 5 élevés, 1 critique), exit 1 visible et report-only. Gitleaks v3 garde DEP0040/DEP0169 ; aucun avertissement de runtime Node 20.
+- PR #17 reste draft et non fusionnée ; aucun endpoint RBAC métier ne consomme encore require_permission. Aucun test local n'est revendiqué.
 
 ### Contrôle Phase 0 — preuves du 26/11/2026
 

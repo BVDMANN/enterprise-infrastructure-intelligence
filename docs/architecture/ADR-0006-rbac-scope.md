@@ -1,6 +1,6 @@
 # ADR-0006 — RBAC organisation-scoped
 
-- **Statut :** proposé dans PR #17, en attente de revue et de CI.
+- **Statut :** proposé dans PR #17 ; CI run #134 7/7, revue indépendante encore en attente.
 - **Date :** 26/11/2026.
 
 ## Contexte
@@ -20,4 +20,4 @@ Les memberships P1-A1 portaient initialement un rôle texte. P1-A3 doit introdui
 - Un rôle ne peut pas être partagé entre deux organisations ; les rôles système sont provisionnés par organisation.
 - Le catalogue de permissions peut être partagé, mais une affectation reste liée à un rôle tenant-scoped.
 - Ce lot ne livre pas encore les endpoints de gestion des rôles ni l'intégration du guard dans les routes métier. Le service et les tests ne suffisent pas à déclarer l'API RBAC intégrée.
-- Les tests inter-tenant et les tests PostgreSQL de migration restent des portes bloquantes avant acceptation.
+- Les tests inter-tenant et le cycle PostgreSQL de backfill/downgrade/re-upgrade sont validés par le run #134 ; la revue indépendante et l'intégration des guards HTTP restent des portes avant acceptation.
