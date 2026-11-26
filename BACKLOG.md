@@ -157,3 +157,17 @@ Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et a
 | P1-A3 RBAC / P1-A4 isolation tenant / P1-A5 audit trail | TODO — enforcement RBAC, contexte tenant/RLS et journal métier append-only non livrés. |
 
 Le run #114 confirme également le build des images Docker, Compose config, smoke et Gitleaks. Les services API/Web/Worker deviennent healthy ; le connecteur de simulation termine avec exit 0. Les ports de l'hôte restent liés à `127.0.0.1`. Le job d'audit est report-only : son succès ne neutralise pas l'échec npm audit.
+
+
+## Snapshot de pilotage — 26/11/2026, 03:24 CET
+
+- **P1-A0 / PR #4 :** tête `25091e0`, run #117 terminé 7/7 ; migration PostgreSQL/Compose validée. PR ouverte, non fusionnée.
+- **P1-A1 / PR #5 :** run #73 7/7 ; correctif des comptes inactifs PR #8, run #76 7/7 et 32 tests API. La tête #5 est 1 commit derrière sa base mise à jour par le correctif documentaire P1-A0 ; aucun fichier commun n'est touché et aucune synchronisation n'a été poussée sur #5.
+- **P1-A2.1 sessions / PR #10 :** run #92 7/7.
+- **P1-A2.2 authentification locale / PR #11 :** run #104 7/7, 55 tests API ; PR draft. La branche #11 seule conserve l'ancien arbre de dépendances.
+- **Synchronisation Python / PR #13 :** run #114 7/7, 55 tests API, pip-audit sans avis connu sur l'arbre combiné ; PR draft et non fusionnée.
+- **npm :** run #114, 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), `npm audit` exit code 1 ; audit report-only. Aucune correction npm revendiquée.
+- **Actions Node 24 :** PR #7 run #77 7/7 ; les branches #13, #9 et #4 conservent des avertissements Node 20 dans les logs car elles n'intègrent pas cette migration.
+- **Documentation / PR #9 :** run #116 7/7 sur la tête `d12bb55`.
+- **Démo UI / PR #6 :** run #74 7/7 ; données métier encore simulées, healthcheck API réel uniquement.
+- **Prochain lot :** remédiation npm compatible, puis OIDC/MFA ; ne pas ouvrir RBAC tant que l'authentification complète et les contrôles négatifs ne sont pas en place.
