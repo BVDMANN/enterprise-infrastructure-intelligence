@@ -5,6 +5,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — P1-A3.1 HTTP organization reads
+
+- Session-authenticated GET endpoints for organizations, active members and organization roles.
+- Server-side organization membership and permission checks; non-member tenants return 404 and missing permissions return 403.
+- Session cookie path widened to `/api/v1` so the browser sends it to protected API resources; HttpOnly/Secure/SameSite and Origin/CSRF protections remain.
+- HTTP integration tests cover unauthenticated, owner, viewer and cross-tenant cases.
+- No write endpoints, OIDC/MFA, RLS or audit trail are claimed in this lot.
+
+
 ### Added — P1-A3 RBAC core (2026-11-26, PR #17 en revue)
 
 - Modèles roles, permissions et role_permissions ; les rôles sont propres à une organisation.
