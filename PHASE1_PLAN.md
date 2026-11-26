@@ -2,7 +2,7 @@
 
 > Version : 1.1 — 26 novembre 2026
 > Branche de préparation : `audit/phase-0-followup`
-> Statut : plan préparé ; aucun endpoint métier ni accès infrastructure réelle ajouté.
+> Statut : plan de livraison ; premières lectures HTTP organisation/membres/rôles en cours de validation ; aucun accès infrastructure réelle ajouté.
 
 ## 1. Objectif de Phase 1
 
@@ -66,7 +66,7 @@ Tests :
 - impossible de rattacher un membership à une organisation inexistante ;
 - suppression logique et intégrité référentielle.
 
-**État : livré dans la PR #5 ouverte (branche `phase1/p1-a1-organisations-utilisateurs`, non fusionnée).** Modèles SQLAlchemy 2, migration `0002_identity`, lectures limitées au membership ; aucune route publique d'organisation ou d'invitation n'est ouverte. La PR #17 ajoute la migration 0005 qui remplace le rôle texte par un `role_id` tenant-scoped et valide le backfill PostgreSQL ; la branche #5 reste la base historique P1-A1.
+**État : modèles SQLAlchemy 2, migration `0002_identity` et lectures limitées au membership livrés dans la PR #5 ouverte (non fusionnée).** La PR #5 n'inclut pas de route publique ; les premières lectures HTTP sont ajoutées séparément dans le lot P1-A3.1 (PR #18, en validation CI), sans invitation ni mutation. La PR #17 ajoute la migration 0005 qui remplace le rôle texte par un `role_id` tenant-scoped et valide le backfill PostgreSQL.
 
 ### P1-A2 — Sessions et OIDC
 
