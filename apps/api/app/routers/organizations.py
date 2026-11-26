@@ -36,8 +36,9 @@ class OrganizationResponse(BaseModel):
 
 
 class MemberResponse(BaseModel):
-    """Safe member identity and organization-local role."""
+    """Safe membership identity, user fields and organization-local role."""
 
+    membership_id: UUID
     user_id: UUID
     email: str
     display_name: str
@@ -208,6 +209,7 @@ def list_organization_members(
     """List active, non-deleted users belonging to the selected organization."""
     statement = (
         select(
+            Membership.id,
             User.id,
             User.email,
             User.display_name,
@@ -231,11 +233,12 @@ def list_organization_members(
     rows = db.execute(statement).all()
     return [
         MemberResponse(
-            user_id=row[0],
-            email=row[1],
-            display_name=row[2],
-            role=row[3],
-            joined_at=row[4],
+            membership_id=row[0],
+            user_id=row[1],
+            email=row[2],
+            display_name=row[3],
+            role=row[4],
+            joined_at=row[5],
         )
         for row in rows
     ]
