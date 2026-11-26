@@ -9,6 +9,7 @@ endpoints en lecture seule de la PR #18. Elle ne modifie ni la PR #6 ni la PR #1
 - Liste des organisations accessibles : `GET /api/v1/organizations`.
 - Membres actifs d'une organisation : `GET /api/v1/organizations/{id}/members`.
 - Rôles et permissions d'une organisation : `GET /api/v1/organizations/{id}/roles`.
+- Session courante : `GET /api/v1/auth/me`, utilisée par l'en-tête pour vérifier côté serveur que le cookie correspond encore à une session active et afficher le nom de l'utilisateur.
 - Déconnexion : `POST /api/v1/auth/logout` avec le jeton CSRF de la session.
 
 Les pages Organisations et Utilisateurs & rôles ne consomment aucune donnée fictive.
