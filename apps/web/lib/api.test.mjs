@@ -29,6 +29,7 @@ const {
   getOrganizations,
   getOrganizationMembers,
   getOrganizationRoles,
+  getOrganizationAuditEvents,
   login,
   logout,
 } = await import(apiUrl);
@@ -182,4 +183,55 @@ test("malformed error bodies fall back to the HTTP status", async () => {
       error.status === 502 &&
       error.message === "API request failed with status 502",
   );
+});
+
+
+test("audit events use the tenant-scoped endpoint, encoded ID and bounded limit", async () => {
+  const event = {
+    id: "event-1",
+    organization_id: "org/a b",
+    actor_user_id: "user-1",
+    event_type: "membership.created",
+    target_type: "membership",
+    target_id: "membership-1",
+    request_id: null,
+    details: { role_name: "member" },
+    occurred_at: "2026-11-26T17:00:00Z",
+  };
+  stubFetch(
+    () =>
+      new Response(JSON.stringify([event]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    (url, init) => {
+      assert.equal(
+        url,
+        "http://localhost:8000/api/v1/organizations/org%2Fa%20b/audit-events?limit=25",
+      );
+      assert.equal(init.credentials, "include");
+      assert.equal(init.cache, "no-store");
+    },
+  );
+  assert.deepEqual(await getOrganizationAuditEvents("org/a b", 25), [event]);
+});
+
+test("audit event limits are clamped to the API contract", async () => {
+  const urls = [];
+  stubFetch(
+    () =>
+      new Response("[]", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    (url) => urls.push(url),
+  );
+  await getOrganizationAuditEvents("org-1", 0);
+  await getOrganizationAuditEvents("org-1", 500);
+  await getOrganizationAuditEvents("org-1", Number.NaN);
+  assert.deepEqual(urls, [
+    "http://localhost:8000/api/v1/organizations/org-1/audit-events?limit=1",
+    "http://localhost:8000/api/v1/organizations/org-1/audit-events?limit=100",
+    "http://localhost:8000/api/v1/organizations/org-1/audit-events?limit=50",
+  ]);
 });
