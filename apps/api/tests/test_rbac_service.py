@@ -61,7 +61,9 @@ def _role(db: Session, organization: Organization, name: str) -> Role:
     return role
 
 
-def _membership(db: Session, organization: Organization, user: User, role: Role) -> None:
+def _membership(
+    db: Session, organization: Organization, user: User, role: Role
+) -> None:
     db.add(
         Membership(
             organization_id=organization.id,
@@ -78,8 +80,18 @@ def test_default_role_provisioning_is_idempotent(db: Session) -> None:
     db.commit()
     second = create_default_roles_for_organization(db, organization.id)
     db.commit()
-    assert {role.name for role in first} == {"owner", "admin", "member", "viewer"}
-    assert {role.name for role in second} == {"owner", "admin", "member", "viewer"}
+    assert {role.name for role in first} == {
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+    }
+    assert {role.name for role in second} == {
+        "owner",
+        "admin",
+        "member",
+        "viewer",
+    }
     assert db.query(Role).filter_by(organization_id=organization.id).count() == 4
 
 
@@ -90,7 +102,9 @@ def test_owner_can_manage_infrastructure(db: Session) -> None:
     db.flush()
     owner = next(role for role in roles if role.name == "owner")
     _membership(db, organization, user, owner)
-    assert user_has_permission(db, user.id, organization.id, "infrastructure.manage")
+    assert user_has_permission(
+        db, user.id, organization.id, "infrastructure.manage"
+    )
     assert "roles.manage" in list_user_permissions(db, user.id, organization.id)
     require_permission(db, user.id, organization.id, "infrastructure.manage")
 
@@ -102,8 +116,12 @@ def test_viewer_can_read_but_cannot_manage_members(db: Session) -> None:
     db.flush()
     viewer = next(role for role in roles if role.name == "viewer")
     _membership(db, organization, user, viewer)
-    assert user_has_permission(db, user.id, organization.id, "infrastructure.read")
-    assert not user_has_permission(db, user.id, organization.id, "members.manage")
+    assert user_has_permission(
+        db, user.id, organization.id, "infrastructure.read"
+    )
+    assert not user_has_permission(
+        db, user.id, organization.id, "members.manage"
+    )
     with pytest.raises(PermissionDenied):
         require_permission(db, user.id, organization.id, "members.manage")
 
@@ -121,7 +139,9 @@ def test_inactive_or_deleted_user_has_no_permissions(db: Session) -> None:
     user = _user(db, "inactive@example.com")
     roles = create_default_roles_for_organization(db, organization.id)
     db.flush()
-    _membership(db, organization, user, next(r for r in roles if r.name == "owner"))
+    _membership(
+        db, organization, user, next(r for r in roles if r.name == "owner")
+    )
     user.is_active = False
     db.commit()
     assert list_user_permissions(db, user.id, organization.id) == set()
@@ -148,7 +168,13 @@ def test_role_from_another_tenant_cannot_be_assigned(db: Session) -> None:
     user = _user(db, "alice@example.com")
     role_a = _role(db, organization_a, "admin")
     db.commit()
-    db.add(Membership(organization_id=organization_b.id, user_id=user.id, role_id=role_a.id))
+    db.add(
+        Membership(
+            organization_id=organization_b.id,
+            user_id=user.id,
+            role_id=role_a.id,
+        )
+    )
     with pytest.raises(IntegrityError):
         db.commit()
 

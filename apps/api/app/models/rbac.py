@@ -35,9 +35,15 @@ class Role(Base):
 
     __tablename__ = "roles"
     __table_args__ = (
-        UniqueConstraint("organization_id", "name", name="uq_roles_organization_name"),
-        UniqueConstraint("organization_id", "id", name="uq_roles_organization_id_id"),
-        CheckConstraint("length(trim(name)) > 0", name="ck_roles_name_nonempty"),
+        UniqueConstraint(
+            "organization_id", "name", name="uq_roles_organization_name"
+        ),
+        UniqueConstraint(
+            "organization_id", "id", name="uq_roles_organization_id_id"
+        ),
+        CheckConstraint(
+            "length(trim(name)) > 0", name="ck_roles_name_nonempty"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -55,16 +61,24 @@ class Role(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow,
-        onupdate=_utcnow, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+        server_default=func.now(),
     )
 
     permissions: Mapped[list["Permission"]] = relationship(
-        "Permission", secondary="role_permissions", back_populates="roles",
-        lazy="selectin"
+        "Permission",
+        secondary="role_permissions",
+        back_populates="roles",
+        lazy="selectin",
     )
 
 
@@ -81,8 +95,10 @@ class Permission(Base):
     description: Mapped[str] = mapped_column(String(255), nullable=False)
 
     roles: Mapped[list[Role]] = relationship(
-        "Role", secondary="role_permissions", back_populates="permissions",
-        lazy="selectin"
+        "Role",
+        secondary="role_permissions",
+        back_populates="permissions",
+        lazy="selectin",
     )
 
 

@@ -82,7 +82,9 @@ def create_default_roles_for_organization(
         )
         if role is not None:
             if not role.is_system:
-                raise ValueError(f"Role name {name!r} is reserved for a system role")
+                raise ValueError(
+                    f"Role name {name!r} is reserved for a system role"
+                )
             roles.append(role)
             continue
 
@@ -141,7 +143,9 @@ def user_has_permission(
     permission_name: str,
 ) -> bool:
     """Return whether the active tenant membership grants a capability."""
-    return permission_name in list_user_permissions(db, user_id, organization_id)
+    return permission_name in list_user_permissions(
+        db, user_id, organization_id
+    )
 
 
 def require_permission(
@@ -151,5 +155,7 @@ def require_permission(
     permission_name: str,
 ) -> None:
     """Fail closed when the active tenant membership lacks a capability."""
-    if not user_has_permission(db, user_id, organization_id, permission_name):
+    if not user_has_permission(
+        db, user_id, organization_id, permission_name
+    ):
         raise PermissionDenied("Permission denied")
