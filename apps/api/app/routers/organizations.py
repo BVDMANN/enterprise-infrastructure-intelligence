@@ -173,9 +173,7 @@ def list_organization_roles(
     response_model=list[AuditEventResponse],
 )
 def list_organization_audit_events(
-    organization: Organization = Depends(
-        require_organization_permission("audit.read")
-    ),
+    organization: Organization = Depends(require_organization_permission("audit.read")),
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=100),
 ) -> list[AuditEventResponse]:
