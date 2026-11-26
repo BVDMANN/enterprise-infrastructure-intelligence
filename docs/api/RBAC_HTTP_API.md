@@ -10,6 +10,9 @@ désormais limité à `Path=/api/v1` afin que le navigateur l'envoie aux routes
 d'authentification et aux ressources API. Il reste HttpOnly, Secure hors développement
 et SameSite=Lax. Le token brut n'est pas stocké en base ; la session conserve son hash.
 
+Toute future méthode HTTP non sûre (POST/PATCH/PUT/DELETE) doit conserver le contrôle
+Origin exact et exiger le CSRF lié à la session ; les routes de ce lot sont GET uniquement.
+
 ## Routes livrées
 
 | Méthode | Route | Permission |
