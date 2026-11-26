@@ -42,8 +42,8 @@ métriques fiables.
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #135 : 4 images + Compose smoke validés, reste la confirmation locale | IN_REVIEW — CI 7/7 ; validation locale non revendiquée | — (CI validée ; confirmation locale avant intégrations réelles) |
 | P1-02 | Authentification OIDC + sessions + MFA | IN_PROGRESS — sessions serveur et login local présents dans PR #10/#11/#13/#14 ; OIDC/MFA restent à livrer | P1-01 |
-| P1-03 | Organisations, membres, invitations | TESTED — modèles/migration/lectures P1-A1 dans PR #5 ; routes et invitations non livrées | P1-02 |
-| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — PR #17 run #135 7/7, 67 tests API ; backfill PostgreSQL, 9 permissions owner et rejet inter-tenant validés ; guards HTTP/gestion des rôles non livrés | P1-02/P1-03 |
+| P1-03 | Organisations, membres, invitations | IN_REVIEW — modèles/migration P1-A1 PR #5 ; lectures GET organisation/membres/rôles dans PR #18, run #145 7/7 ; invitations et mutations non livrées | P1-02 |
+| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — PR #17 core run #136 7/7 ; PR #18 guards HTTP GET run #145 7/7, 72 tests API ; mutations/gestion des rôles, RLS et audit restent à livrer | P1-02/P1-03 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
 | P1-06 | Infrastructure Manager (inventaire, recherche, filtres, détails) | TODO | P1-04 |
 | P1-07 | Connecteur de simulation (intégré au dashboard) | TODO | P1-06 |
@@ -111,5 +111,5 @@ métriques fiables.
 - PR #14 : actions Node 24 sur P1-A2, run #120 7/7 ; runtime applicatif Node 22 conservé.
 - PR #15 : propagation Node 24 sur P1-A1/documentation, run #127 7/7 ; pip-audit ancien arbre 8 avis uniques, npm audit 7 vulnérabilités, report-only.
 - PR #16 : remédiation Python P1-A1, run #128 7/7 ; 32 tests API, pip-audit propre sur cet arbre. npm audit reste 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only.
-- PR #17 : P1-A3 RBAC core en brouillon ; runs #134/#135 7/7, 67 tests API et smoke PostgreSQL backfill/tenant/downgrade réussis ; endpoints RBAC non intégrés.
+- PR #17 : RBAC core en brouillon, run #136 7/7 ; PR #18 : premières routes GET organisation/membres/rôles avec guards, run #145 7/7, 72 tests API ; aucune mutation ni gestion de rôle.
 - Phase 0 reste ouverte tant que le lot npm et la confirmation Compose sur poste développeur normal ne sont pas traités/documentés.
