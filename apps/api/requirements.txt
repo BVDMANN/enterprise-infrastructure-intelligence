@@ -1,7 +1,8 @@
 # requirements.txt — API EII (dépendances d'exécution uniquement)
 # Les dépendances de développement (pytest, ruff) sont dans
 # requirements-dev.txt et ne doivent PAS être installées dans l'image Docker.
-fastapi==0.115.6
+# FastAPI 0.162.0 sélectionne une version Starlette corrigée compatible.
+fastapi==0.162.0
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.0
