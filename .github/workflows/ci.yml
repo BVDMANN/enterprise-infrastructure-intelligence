@@ -40,8 +40,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - name: Show Ruff formatter diff (diagnostic only)
-        run: ruff format --diff app tests || true
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 

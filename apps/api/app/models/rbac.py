@@ -35,15 +35,9 @@ class Role(Base):
 
     __tablename__ = "roles"
     __table_args__ = (
-        UniqueConstraint(
-            "organization_id", "name", name="uq_roles_organization_name"
-        ),
-        UniqueConstraint(
-            "organization_id", "id", name="uq_roles_organization_id_id"
-        ),
-        CheckConstraint(
-            "length(trim(name)) > 0", name="ck_roles_name_nonempty"
-        ),
+        UniqueConstraint("organization_id", "name", name="uq_roles_organization_name"),
+        UniqueConstraint("organization_id", "id", name="uq_roles_organization_id_id"),
+        CheckConstraint("length(trim(name)) > 0", name="ck_roles_name_nonempty"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
