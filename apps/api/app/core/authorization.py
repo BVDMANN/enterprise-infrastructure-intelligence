@@ -9,8 +9,8 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.session_constants import SESSION_COOKIE
 from app.models.identity import Organization, User
-from app.routers.auth import SESSION_COOKIE
 from app.services.identity import get_organization_for_user
 from app.services.rbac import PermissionDenied, require_permission
 from app.services.sessions import get_active_session
