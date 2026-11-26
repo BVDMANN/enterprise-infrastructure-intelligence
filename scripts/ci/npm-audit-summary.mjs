@@ -61,6 +61,9 @@ export function summarizeNpmAudit(rawOutput, exitCode) {
   if (code === 1 && counts.total === 0) {
     throw new Error("npm audit exited 1 but reported zero vulnerabilities");
   }
+  if (code === 0 && counts.critical + counts.high > 0) {
+    throw new Error("npm audit exited 0 despite high or critical findings at the configured audit level");
+  }
 
   const status = counts.total === 0 ? "CLEAN" : "FINDINGS (report-only)";
   const packageLines = packages.map(
