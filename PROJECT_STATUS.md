@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026, 23:58 CET** (revue GitHub des PR #2 à #12, de l'issue #1 et des runs CI #92, #98 et #104).
+> Dernière mise à jour : **26 novembre 2026, 01:34 CET** (revue GitHub des PR #2 à #13, de l'issue #1 et des runs CI #92, #98, #104, #107 et #114).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
