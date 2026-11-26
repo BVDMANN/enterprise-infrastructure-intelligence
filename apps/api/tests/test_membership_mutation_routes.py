@@ -121,7 +121,6 @@ def _membership_count(engine, organization_id: str, user_id: str) -> int:
         )
 
 
-
 def _add_membership(
     engine,
     *,
