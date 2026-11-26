@@ -25,6 +25,7 @@ const apiUrl = `data:text/javascript;base64,${Buffer.from(transpiled.outputText)
 const {
   ApiError,
   getApiHealth,
+  getCurrentUser,
   getOrganizations,
   getOrganizationMembers,
   getOrganizationRoles,
@@ -98,6 +99,28 @@ test("login sends JSON and returns the CSRF token", async () => {
     await login("r@example.test", "not-a-real-password"),
     payload,
   );
+});
+
+test("current session resolves the user from the server-side cookie", async () => {
+  const user = {
+    id: "u-1",
+    email: "r@example.test",
+    display_name: "R",
+  };
+  stubFetch(
+    () =>
+      new Response(JSON.stringify(user), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    (url, init) => {
+      assert.equal(url, "http://localhost:8000/api/v1/auth/me");
+      assert.equal(init.method, undefined);
+      assert.equal(init.credentials, "include");
+      assert.equal(init.cache, "no-store");
+    },
+  );
+  assert.deepEqual(await getCurrentUser(), user);
 });
 
 test("logout sends the CSRF header and accepts an empty 204 response", async () => {

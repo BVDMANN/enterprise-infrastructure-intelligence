@@ -94,6 +94,10 @@ export function login(email: string, password: string): Promise<LoginResponse> {
   });
 }
 
+export function getCurrentUser(): Promise<ApiUser> {
+  return request<ApiUser>("/api/v1/auth/me");
+}
+
 export function logout(csrfToken: string): Promise<void> {
   return request<void>("/api/v1/auth/logout", {
     method: "POST",
