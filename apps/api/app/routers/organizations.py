@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.core.authorization import get_current_user, require_organization_permission
 from app.db.session import get_db
+from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.rbac import Role
+from app.services.audit import list_audit_events
 from app.services.identity import list_organizations_for_user
 from app.services.rbac import user_has_permission
 
@@ -47,6 +50,20 @@ class RoleResponse(BaseModel):
     description: str | None
     is_system: bool
     permissions: list[str]
+
+
+class AuditEventResponse(BaseModel):
+    """Safe tenant-scoped audit event returned to authorized readers."""
+
+    id: UUID
+    organization_id: UUID
+    actor_user_id: UUID
+    event_type: str
+    target_type: str | None
+    target_id: str | None
+    request_id: str | None
+    details: dict[str, Any]
+    occurred_at: datetime
 
 
 @router.get("", response_model=list[OrganizationResponse])
@@ -149,4 +166,30 @@ def list_organization_roles(
             permissions=sorted(permission.name for permission in role.permissions),
         )
         for role in roles
+    ]
+
+
+@router.get("/{organization_id}/audit-events", response_model=list[AuditEventResponse])
+def list_organization_audit_events(
+    organization: Organization = Depends(
+        require_organization_permission("audit.read")
+    ),
+    db: Session = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[AuditEventResponse]:
+    """List append-only events after session, membership and audit.read checks."""
+    events = list_audit_events(db, organization.id, limit=limit)
+    return [
+        AuditEventResponse(
+            id=item.id,
+            organization_id=item.organization_id,
+            actor_user_id=item.actor_user_id,
+            event_type=item.event_type,
+            target_type=item.target_type,
+            target_id=item.target_id,
+            request_id=item.request_id,
+            details=item.details,
+            occurred_at=item.occurred_at,
+        )
+        for item in events
     ]
