@@ -66,7 +66,7 @@ Tests :
 - impossible de rattacher un membership à une organisation inexistante ;
 - suppression logique et intégrité référentielle.
 
-**État : modèles SQLAlchemy 2, migration `0002_identity` et lectures limitées au membership livrés dans la PR #5 ouverte (non fusionnée).** La PR #5 n'inclut pas de route publique ; les premières lectures HTTP sont ajoutées séparément dans le lot P1-A3.1 (PR #18, en validation CI), sans invitation ni mutation. La PR #17 ajoute la migration 0005 qui remplace le rôle texte par un `role_id` tenant-scoped et valide le backfill PostgreSQL.
+**État : modèles SQLAlchemy 2, migration `0002_identity` et lectures limitées au membership livrés dans la PR #5 ouverte (non fusionnée).** La PR #5 n'inclut pas de route publique ; les premières lectures HTTP sont ajoutées séparément dans le lot P1-A3.1 (PR #18, run #145 7/7, revue indépendante en attente), sans invitation ni mutation. La PR #17 ajoute la migration 0005 qui remplace le rôle texte par un `role_id` tenant-scoped et valide le backfill PostgreSQL.
 
 ### P1-A2 — Sessions et OIDC
 
@@ -195,7 +195,7 @@ Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 va
 
 **Limite explicite :** cette PR livre le modèle, la migration et le service d'autorisation ; aucun endpoint métier ni dépendance FastAPI RBAC n'est encore branché. Les routes devront appeler require_permission dans un lot d'intégration distinct avant que RBAC soit considéré comme appliqué à l'API. Les rôles plateforme globaux sont différés ; les rôles de ce lot sont strictement organisationnels.
 
-Les runs #134 (code/backfill) et #135 (tête documentaire) sont verts 7/7 ; le dernier teste la tête 0a724b6 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.
+Les runs #134 (code/backfill) et #135 (tête documentaire) sont verts 7/7 ; le dernier teste la tête 0a724b6 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; cette PR core seule n'ajoute pas d'endpoint. Les premières lectures HTTP qui consomment `require_permission` sont livrées séparément dans PR #18 (run #145 7/7).
 
 ### P1-A3.1 — enforcement HTTP initial (PR #18, CI 7/7 run #145, revue indépendante en attente)
 
