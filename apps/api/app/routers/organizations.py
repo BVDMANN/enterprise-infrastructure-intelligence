@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 from app.core.authorization import get_current_user, require_organization_permission
 from app.db.session import get_db
-from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.rbac import Role
 from app.services.audit import list_audit_events
