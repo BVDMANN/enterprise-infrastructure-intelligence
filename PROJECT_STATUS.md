@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **26 novembre 2026, 01:34 CET** (revue GitHub des PR #2 à #13, de l'issue #1 et des runs CI #92, #98, #104, #107 et #114).
+> Dernière mise à jour : **26 novembre 2026, 03:24 CET** (revue GitHub des PR #2 à #13, des branches, commentaires/revues et des runs CI #73, #74, #76, #77, #92, #104, #107, #114, #116 et #117).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
@@ -474,3 +474,48 @@ Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:2
 - **Phase 1 :** P1-A2.1 sessions (#10) et P1-A2.2 authentification locale (#11) restent en revue, non fusionnés. La synchronisation Python #13 est testée en CI, mais OIDC et challenge MFA ne sont pas livrés. RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail métier (P1-A5) restent TODO. L'interface #6 reste une démo pour les données métier ; seul le healthcheck est connecté à l'API.
 - **Coordination Ruby :** aucune PR ou aucun commit retourné par la recherche d'auteur `Ruby`, et aucun commentaire/review attribuable à Ruby dans les discussions relues sur les PR #2 à #13. Sans identifiant GitHub confirmé et preuve directe, aucune contribution ne lui est attribuée.
 - Toutes les PR #2 à #13 vérifiées restent ouvertes et non fusionnées. Aucun déploiement, secret réel, changement de permission sensible ni suppression n'a été effectué.
+
+
+## 13. Contrôle de coordination — 26/11/2026, 03:24 CET
+
+### État GitHub et preuves CI
+
+- **PR #2 et #3 :** toujours ouvertes, non fusionnées. Les descriptions et périmètres restent distincts : #2 corrige les fondations Docker/documentation ; #3 porte les validations CI, non-root, Compose et audits.
+- **P1-A0 / PR #4 :** branche `phase1/p1-a0-alembic-foundation`, tête `25091e090267d72fae394c80a21b5c563ea0fdf3`. Run #117 (ID `45730025314`) terminé avec 7/7 jobs réussis : API, Web, Docker images, Compose config, Compose smoke, Gitleaks et audit report-only. PR ouverte, non fusionnée.
+- **P1-A1 / PR #5 :** tête `5a6baea45ed5364eb02da306a65ec25698860b38`, run #73 (ID `45691374393`) réussi. La base PR #4 a avancé à `25091e0` ; la comparaison signalée dans le commentaire de coordination indique 11 commits en avance et 1 en retard, sans chevauchement sur `apps/api/alembic.ini`. La branche #5 n'a pas été modifiée pendant ce contrôle.
+- **Correctif P1-A1 / PR #8 :** run #76 réussi, 32 tests API ; les lectures membership-scoped excluent les utilisateurs inactifs et soft-deleted.
+- **Démonstration UI / PR #6 :** run #74 réussi. Les données métier restent simulées ; seul le healthcheck est relié à l'API.
+- **Actions Node 24 / PR #7 :** run #77 réussi sur la branche dédiée. Cette correction n'est pas dans l'ascendance des branches P1-A2 actuelles.
+- **Sessions / PR #10 :** run #92 réussi.
+- **Authentification locale / PR #11 :** run #104 réussi, 55 tests API. La PR reste draft.
+- **Dépendances Python combinées / PR #13 :** tête `a92ae9f4caac3ff91a5db2bb0b65ff267b9399fa`, run #114 (ID `45727322292`) terminé 7/7. API 55 tests, Ruff, Web lint/typecheck/build, Docker images, Compose config/smoke et Gitleaks réussis. PR draft, non fusionnée.
+- **Documentation / PR #9 :** tête `d12bb552c25fef63ae2ce2b59e624683b7824b95`, run #116 (ID `45729950390`) terminé 7/7. Les runs #115 et #116 sont réussis ; #116 porte la tête actuelle.
+
+### Audits et avertissements toujours visibles
+
+- **Python :** pip-audit ne trouve aucun avis connu sur l'arbre combiné de PR #13. Ce résultat ne s'applique pas rétroactivement à la branche #11 isolée ni aux autres branches non synchronisées.
+- **npm :** le run #114 conserve 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). `npm audit` termine avec exit code 1 ; le job reste report-only et son statut global vert ne signifie pas audit propre.
+- **Actions GitHub :** le run #114 signale Node 20 forcé vers Node 24 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`. Les runs #116/#117 signalent encore `checkout@v4` et `gitleaks-action@v2`. La PR #7 porte la migration Node 24, mais elle n'est pas propagée à ces branches.
+- **Runtime applicatif :** Node 22 reste distinct du runtime des actions GitHub et continue d'être validé par les jobs Web/Docker.
+- Les jobs d'audit sont report-only ; aucun avis npm ni avertissement d'action n'est présenté comme corrigé.
+
+### Phase 1 — limites fonctionnelles
+
+- P1-A0 : fondation Alembic et migration `0001_pg_extensions` testées par le smoke PostgreSQL/Compose.
+- P1-A1 : organisations, utilisateurs, memberships et filtre des comptes inactifs présents dans les PR #5/#8 ; aucune route publique d'administration d'organisation n'est encore livrée.
+- P1-A2 : sessions serveur et authentification locale présentes dans #10/#11 ; OIDC et challenge MFA restent non livrés.
+- P1-A3 RBAC, P1-A4 isolation complète tenant/RLS et P1-A5 audit trail métier restent à construire.
+- PR #6 reste une démo pour les données métier ; les pages ne doivent pas être décrites comme connectées aux API métier.
+
+### Coordination et attribution
+
+- Les recherches de PR avec `author:Ruby` et de commits avec `author:Ruby` n'ont retourné aucun résultat.
+- Les timelines consultées des PR #2 à #13 ne montrent que des commentaires attribués à `BVDMANN` ; aucune revue formelle n'est enregistrée sur ces PR.
+- Aucun travail n'est attribué à Ruby sans preuve vérifiable. Aucune modification concurrente n'a été faite sur la branche P1-A1.
+
+### Prochain lot concret
+
+1. Réconcilier la migration Node 24 de PR #7 avec les branches empilées, en évitant une seconde modification concurrente de `.github/workflows/ci.yml`.
+2. Préparer une remédiation npm contrôlée : vérifier les versions correctives compatibles Next.js 14/React 18 avant tout changement majeur, puis tests lint/typecheck/build et audit complet.
+3. Poursuivre OIDC/MFA avec validation cryptographique et tests négatifs, puis RBAC réellement appliqué côté API.
+4. Garder P1-A4/P1-A5 bloquants avant toute exposition de données métier multi-tenant.
