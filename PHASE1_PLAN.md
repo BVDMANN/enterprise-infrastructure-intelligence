@@ -259,3 +259,26 @@ OIDC/MFA (P1-A2.3), RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail mé
 2. OIDC avec validation issuer/audience/signature/nonce/state/expiration, puis MFA/challenge et tests négatifs.
 3. RBAC côté API avec matrice permissions/rôles et tests positifs/négatifs.
 4. Isolation tenant/RLS et audit trail append-only avant toute exposition de données métier.
+
+
+
+## Contrôle de coordination — 26/11/2026, 04:40 CET
+
+### État prouvé
+
+- P1-A0 : PR #4, run #117 7/7 sur la tête `25091e0`, migration PostgreSQL/Compose testée.
+- P1-A1 : PR #5, run #73 7/7 ; comparaison actuelle des branches P1-A0 → P1-A1 : 11 commits en avance, 1 en retard. Ne pas synchroniser sans relire les fichiers modifiés et la timeline ; PR #8 filtre les comptes inactifs, run #76 7/7 et 32 tests API.
+- P1-A2 : sessions PR #10 run #92 7/7 ; authentification locale PR #11 run #104 7/7 ; dépendances Python combinées PR #13 run #114 7/7 ; actions Node 24 sur la pile P1-A2 PR #14 run #120 7/7. OIDC et challenge MFA restent non implémentés.
+- Le run #120 confirme checkout v7.0.1, setup-node v7.1.0, setup-python v7.1.0 et Gitleaks v3, sans avertissement runtime Node 20. Le log Gitleaks v3 affiche encore DEP0169 (`url.parse()`) ; à suivre sans le masquer.
+- Sur la branche documentaire PR #9, le run #125 a terminé 7/7 sur `81d2295`. Cette branche ancienne affiche encore 16 occurrences pip-audit dans 2 paquets et 7 vulnérabilités npm ; les deux audits sont report-only et npm audit retourne exit code 1. Elle conserve également les avertissements Node 20 des actions v4/v5/v2, DEP0040/DEP0169, pytest-asyncio et Starlette TestClient. Ne pas extrapoler son état de dépendances à l'arbre #13/#14.
+- Le runtime applicatif Node 22 est distinct du runtime des actions GitHub.
+
+### Critères des prochains lots
+
+1. Remédiation npm sur une branche isolée : examiner le graphe Next.js/React, mettre à jour les dépendances directes/transitives et le lockfile de façon reproductible ; lint, typecheck, tests, build et npm audit sans avis connus. Ne pas lancer `npm audit fix --force` sans migration revue.
+2. OIDC : validation signature JWKS, issuer, audience, expiration, nonce et state ; tests de signature invalide, mauvais issuer/audience, nonce/state rejoués et indisponibilité JWKS.
+3. MFA : challenge effectif pour les comptes concernés, refus fermé si challenge absent/expiré, tests positifs/négatifs ; ne pas déclarer OIDC/MFA terminés sur la seule présence d'un modèle.
+4. RBAC : permissions explicites et enforcement côté API, tests positifs/négatifs par rôle et tenant.
+5. Isolation : contexte tenant dérivé de la session, tests d'accès inter-organisation et politique RLS si retenue.
+6. Audit trail : écriture append-only, auteur/tenant/horodatage corrélés, interdiction de modification par les rôles applicatifs.
+7. Frontend : remplacer les données simulées par les API existantes écran par écran ; conserver une indication visible DEMO pour les éléments non connectés.

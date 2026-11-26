@@ -171,3 +171,25 @@ Le run #114 confirme également le build des images Docker, Compose config, smok
 - **Documentation / PR #9 :** run #116 7/7 sur la tête `d12bb55`.
 - **Démo UI / PR #6 :** run #74 7/7 ; données métier encore simulées, healthcheck API réel uniquement.
 - **Prochain lot :** remédiation npm compatible, puis OIDC/MFA ; ne pas ouvrir RBAC tant que l'authentification complète et les contrôles négatifs ne sont pas en place.
+
+
+
+## Contrôle de pilotage — 26/11/2026, 04:40 CET
+
+| Lot | État vérifié | Prochaine acceptation |
+|---|---|---|
+| Phase 0 — Docker/loopback, Node applicatif 22 | Validés par Compose config/smoke sur les branches testées ; ports hôte liés à 127.0.0.1 | Conserver les assertions sur chaque branche empilée |
+| Actions GitHub Node 24 | PR #7 validée ; propagation P1-A2 PR #14 validée 7/7 ; PR #9/#4 restent sur actions anciennes | Propager uniquement par lots coordonnés, puis inspecter chaque log |
+| Audit Python | Propre sur arbre combiné #13/#14 ; 16 occurrences dans 2 paquets sur branche documentaire #9 | Synchroniser les dépendances sécurisées dans les branches concernées sans masquer les audits |
+| Audit npm | 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only | Migration Next.js/React/Zod/PostCSS contrôlée, lockfile reproductible, audit sans avis connus |
+| P1-A0 | PR #4, run #117 7/7 | Revue humaine ; aucune fusion automatique |
+| P1-A1 | PR #5 run #73 7/7 ; 11 commits en avance et 1 en retard sur sa base actuelle ; PR #8 run #76 7/7 (32 tests API) | Réconcilier la base dans un lot séparé, sans modifier les fichiers métier concurrents |
+| P1-A2 sessions/auth locale | PR #10 run #92 7/7 ; PR #11 run #104 7/7 ; PR #13 run #114 7/7 ; PR #14 run #120 7/7 | OIDC/JWKS/nonce/state puis challenge MFA avec tests négatifs |
+| P1-A3 RBAC | Non livré | Matrice rôles/permissions et enforcement API après authentification complète |
+| P1-A4 isolation tenant/RLS | Non livré intégralement | Contexte tenant issu de la session et tests inter-organisation négatifs |
+| P1-A5 audit trail métier | Non livré | Événements append-only et tests d'immutabilité/autorisation |
+| Démo frontend | PR #6 navigable, données métier simulées, healthcheck API réel | Brancher progressivement les API et étiqueter DEMO/INTÉGRÉ/NON IMPLÉMENTÉ |
+
+### Preuve CI de la branche documentaire
+
+Le run #125 (ID `45744077623`) a terminé 7/7 sur la tête précédente `81d2295`. L'audit de cette branche reste report-only : pip-audit 16 occurrences/2 paquets (pytest 8.3.4, Starlette 0.41.3) et npm audit 7 vulnérabilités, exit code 1. Les avertissements Node 20 et les dépréciations Python/Node sont visibles dans les logs. Le commit documentaire suivant doit obtenir son propre run avant d'être déclaré validé.

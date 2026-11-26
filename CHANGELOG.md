@@ -73,3 +73,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - PR #14 créée depuis la tête de PR #13 pour propager uniquement les actions Node 24 dans `.github/workflows/ci.yml` : checkout v7.0.1, setup-node v7.1.0, setup-python v7.1.0, Gitleaks v3. Commit `a27f7efe5d842f1503773597aa692694b70d0a5e`; CI run ID `45743664932` en cours. Node applicatif 22 et les contrôles P1-A2 sont conservés.
 - Commentaires de coordination publiés sur PR #7 et #13. Aucune contribution Ruby vérifiable dans les recherches `author:Ruby` PR/commits.
 - PR #5 non modifiée : 11 commits en avance, 1 en retard sur sa base ; aucun chevauchement de fichier avec le correctif P1-A0.
+
+
+
+### Updated — 2026-11-26 (04:40 CET)
+
+- PR #9, tête précédente `81d2295` : run #125 (ID `45744077623`) terminé 7/7 jobs. Le nouveau commit documentaire de ce contrôle doit être revalidé par son propre run.
+- Audit sur la branche documentaire #9 : pip-audit 16 occurrences dans 2 paquets (pytest 8.3.4, Starlette 0.41.3 ; 8 avis uniques) ; npm audit 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1. Les deux étapes restent report-only.
+- Logs #125 : avertissements runtime Node 20 pour checkout@v4, setup-python@v5, setup-node@v4 et Gitleaks v2 ; DEP0040 (punycode), DEP0169 (url.parse), pytest-asyncio fixture loop scope et Starlette/AnyIO TestClient visibles.
+- PR #14 : commit `a27f7efe5d842f1503773597aa692694b70d0a5e`, run #120 7/7. Actions Node 24 validées sur la pile P1-A2, runtime applicatif Node 22 conservé. Le log Gitleaks v3 garde DEP0169 ; aucun avertissement Node 20 n'est trouvé dans les sept logs.
+- P1-A0 PR #4 run #117 7/7 ; P1-A1 PR #5 run #73 7/7, mais sa branche est 1 commit derrière P1-A0 ; PR #8 run #76 7/7 (32 tests API). P1-A2 sessions #10 run #92, local-auth #11 run #104, dépendances #13 run #114 : 7/7 chacun.
+- OIDC/MFA, RBAC, isolation tenant/RLS complète et audit trail métier restent non livrés. PR #6 reste une démo avec données métier simulées et healthcheck API réel uniquement.
+- La recherche GitHub avec `author:Ruby` ne retourne aucune PR ni commit ; aucune contribution n'est attribuée sans preuve d'identité, de branche ou de SHA.
