@@ -257,3 +257,93 @@ def test_audit_events_http_endpoint_enforces_session_tenant_and_permission(
 
     _login(test_client, "audit-member@example.com")
     assert test_client.get(path).status_code == 403
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "Authorization",
+        "client-secret",
+        "Api_Key",
+        "private_key",
+        "CSRF-Token",
+        "cookieValue",
+        "user_credential",
+        "bearer_token",
+    ],
+)
+def test_audit_service_rejects_normalized_sensitive_detail_keys(client, key) -> None:
+    _test_client, engine = client
+    organization_id, actor_id = _seed_membership(
+        engine,
+        slug="audit-sensitive-keys",
+        email="owner-sensitive@example.com",
+        role_name="owner",
+    )
+
+    with Session(engine) as db:
+        with pytest.raises(ValueError, match="credentials or secrets"):
+            record_audit_event(
+                db,
+                organization_id=UUID(organization_id),
+                actor_user_id=UUID(actor_id),
+                event_type="security.event",
+                details={"nested": {key: "must-not-be-stored"}},
+            )
+
+
+def test_audit_service_rejects_non_string_keys_non_finite_values_and_oversize_details(
+    client,
+) -> None:
+    _test_client, engine = client
+    organization_id, actor_id = _seed_membership(
+        engine,
+        slug="audit-invalid-details",
+        email="owner-invalid-details@example.com",
+        role_name="owner",
+    )
+
+    invalid_details = [
+        ({"nested": {1: "invalid key"}}, "keys must be strings"),
+        ({"ratio": float("nan")}, "JSON serializable"),
+        ({"payload": "x" * (16 * 1024)}, "16 KiB limit"),
+    ]
+    with Session(engine) as db:
+        for details, message in invalid_details:
+            with pytest.raises(ValueError, match=message):
+                record_audit_event(
+                    db,
+                    organization_id=UUID(organization_id),
+                    actor_user_id=UUID(actor_id),
+                    event_type="security.event",
+                    details=details,
+                )
+
+
+def test_audit_service_rejects_naive_timestamps_and_oversized_metadata(client) -> None:
+    _test_client, engine = client
+    organization_id, actor_id = _seed_membership(
+        engine,
+        slug="audit-metadata-limits",
+        email="owner-metadata@example.com",
+        role_name="owner",
+    )
+    base = {
+        "organization_id": UUID(organization_id),
+        "actor_user_id": UUID(actor_id),
+    }
+
+    invalid_events = [
+        ({"event_type": "x" * 101}, "event_type"),
+        ({"event_type": "valid", "target_type": "x" * 101}, "target_type"),
+        ({"event_type": "valid", "target_id": "x" * 256}, "target_id"),
+        ({"event_type": "valid", "request_id": "x" * 129}, "request_id"),
+        (
+            {"event_type": "valid", "occurred_at": datetime(2026, 1, 1)},
+            "timezone-aware",
+        ),
+    ]
+    with Session(engine) as db:
+        for values, message in invalid_events:
+            with pytest.raises(ValueError, match=message):
+                record_audit_event(db, **base, **values)
