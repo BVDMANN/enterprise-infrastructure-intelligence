@@ -35,7 +35,7 @@ Returns HTTP 200 with the membership identifiers and creation timestamp. The mem
 
 `DELETE /api/v1/organizations/{organization_id}/memberships/{membership_id}`
 
-Returns HTTP 204 after the membership is removed and its audit event is committed.
+Returns HTTP 204 after the membership is removed and its audit event is committed. Self-removal returns HTTP 409: the audit schema requires the event actor to remain an active member of the organization, so another authorized owner/admin must remove that membership.
 
 A membership ID belonging to another organization is indistinguishable from a missing membership and returns HTTP 404.
 
