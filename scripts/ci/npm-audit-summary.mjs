@@ -50,8 +50,8 @@ export function summarizeNpmAudit(rawOutput, exitCode) {
     throw new Error("npm audit lists affected packages but reports zero vulnerabilities");
   }
   for (const [name, finding] of packages) {
-    if (!finding || typeof finding !== "object" || typeof finding.severity !== "string") {
-      throw new Error("npm audit report has an invalid finding for package " + name);
+    if (!finding || typeof finding !== "object" || !SEVERITIES.includes(finding.severity)) {
+      throw new Error("npm audit report has an invalid severity for package " + name);
     }
   }
 
