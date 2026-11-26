@@ -18,6 +18,7 @@ from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 
 MAX_DETAILS_BYTES = 16 * 1024
+MAX_DETAILS_DEPTH = 32
 SENSITIVE_DETAIL_KEY_FRAGMENTS = (
     "password",
     "secret",
@@ -37,19 +38,44 @@ def _normalized_key(value: str) -> str:
 
 
 def _contains_sensitive_key(value: Any) -> bool:
-    if isinstance(value, dict):
-        for key, nested in value.items():
-            if not isinstance(key, str):
-                raise ValueError("Audit detail keys must be strings")
-            if any(
-                fragment in _normalized_key(key)
-                for fragment in SENSITIVE_DETAIL_KEY_FRAGMENTS
-            ):
-                return True
-            if _contains_sensitive_key(nested):
-                return True
-    elif isinstance(value, list):
-        return any(_contains_sensitive_key(item) for item in value)
+    """Inspect nested JSON containers iteratively and reject excessive depth."""
+    pending: list[tuple[Any, int]] = [(value, 0)]
+    visited: set[int] = set()
+
+    while pending:
+        current, depth = pending.pop()
+        if not isinstance(current, (dict, list)):
+            continue
+        if depth > MAX_DETAILS_DEPTH:
+            raise ValueError(
+                f"Audit details exceed the {MAX_DETAILS_DEPTH}-level nesting limit"
+            )
+
+        # Repeated references and cycles are bounded here; json.dumps below
+        # remains responsible for rejecting non-JSON circular structures.
+        identity = id(current)
+        if identity in visited:
+            continue
+        visited.add(identity)
+
+        if isinstance(current, dict):
+            for key, nested in current.items():
+                if not isinstance(key, str):
+                    raise ValueError("Audit detail keys must be strings")
+                if any(
+                    fragment in _normalized_key(key)
+                    for fragment in SENSITIVE_DETAIL_KEY_FRAGMENTS
+                ):
+                    return True
+                if isinstance(nested, (dict, list)):
+                    pending.append((nested, depth + 1))
+        else:
+            pending.extend(
+                (nested, depth + 1)
+                for nested in current
+                if isinstance(nested, (dict, list))
+            )
+
     return False
 
 
