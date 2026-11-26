@@ -1,4 +1,4 @@
-""""Local email/password authentication endpoints (P1-A2.2)."""
+"""Local email/password authentication endpoints (P1-A2.2)."""
 
 from datetime import timedelta
 from hashlib import sha256
