@@ -27,6 +27,8 @@ SENSITIVE_DETAIL_KEY_FRAGMENTS = (
     "csrf",
     "apikey",
     "privatekey",
+    "credential",
+    "bearer",
 )
 
 
