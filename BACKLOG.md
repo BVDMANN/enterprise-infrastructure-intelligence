@@ -144,3 +144,16 @@ Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et a
 - **npm :** Next.js (critique), glob et PostCSS (élevées), Zod (élevée), minimatch (modérée). Le correctif automatique proposé impose Next 16.4.6 et Zod 4.6.7 ; migration majeure à planifier avec tests, sans `npm audit fix --force` aveugle.
 - **PR #9 documentation :** run #106 sur la tête `0cfab788`, 7/7 jobs réussis.
 - **PR #11 reste draft et non fusionnée ;** la combinaison des dépendances PR #11/#12 doit être testée avant acceptation.
+
+
+## Actualisation de contrôle — 26/11/2026, 01:34 CET
+
+| Tâche | Statut vérifié |
+|---|---|
+| Dépendances Python combinées avec P1-A2.2 | IN_REVIEW / TESTED — PR #13, tête `a92ae9f`, run #114 : 7/7 jobs réussis ; 55 tests API ; pip-audit sans avis connu ; aucun avertissement Starlette/TestClient dans le job API. |
+| Dépendances npm | TODO / REPORT-ONLY — run #114 : 7 avis (1 modérée, 5 élevées, 1 critique), `npm audit` exit code 1 ; pas de correction revendiquée. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED — PR #7, tête `f5475b3`, run #77 : 7/7 jobs réussis. Les branches non descendantes de cette PR, dont #13, conservent les avertissements Node 20 (`checkout@v4`, `setup-node@v4`, `setup-python@v5`). |
+| P1-A2.3 OIDC / MFA | TODO — aucun provider OIDC ni challenge MFA livré. |
+| P1-A3 RBAC / P1-A4 isolation tenant / P1-A5 audit trail | TODO — enforcement RBAC, contexte tenant/RLS et journal métier append-only non livrés. |
+
+Le run #114 confirme également le build des images Docker, Compose config, smoke et Gitleaks. Les services API/Web/Worker deviennent healthy ; le connecteur de simulation termine avec exit 0. Les ports de l'hôte restent liés à `127.0.0.1`. Le job d'audit est report-only : son succès ne neutralise pas l'échec npm audit.
