@@ -64,3 +64,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - npm audit reste en échec (exit code 1) avec 7 vulnérabilités : 1 modérée, 5 élevées et 1 critique. Le job reste report-only ; aucune correction npm n'est revendiquée.
 - Les logs #114 signalent Node 20 forcé vers Node 24 pour checkout@v4, setup-node@v4 et setup-python@v5 ; les logs #116/#117 signalent checkout@v4 et gitleaks-action@v2. La PR #7 porte la migration Node 24, mais elle n'est pas intégrée à ces branches.
 - OIDC/MFA, RBAC, isolation tenant/RLS et audit trail métier restent non livrés. Les données métier de la PR #6 restent simulées.
+
+
+### Updated — 2026-11-26 (03:36 CET)
+
+- PR #9 : runs #118 et #119 terminés 7/7 sur les commits documentaires #86c5144 et #75d2bfb. Sur cette branche ancienne, `pip-audit` signale encore 16 avis dans 2 paquets et `npm audit` 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), les deux commandes retournant un code non nul sous report-only. Le résultat pip-audit propre de PR #13 concerne un arbre Python plus récent et distinct.
+- Les logs #119 conservent les avertissements Node 20 des actions checkout@v4/setup-node@v4/setup-python@v5 ainsi que des avertissements punycode et pytest/Starlette.
+- PR #14 créée depuis la tête de PR #13 pour propager uniquement les actions Node 24 dans `.github/workflows/ci.yml` : checkout v7.0.1, setup-node v7.1.0, setup-python v7.1.0, Gitleaks v3. Commit `a27f7efe5d842f1503773597aa692694b70d0a5e`; CI run ID `45743664932` en cours. Node applicatif 22 et les contrôles P1-A2 sont conservés.
+- Commentaires de coordination publiés sur PR #7 et #13. Aucune contribution Ruby vérifiable dans les recherches `author:Ruby` PR/commits.
+- PR #5 non modifiée : 11 commits en avance, 1 en retard sur sa base ; aucun chevauchement de fichier avec le correctif P1-A0.
