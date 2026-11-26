@@ -28,7 +28,7 @@ test("high and critical findings are report-only and list affected packages", ()
     "high-package": { severity: "high" },
   };
   const summary = summarizeNpmAudit(report({ counts, vulnerabilities }), 1);
-  assert.match(summary, /FINDINGS \(report-only\)/);
+  assert.ok(summary.includes("FINDINGS (report-only)"));
   assert.match(summary, /critical-package: critical/);
   assert.match(summary, /high-package: high/);
   assert.match(summary, /not evidence that this audit is clean/i);
@@ -123,4 +123,27 @@ test("unknown or missing package severities are malformed audit findings", () =>
     ),
     /invalid severity for package missing-severity/,
   );
+});
+
+test("low and info severities are valid report-only findings below the configured high threshold", () => {
+  for (const severity of ["low", "info"]) {
+    const counts = { ...emptyCounts, total: 1, [severity]: 1 };
+    const vulnerabilities = { ["package-" + severity]: { severity } };
+    const summary = summarizeNpmAudit(report({ counts, vulnerabilities }), 0);
+    assert.ok(summary.includes("FINDINGS (report-only)"));
+    assert.match(summary, new RegExp("package-" + severity + ": " + severity));
+  }
+});
+
+test("non-string package severities are rejected", () => {
+  const counts = { total: 1, critical: 0, high: 1, moderate: 0, low: 0, info: 0 };
+  for (const severity of [null, 1]) {
+    assert.throws(
+      () => summarizeNpmAudit(
+        report({ counts, vulnerabilities: { "invalid-package": { severity } } }),
+        1,
+      ),
+      /invalid severity for package invalid-package/,
+    );
+  }
 });
