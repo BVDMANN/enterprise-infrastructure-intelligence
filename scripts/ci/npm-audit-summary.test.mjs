@@ -106,3 +106,21 @@ test("exit code 0 cannot hide high or critical findings at the configured thresh
     /exited 0 despite high or critical findings/,
   );
 });
+
+test("unknown or missing package severities are malformed audit findings", () => {
+  const counts = { total: 1, critical: 0, high: 1, moderate: 0, low: 0, info: 0 };
+  assert.throws(
+    () => summarizeNpmAudit(
+      report({ counts, vulnerabilities: { "unknown-package": { severity: "blocker" } } }),
+      1,
+    ),
+    /invalid severity for package unknown-package/,
+  );
+  assert.throws(
+    () => summarizeNpmAudit(
+      report({ counts, vulnerabilities: { "missing-severity": {} } }),
+      1,
+    ),
+    /invalid severity for package missing-severity/,
+  );
+});
