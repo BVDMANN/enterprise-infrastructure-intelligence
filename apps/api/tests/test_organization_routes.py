@@ -31,9 +31,7 @@ def client(monkeypatch):
     )
 
     @event.listens_for(engine, "connect")
-    def _enable_foreign_keys(
-        dbapi_connection, _connection_record
-    ):  # noqa: ANN001, ANN202
+    def _enable_foreign_keys(dbapi_connection, _connection_record):  # noqa: ANN001, ANN202
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
@@ -186,8 +184,7 @@ def test_viewer_can_read_organization_but_not_members_or_roles(client) -> None:
     _login(test_client, "viewer@example.com")
 
     assert (
-        test_client.get(f"/api/v1/organizations/{organization_id}").status_code
-        == 200
+        test_client.get(f"/api/v1/organizations/{organization_id}").status_code == 200
     )
     assert (
         test_client.get(f"/api/v1/organizations/{organization_id}/members").status_code
