@@ -320,6 +320,41 @@ def test_audit_service_rejects_non_string_keys_non_finite_values_and_oversize_de
                 )
 
 
+@pytest.mark.parametrize(("depth", "accepted"), [(32, True), (33, False)])
+def test_audit_service_enforces_details_nesting_depth(client, depth, accepted) -> None:
+    _test_client, engine = client
+    organization_id, actor_id = _seed_membership(
+        engine,
+        slug=f"audit-depth-{depth}",
+        email=f"owner-depth-{depth}@example.com",
+        role_name="owner",
+    )
+    details = {"leaf": "value"}
+    for _ in range(depth):
+        details = {"nested": details}
+
+    with Session(engine) as db:
+        if accepted:
+            event = record_audit_event(
+                db,
+                organization_id=UUID(organization_id),
+                actor_user_id=UUID(actor_id),
+                event_type="security.event",
+                details=details,
+            )
+            db.commit()
+            assert event.details == details
+        else:
+            with pytest.raises(ValueError, match="32-level nesting limit"):
+                record_audit_event(
+                    db,
+                    organization_id=UUID(organization_id),
+                    actor_user_id=UUID(actor_id),
+                    event_type="security.event",
+                    details=details,
+                )
+
+
 def test_audit_service_rejects_naive_timestamps_and_oversized_metadata(client) -> None:
     _test_client, engine = client
     organization_id, actor_id = _seed_membership(
