@@ -2,21 +2,21 @@
 
 ## Delivered in this slice
 
-- PostgreSQL migration \`0006_audit_events\` creates tenant-attributed audit events.
+- PostgreSQL migration `0006_audit_events` creates tenant-attributed audit events.
 - Every event identifies an organization and an actor who has a membership in that same organization. A composite foreign key preserves this relationship.
 - Event type, optional target, request ID, JSON details and UTC occurrence time are stored.
-- PostgreSQL triggers reject \`UPDATE\`, \`DELETE\` and \`TRUNCATE\` on the event table.
+- PostgreSQL triggers reject `UPDATE`, `DELETE` and `TRUNCATE` on the event table.
 - The migration refuses to downgrade while audit history exists; it does not silently discard records.
 - The internal writer validates the active actor membership, rejects credential-like detail keys, requires a JSON object and caps details at 16 KiB. It flushes but never commits; the caller owns the transaction.
-- The read endpoint is protected by the existing organization-scoped \`audit.read\` permission.
+- The read endpoint is protected by the existing organization-scoped `audit.read` permission.
 
 ## API
 
-\`GET /api/v1/organizations/{organization_id}/audit-events?limit=50\`
+`GET /api/v1/organizations/{organization_id}/audit-events?limit=50`
 
 - Requires an active server session and membership in the requested organization.
-- Requires \`audit.read\`; a non-member receives 404 and a member without permission receives 403.
-- Returns newest events first. \`limit\` is between 1 and 100.
+- Requires `audit.read`; a non-member receives 404 and a member without permission receives 403.
+- Returns newest events first. `limit` is between 1 and 100.
 - The response contains event metadata only; it never returns passwords, session tokens, CSRF tokens, cookies or authorization headers.
 
 ## Important implementation boundary
