@@ -196,3 +196,21 @@ Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 va
 **Limite explicite :** cette PR livre le modèle, la migration et le service d'autorisation ; aucun endpoint métier ni dépendance FastAPI RBAC n'est encore branché. Les routes devront appeler require_permission dans un lot d'intégration distinct avant que RBAC soit considéré comme appliqué à l'API. Les rôles plateforme globaux sont différés ; les rôles de ce lot sont strictement organisationnels.
 
 Les runs #134 (code/backfill) et #135 (tête documentaire) sont verts 7/7 ; le dernier teste la tête 0a724b6 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.
+
+### P1-A3.1 — enforcement HTTP initial (branche `phase1/p1-a3-rbac-http-api`)
+
+Le lot enfant ajoute une dépendance de session active et les premières routes GET
+organisation/membres/rôles. Chaque route vérifie le membership de l'utilisateur et la
+permission correspondante côté serveur ; un tenant étranger retourne 404 et un membre
+sans permission retourne 403. La liste des organisations filtre également sur
+`organization.read`.
+
+Le cookie de session est étendu à `Path=/api/v1` (et supprimé avec le même chemin),
+car `Path=/api/v1/auth` empêchait le navigateur de transmettre la session aux routes
+métier. Les attributs HttpOnly, Secure hors développement, SameSite=Lax, le contrôle
+Origin et le CSRF logout sont conservés.
+
+Acceptation attendue : tests HTTP login→organisations, 401 sans session, 404 inter-tenant,
+403 par permission, lecture owner, refus viewer, liste membres sans comptes inactifs,
+Ruff, tests API, quatre images Docker, non-root, Compose config/smoke et Gitleaks.
+Aucune mutation, invitation, gestion de rôle, OIDC/MFA, RLS ou audit trail n'est incluse.
