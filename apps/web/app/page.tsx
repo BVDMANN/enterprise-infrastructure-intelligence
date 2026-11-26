@@ -1,92 +1,281 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  RefreshCw,
+  Server,
+  Users,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { PageHeading } from "@/components/page-heading";
 import { getApiHealth } from "@/lib/api";
+import {
+  demoAssets,
+  demoEvents,
+  demoNotice,
+  demoOrganizations,
+  demoUsers,
+} from "@/lib/demo-data";
 
-/**
- * Dashboard skeleton (PHASE 0).
- *
- * Real states only: loading / error / connected-but-empty.
- * No fake infrastructure data is ever displayed: until a connector is
- * registered (PHASE 1), the dashboard shows an explicit empty state.
- */
 export default function DashboardPage() {
   const {
     data: health,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useQuery({
     queryKey: ["api-health"],
     queryFn: getApiHealth,
     retry: false,
+    refetchInterval: 30_000,
   });
 
+  const metrics = [
+    {
+      label: "Organisations",
+      value: demoOrganizations.length.toString().padStart(2, "0"),
+      detail: "Espaces de démonstration",
+      href: "/organisations",
+      icon: Building2,
+    },
+    {
+      label: "Utilisateurs",
+      value: demoUsers.length.toString().padStart(2, "0"),
+      detail: "Profils fictifs",
+      href: "/users",
+      icon: Users,
+    },
+    {
+      label: "Ressources",
+      value: demoAssets.length.toString().padStart(2, "0"),
+      detail: "Inventaire simulé",
+      href: "/infrastructure",
+      icon: Server,
+    },
+    {
+      label: "Alertes",
+      value: demoEvents
+        .filter((event) => event.level === "Avertissement" || event.level === "Critique")
+        .length.toString()
+        .padStart(2, "0"),
+      detail: "Événements simulés",
+      href: "/audit",
+      icon: AlertTriangle,
+    },
+  ];
+
+  const apiLabel = isLoading
+    ? "Vérification…"
+    : isError
+      ? "API indisponible"
+      : health?.status === "ok"
+        ? "API opérationnelle"
+        : `API : ${health?.status ?? "état inconnu"}`;
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Enterprise Infrastructure Intelligence
-        </h1>
-        <p className="mt-2 text-slate-400">
-          Central dashboard — PHASE 0 skeleton. No infrastructure is
-          connected yet.
-        </p>
-      </header>
+    <AppShell>
+      <PageHeading
+        eyebrow="Vue d'ensemble"
+        title="Centre de pilotage"
+        description="Une vue centralisée des organisations, des accès et de l'état des infrastructures."
+      />
 
-      {isLoading && (
-        <section
-          aria-busy="true"
-          className="rounded-lg border border-slate-700 bg-slate-900 p-6"
-        >
-          <p>Loading API status…</p>
-        </section>
-      )}
-
-      {isError && (
-        <section
-          role="alert"
-          className="rounded-lg border border-red-800 bg-red-950 p-6"
-        >
-          <h2 className="text-lg font-medium text-red-200">
-            API unreachable
-          </h2>
-          <p className="mt-1 text-sm text-red-300">
-            The Control Plane API did not answer. Start it with{" "}
-            <code className="rounded bg-red-900 px-1">docker compose up</code>{" "}
-            and check that http://localhost:8000/health answers.
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-amber-900">
+            Démonstration produit
           </p>
+          <p className="mt-0.5 text-xs leading-5 text-amber-800">
+            {demoNotice}
+          </p>
+        </div>
+        <span className="rounded-full border border-amber-300 bg-white/70 px-3 py-1 text-[10px] font-bold tracking-[0.12em] text-amber-800">
+          DONNÉES SIMULÉES
+        </span>
+      </div>
+
+      <section aria-label="Indicateurs de démonstration" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map(({ label, value, detail, href, icon: Icon }) => (
+          <Link
+            key={label}
+            href={href}
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">{label}</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-accent">
+                <Icon aria-hidden="true" className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="mt-4 flex items-end justify-between">
+              <div>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-950">
+                  {value}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">{detail}</p>
+              </div>
+              <ArrowUpRight
+                aria-hidden="true"
+                className="h-4 w-4 text-slate-300 transition group-hover:text-accent"
+              />
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.35fr_1fr]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="font-semibold text-slate-900">État des ressources</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Inventaire simulé · aperçu de supervision
+              </p>
+            </div>
+            <Link
+              href="/infrastructure"
+              className="text-xs font-semibold text-accent hover:text-accent-dark"
+            >
+              Voir tout
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {demoAssets.slice(0, 3).map((asset) => (
+              <div key={asset.name} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                    <Server aria-hidden="true" className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {asset.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">
+                      {asset.kind} · {asset.location}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    asset.status === "Opérationnel"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : asset.status === "À surveiller"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {asset.status}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3 text-xs text-slate-400">
+            <Activity aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
+            Les états et métriques ci-dessus ne proviennent pas d&apos;équipements réels.
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="font-semibold text-slate-900">Événements récents</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Journal de démonstration
+              </p>
+            </div>
+            <Link
+              href="/audit"
+              className="text-xs font-semibold text-accent hover:text-accent-dark"
+            >
+              Consulter
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {demoEvents.slice(0, 3).map((event) => (
+              <div key={event.time} className="flex gap-3 px-5 py-4">
+                <span
+                  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                    event.level === "Critique"
+                      ? "bg-rose-50 text-rose-600"
+                      : event.level === "Avertissement"
+                        ? "bg-amber-50 text-amber-600"
+                        : "bg-blue-50 text-blue-600"
+                  }`}
+                >
+                  {event.level === "Information" ? (
+                    <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                  ) : (
+                    <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800">{event.title}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    {event.detail}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {event.date} · {event.time}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                isError ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
+              {isError ? (
+                <WifiOff aria-hidden="true" className="h-5 w-5" />
+              ) : (
+                <Wifi aria-hidden="true" className="h-5 w-5" />
+              )}
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-900">État du Control Plane</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {apiLabel}
+                {health?.api_version ? ` · Version ${health.api_version}` : ""}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Seul cet indicateur interroge actuellement l&apos;API réelle.
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-4 rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark"
+            disabled={isFetching}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Retry
+            <RefreshCw
+              aria-hidden="true"
+              className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+            />
+            Actualiser
           </button>
-        </section>
-      )}
-
-      {health && (
-        <section className="space-y-6">
-          <div className="rounded-lg border border-emerald-800 bg-emerald-950 p-6">
-            <h2 className="text-lg font-medium text-emerald-200">
-              API connected
-            </h2>
-            <p className="mt-1 text-sm text-emerald-300">
-              Status: {health.status} · API version:{" "}
-              {health.api_version ?? "unknown"}
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
-            <h2 className="text-lg font-medium">No infrastructure connected</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Add a connector (simulation, Proxmox or Debian) to start
-              synchronizing resources. Connectors arrive in PHASE 1.
-            </p>
-          </div>
-        </section>
-      )}
-    </main>
+        </div>
+        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400">
+          <Clock3 aria-hidden="true" className="h-3.5 w-3.5" />
+          Vérification automatique toutes les 30 secondes
+        </div>
+      </section>
+    </AppShell>
   );
 }
