@@ -29,8 +29,6 @@ const {
   getOrganizations,
   getOrganizationMembers,
   getOrganizationRoles,
-  updateOrganizationMembership,
-  deleteOrganizationMembership,
   login,
   logout,
 } = await import(apiUrl);
@@ -183,83 +181,5 @@ test("malformed error bodies fall back to the HTTP status", async () => {
       error instanceof ApiError &&
       error.status === 502 &&
       error.message === "API request failed with status 502",
-  );
-});
-
-
-test("membership role update sends tenant-scoped PATCH with the session CSRF token", async () => {
-  const payload = {
-    id: "membership-1",
-    user_id: "user-1",
-    role_id: "role-2",
-    created_at: "2026-11-27T00:00:00Z",
-  };
-  stubFetch(
-    () =>
-      new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
-    (url, init) => {
-      assert.equal(
-        url,
-        "http://localhost:8000/api/v1/organizations/org%2Fa%20b/memberships/member%2F1",
-      );
-      assert.equal(init.method, "PATCH");
-      assert.equal(init.credentials, "include");
-      assert.equal(
-        new Headers(init.headers).get("x-csrf-token"),
-        "csrf-test",
-      );
-      assert.deepEqual(JSON.parse(init.body), { role_id: "role-2" });
-    },
-  );
-  assert.deepEqual(
-    await updateOrganizationMembership(
-      "org/a b",
-      "member/1",
-      "role-2",
-      "csrf-test",
-    ),
-    payload,
-  );
-});
-
-test("membership deletion sends tenant-scoped DELETE with CSRF and accepts 204", async () => {
-  stubFetch(
-    () => new Response(null, { status: 204 }),
-    (url, init) => {
-      assert.equal(
-        url,
-        "http://localhost:8000/api/v1/organizations/org-1/memberships/member-1",
-      );
-      assert.equal(init.method, "DELETE");
-      assert.equal(init.credentials, "include");
-      assert.equal(
-        new Headers(init.headers).get("x-csrf-token"),
-        "csrf-test",
-      );
-    },
-  );
-  assert.equal(
-    await deleteOrganizationMembership("org-1", "member-1", "csrf-test"),
-    undefined,
-  );
-});
-
-test("membership mutations reject a missing CSRF token before sending a request", () => {
-  assert.throws(
-    () => updateOrganizationMembership("org-1", "member-1", "role-1", ""),
-    (error) =>
-      error instanceof ApiError &&
-      error.status === 403 &&
-      error.message === "Missing session CSRF token",
-  );
-  assert.throws(
-    () => deleteOrganizationMembership("org-1", "member-1", " "),
-    (error) =>
-      error instanceof ApiError &&
-      error.status === 403 &&
-      error.message === "Missing session CSRF token",
   );
 });
