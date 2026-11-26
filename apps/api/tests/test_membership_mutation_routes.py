@@ -202,10 +202,9 @@ def test_owner_adds_existing_member_and_audit_event_atomically(client) -> None:
 
     listed = test_client.get(f"/api/v1/organizations/{organization_id}/members")
     assert listed.status_code == 200
-    assert {item["user_id"] for item in listed.json()} == {
-        str(seeded["owner_id"]),
-        target_id,
-    }
+    members_by_user = {item["user_id"]: item for item in listed.json()}
+    assert set(members_by_user) == {str(seeded["owner_id"]), target_id}
+    assert members_by_user[target_id]["membership_id"] == payload["id"]
 
 
 def test_membership_mutation_requires_owner_permission_and_session_csrf(client) -> None:
