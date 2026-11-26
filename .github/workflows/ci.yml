@@ -211,12 +211,100 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
-      - name: Audit Python dependencies
-        continue-on-error: true
+      - name: Audit Python dependencies (report-only)
+        shell: bash
         run: |
-          pip install pip-audit
-          pip-audit -r apps/api/requirements.txt -r apps/api/requirements-dev.txt -r services/worker/requirements.txt -r services/connector/requirements.txt
-      - name: Audit Node dependencies
-        continue-on-error: true
+          set +e
+          python -m pip install pip-audit
+          install_status=$?
+          if [ "$install_status" -ne 0 ]; then
+            {
+              echo "### Python dependency audit — ERROR"
+              echo "pip-audit installation failed (exit code $install_status). This is a tooling error, not a clean audit."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$install_status"
+          fi
+
+          pip-audit -r apps/api/requirements.txt -r apps/api/requirements-dev.txt -r services/worker/requirements.txt -r services/connector/requirements.txt > /tmp/pip-audit.txt 2>&1
+          audit_status=$?
+          cat /tmp/pip-audit.txt
+          if [ "$audit_status" -eq 0 ]; then
+            {
+              echo "### Python dependency audit — CLEAN"
+              echo "pip-audit completed with exit code 0; no known vulnerabilities were reported."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$audit_status" -eq 1 ]; then
+            {
+              echo "### Python dependency audit — FINDINGS (report-only)"
+              echo "pip-audit returned exit code 1. Findings remain unresolved; see the full step log. The CI job is not evidence that this audit is clean."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Python dependency audit — ERROR"
+              echo "pip-audit failed with exit code $audit_status. This is a tooling/runtime error, not a report-only vulnerability result."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$audit_status"
+          fi
+
+      - name: Audit Node dependencies (report-only)
+        shell: bash
         working-directory: apps/web
-        run: npm audit --audit-level=high
+        run: |
+          set +e
+          npm audit --audit-level=high --json > /tmp/npm-audit.json 2>&1
+          audit_status=$?
+          cat /tmp/npm-audit.json
+          if [ "$audit_status" -gt 1 ]; then
+            {
+              echo "### Node dependency audit — ERROR"
+              echo "npm audit failed with exit code $audit_status. This is a tooling/runtime error, not a clean audit."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$audit_status"
+          fi
+
+          AUDIT_EXIT_CODE="$audit_status" node - <<'NODE'
+          const fs = require("node:fs");
+
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync("/tmp/npm-audit.json", "utf8"));
+          } catch (error) {
+            fs.appendFileSync(
+              process.env.GITHUB_STEP_SUMMARY,
+              "### Node dependency audit — ERROR\nThe npm audit output was not valid JSON; inspect the step log.\n",
+            );
+            console.error("Could not parse npm audit JSON:", error);
+            process.exit(2);
+          }
+
+          const counts = report.metadata?.vulnerabilities;
+          if (!counts || !Number.isInteger(counts.total)) {
+            fs.appendFileSync(
+              process.env.GITHUB_STEP_SUMMARY,
+              "### Node dependency audit — ERROR\nThe npm audit report did not contain vulnerability metadata; inspect the step log.\n",
+            );
+            process.exit(2);
+          }
+
+          const names = Object.entries(report.vulnerabilities ?? {}).map(
+            ([name, item]) => `- ${name}: ${item.severity}`,
+          );
+          const summary = [
+            counts.total === 0
+              ? "### Node dependency audit — CLEAN"
+              : "### Node dependency audit — FINDINGS (report-only)",
+            `npm audit exit code: ${process.env.AUDIT_EXIT_CODE}`,
+            `Total: ${counts.total}; critical: ${counts.critical}; high: ${counts.high}; moderate: ${counts.moderate}; low: ${counts.low}; info: ${counts.info}`,
+            ...(names.length ? names : ["No affected package names were returned."]),
+            counts.total === 0
+              ? "No known vulnerabilities were reported."
+              : "Findings remain unresolved. The CI job is not evidence that this audit is clean.",
+            "",
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          console.log(summary);
+          if (Number(process.env.AUDIT_EXIT_CODE) === 1 && counts.total === 0) {
+            console.error("npm audit returned exit code 1 without vulnerability metadata.");
+            process.exit(2);
+          }
+          NODE
