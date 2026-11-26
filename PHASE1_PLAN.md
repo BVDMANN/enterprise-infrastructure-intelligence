@@ -214,3 +214,20 @@ La PR #12 (`phase0/python-security-remediation`) met à niveau FastAPI/pytest/py
 La PR #6 fournit une interface de démonstration navigable, mais ses données métier restent simulées ; seul le healthcheck appelle l'API réelle. Les endpoints métier et l'authentification ne sont pas encore intégrés à l'interface. La PR #7 traite séparément les actions GitHub Node 24 (run #77 : 7/7 jobs réussis).
 
 Aucune fusion, aucun déploiement et aucun secret réel sans accord explicite.
+
+
+## Mise à jour de validation — 26/11/2026, 01:34 CET
+
+### Synchronisation des dépendances de P1-A2.2
+
+La PR #13 (`phase1/p1-a2-python-dependency-sync`, tête `a92ae9f4caac3ff91a5db2bb0b65ff267b9399fa`) est empilée sur la PR #11 et ne modifie que les trois fichiers de dépendances/tests. Elle conserve Argon2id et intègre FastAPI 0.162.0, pytest 9.0.3, pytest-asyncio 1.4.1 et httpx2 2.16.2.
+
+Run #114 (ID `45727322292`) : **7/7 jobs réussis** ; API 55 tests et Ruff OK ; Web lint/typecheck/build OK ; Docker images build, Compose config et smoke OK ; services API/Web/Worker healthy ; connecteur de simulation exit 0 ; Gitleaks OK. Le smoke confirme les ports loopback.
+
+`pip-audit` ne trouve aucun avis connu sur cet arbre Python combiné. En revanche, `npm audit` échoue toujours avec 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) et exit code 1 ; le job reste explicitement report-only.
+
+### Actions CI et dépendances non résolues
+
+La PR #7 (tête `f5475b3`, run #77 / ID `45703042902`) valide 7/7 jobs avec les actions Node 24. La PR #13 n'en descend pas : son run #114 avertit encore sur `checkout@v4`, `setup-node@v4` et `setup-python@v5`. Ne pas déclarer les avertissements runtime résolus globalement avant propagation/revalidation.
+
+OIDC/MFA (P1-A2.3), RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail métier (P1-A5) restent non livrés. La PR #6 reste une démo pour les données métier ; seul le healthcheck est relié à l'API.
