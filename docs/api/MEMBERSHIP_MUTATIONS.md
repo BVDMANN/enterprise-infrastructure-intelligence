@@ -15,7 +15,7 @@ Request:
 }
 ```
 
-Returns HTTP 201 with the membership UUID, user UUID, role UUID and creation timestamp.
+Returns HTTP 201 with the membership UUID, user UUID, role UUID and creation timestamp. The existing `GET /api/v1/organizations/{organization_id}/members` response also exposes `membership_id`, so authorized clients can address a specific membership without guessing or reusing a user ID.
 
 ## Change a membership role
 
