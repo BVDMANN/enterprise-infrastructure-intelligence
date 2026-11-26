@@ -102,7 +102,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         httponly=True,
         secure=settings.api_env != "development",
         samesite="lax",
-        path="/api/v1/auth",
+        path="/api/v1",
     )
 
 
@@ -170,7 +170,7 @@ def logout(
     db.commit()
     response.delete_cookie(
         key=SESSION_COOKIE,
-        path="/api/v1/auth",
+        path="/api/v1",
         secure=settings.api_env != "development",
         httponly=True,
         samesite="lax",
