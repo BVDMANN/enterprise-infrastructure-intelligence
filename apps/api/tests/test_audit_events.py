@@ -237,9 +237,12 @@ def test_audit_events_http_endpoint_enforces_session_tenant_and_permission(
     assert response.status_code == 200
     assert response.json()[0]["id"] == str(stored.id)
     assert response.json()[0]["details"] == {"field": "display_name"}
-    assert test_client.get(
-        f"/api/v1/organizations/{organization_b}/audit-events"
-    ).status_code == 404
+    assert (
+        test_client.get(
+            f"/api/v1/organizations/{organization_b}/audit-events"
+        ).status_code
+        == 404
+    )
     assert test_client.get(f"{path}?limit=101").status_code == 422
 
     logout = test_client.post(
