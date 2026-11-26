@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
@@ -17,14 +17,14 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
-import { getApiHealth } from "@/lib/api";
 import {
-  demoAssets,
-  demoEvents,
-  demoNotice,
-  demoOrganizations,
-  demoUsers,
-} from "@/lib/demo-data";
+  ApiError,
+  getApiHealth,
+  getOrganizationMembers,
+  getOrganizations,
+} from "@/lib/api";
+import { countUniqueMembers, formatApiMetric } from "@/lib/dashboard-metrics";
+import { demoAssets, demoEvents } from "@/lib/demo-data";
 
 export default function DashboardPage() {
   const {
@@ -40,20 +40,71 @@ export default function DashboardPage() {
     refetchInterval: 30_000,
   });
 
+  const organizations = useQuery({
+    queryKey: ["organizations"],
+    queryFn: getOrganizations,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const memberQueries = useQueries({
+    queries: (organizations.data ?? []).map((organization) => ({
+      queryKey: ["organization-members", organization.id],
+      queryFn: () => getOrganizationMembers(organization.id),
+      retry: false,
+      staleTime: 30_000,
+    })),
+  });
+
+  const organizationErrorStatus =
+    organizations.error instanceof ApiError ? organizations.error.status : undefined;
+  const organizationMetric = formatApiMetric({
+    loading: organizations.isLoading,
+    errorStatus: organizations.isError ? organizationErrorStatus ?? 0 : undefined,
+    count: organizations.data?.length ?? 0,
+    detail: "Organisations accessibles · API authentifiée",
+  });
+
+  const failedMemberQuery = memberQueries.find((query) => query.isError);
+  const memberQueryError = failedMemberQuery?.error;
+  const memberQueryErrorStatus =
+    memberQueryError instanceof ApiError ? memberQueryError.status : undefined;
+  const memberMetric = formatApiMetric({
+    loading: organizations.isLoading || memberQueries.some((query) => query.isLoading),
+    errorStatus: organizations.isError
+      ? organizationErrorStatus ?? 0
+      : failedMemberQuery
+        ? memberQueryErrorStatus ?? 0
+        : undefined,
+    count: countUniqueMembers(memberQueries.flatMap((query) => query.data ?? [])),
+    detail: "Utilisateurs actifs uniques · API authentifiée",
+  });
+
+  const isDashboardFetching =
+    isFetching || organizations.isFetching || memberQueries.some((query) => query.isFetching);
+
+  const refreshDashboard = async () => {
+    await Promise.all([
+      refetch(),
+      organizations.refetch(),
+      ...memberQueries.map((query) => query.refetch()),
+    ]);
+  };
+
   const metrics = [
     {
-      label: "Organisations",
-      value: demoOrganizations.length.toString().padStart(2, "0"),
-      detail: "Espaces de démonstration",
+      label: "Organisations accessibles",
+      ...organizationMetric,
       href: "/organisations",
       icon: Building2,
+      source: "API",
     },
     {
-      label: "Utilisateurs",
-      value: demoUsers.length.toString().padStart(2, "0"),
-      detail: "Profils fictifs",
+      label: "Utilisateurs actifs",
+      ...memberMetric,
       href: "/users",
       icon: Users,
+      source: "API",
     },
     {
       label: "Ressources",
@@ -61,6 +112,7 @@ export default function DashboardPage() {
       detail: "Inventaire simulé",
       href: "/infrastructure",
       icon: Server,
+      source: "DÉMO",
     },
     {
       label: "Alertes",
@@ -71,6 +123,7 @@ export default function DashboardPage() {
       detail: "Événements simulés",
       href: "/audit",
       icon: AlertTriangle,
+      source: "DÉMO",
     },
   ];
 
@@ -96,26 +149,41 @@ export default function DashboardPage() {
             Démonstration produit
           </p>
           <p className="mt-0.5 text-xs leading-5 text-amber-800">
-            {demoNotice}
+            Organisations et utilisateurs : API authentifiée selon vos permissions.
+            Ressources et événements : exemples fictifs, aucune infrastructure client connectée.
           </p>
         </div>
         <span className="rounded-full border border-amber-300 bg-white/70 px-3 py-1 text-[10px] font-bold tracking-[0.12em] text-amber-800">
-          DONNÉES SIMULÉES
+          API + DÉMO
         </span>
       </div>
 
-      <section aria-label="Indicateurs de démonstration" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(({ label, value, detail, href, icon: Icon }) => (
+      <section
+        aria-label="Indicateurs API et démonstration"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {metrics.map(({ label, value, detail, href, icon: Icon, source }) => (
           <Link
             key={label}
             href={href}
             className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-slate-500">{label}</span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-accent">
-                <Icon aria-hidden="true" className="h-4 w-4" />
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide ${
+                    source === "API"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {source}
+                </span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-accent">
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                </span>
+              </div>
             </div>
             <div className="mt-4 flex items-end justify-between">
               <div>
@@ -254,26 +322,26 @@ export default function DashboardPage() {
                 {health?.api_version ? ` · Version ${health.api_version}` : ""}
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                Seul cet indicateur interroge actuellement l&apos;API réelle.
+                Healthcheck, organisations et membres : API réelle. Ressources et événements : démonstration.
               </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => void refetch()}
-            disabled={isFetching}
+            onClick={() => void refreshDashboard()}
+            disabled={isDashboardFetching}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw
               aria-hidden="true"
-              className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+              className={`h-3.5 w-3.5 ${isDashboardFetching ? "animate-spin" : ""}`}
             />
             Actualiser
           </button>
         </div>
         <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400">
           <Clock3 aria-hidden="true" className="h-3.5 w-3.5" />
-          Vérification automatique toutes les 30 secondes
+          Healthcheck actualisé automatiquement toutes les 30 secondes.
         </div>
       </section>
     </AppShell>
