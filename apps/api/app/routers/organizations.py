@@ -73,10 +73,7 @@ def list_organizations(
     ]
 
 
-@router.get(
-    "/{organization_id}",
-    response_model=OrganizationResponse,
-)
+@router.get("/{organization_id}", response_model=OrganizationResponse)
 def get_organization(
     organization: Organization = Depends(
         require_organization_permission("organization.read")
@@ -92,8 +89,7 @@ def get_organization(
 
 
 @router.get(
-    "/{organization_id}/members",
-    response_model=list[MemberResponse],
+    "/{organization_id}/members", response_model=list[MemberResponse]
 )
 def list_organization_members(
     organization: Organization = Depends(
@@ -137,10 +133,7 @@ def list_organization_members(
     ]
 
 
-@router.get(
-    "/{organization_id}/roles",
-    response_model=list[RoleResponse],
-)
+@router.get("/{organization_id}/roles", response_model=list[RoleResponse])
 def list_organization_roles(
     organization: Organization = Depends(
         require_organization_permission("roles.read")
