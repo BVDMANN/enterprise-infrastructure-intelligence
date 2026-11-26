@@ -88,9 +88,7 @@ def get_organization(
     )
 
 
-@router.get(
-    "/{organization_id}/members", response_model=list[MemberResponse]
-)
+@router.get("/{organization_id}/members", response_model=list[MemberResponse])
 def list_organization_members(
     organization: Organization = Depends(
         require_organization_permission("members.read")
@@ -135,16 +133,12 @@ def list_organization_members(
 
 @router.get("/{organization_id}/roles", response_model=list[RoleResponse])
 def list_organization_roles(
-    organization: Organization = Depends(
-        require_organization_permission("roles.read")
-    ),
+    organization: Organization = Depends(require_organization_permission("roles.read")),
     db: Session = Depends(get_db),
 ) -> list[RoleResponse]:
     """List roles and permissions only within the authorized organization."""
     roles = db.scalars(
-        select(Role)
-        .where(Role.organization_id == organization.id)
-        .order_by(Role.name)
+        select(Role).where(Role.organization_id == organization.id).order_by(Role.name)
     ).all()
     return [
         RoleResponse(
