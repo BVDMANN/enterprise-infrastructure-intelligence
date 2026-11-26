@@ -322,7 +322,6 @@ def create_organization_membership(
     return response
 
 
-
 @router.patch(
     "/{organization_id}/memberships/{membership_id}",
     response_model=MembershipResponse,
