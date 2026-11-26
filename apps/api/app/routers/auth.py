@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.session_constants import SESSION_COOKIE
 from app.db.session import get_db
 from app.models.identity import User
 from app.services.passwords import authenticate_user
@@ -23,7 +24,6 @@ from app.services.sessions import (
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
-SESSION_COOKIE = "eii_session"
 SESSION_TTL = timedelta(hours=8)
 
 
