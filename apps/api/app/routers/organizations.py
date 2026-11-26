@@ -1,4 +1,4 @@
-"""Read-only organization API protected by session and tenant-scoped RBAC."""
+"""Organization API protected by session and tenant-scoped RBAC."""
 
 from __future__ import annotations
 
@@ -6,16 +6,20 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from app.core.authorization import get_current_user, require_organization_permission
+from app.core.authorization import (
+    get_current_user,
+    require_organization_permission,
+    require_session_csrf,
+)
 from app.db.session import get_db
 from app.models.identity import Membership, Organization, User
 from app.models.rbac import Role
-from app.services.audit import list_audit_events
+from app.services.audit import list_audit_events, record_audit_event
 from app.services.identity import list_organizations_for_user
 from app.services.rbac import user_has_permission
 
@@ -39,6 +43,22 @@ class MemberResponse(BaseModel):
     display_name: str
     role: str
     joined_at: datetime
+
+
+class MembershipCreateRequest(BaseModel):
+    """Add an existing active user to an organization with a local role."""
+
+    user_id: UUID
+    role_id: UUID
+
+
+class MembershipResponse(BaseModel):
+    """Safe identifiers and creation time for a new organization membership."""
+
+    id: UUID
+    user_id: UUID
+    role_id: UUID
+    created_at: datetime
 
 
 class RoleResponse(BaseModel):
@@ -145,6 +165,86 @@ def list_organization_members(
         )
         for row in rows
     ]
+
+
+@router.post(
+    "/{organization_id}/memberships",
+    response_model=MembershipResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_organization_membership(
+    payload: MembershipCreateRequest,
+    actor: User = Depends(get_current_user),
+    organization: Organization = Depends(
+        require_organization_permission("members.manage")
+    ),
+    _csrf: None = Depends(require_session_csrf),
+    db: Session = Depends(get_db),
+) -> MembershipResponse:
+    """Add an existing user and append the audit event in the same transaction."""
+    target_user = db.scalar(
+        select(User)
+        .where(User.id == payload.user_id)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active user not found",
+        )
+
+    role = db.scalar(
+        select(Role)
+        .where(Role.id == payload.role_id)
+        .where(Role.organization_id == organization.id)
+    )
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Role not found in organization",
+        )
+
+    existing_membership = db.scalar(
+        select(Membership.id)
+        .where(Membership.organization_id == organization.id)
+        .where(Membership.user_id == target_user.id)
+    )
+    if existing_membership is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already a member of this organization",
+        )
+
+    membership = Membership(
+        organization_id=organization.id,
+        user_id=target_user.id,
+        role_id=role.id,
+    )
+    db.add(membership)
+    db.flush()
+
+    record_audit_event(
+        db,
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="membership.created",
+        target_type="membership",
+        target_id=str(membership.id),
+        details={
+            "target_user_id": str(target_user.id),
+            "role_id": str(role.id),
+            "role_name": role.name,
+        },
+    )
+    response = MembershipResponse(
+        id=membership.id,
+        user_id=membership.user_id,
+        role_id=membership.role_id,
+        created_at=membership.created_at,
+    )
+    db.commit()
+    return response
 
 
 @router.get("/{organization_id}/roles", response_model=list[RoleResponse])
