@@ -1,6 +1,6 @@
 # PHASE1_PLAN.md — Enterprise Infrastructure Intelligence
 
-> Version : 1.0 — 25 novembre 2026
+> Version : 1.1 — 26 novembre 2026
 > Branche de préparation : `audit/phase-0-followup`
 > Statut : plan préparé ; aucun endpoint métier ni accès infrastructure réelle ajouté.
 
@@ -231,3 +231,31 @@ Run #114 (ID `45727322292`) : **7/7 jobs réussis** ; API 55 tests et Ruff OK ; 
 La PR #7 (tête `f5475b3`, run #77 / ID `45703042902`) valide 7/7 jobs avec les actions Node 24. La PR #13 n'en descend pas : son run #114 avertit encore sur `checkout@v4`, `setup-node@v4` et `setup-python@v5`. Ne pas déclarer les avertissements runtime résolus globalement avant propagation/revalidation.
 
 OIDC/MFA (P1-A2.3), RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail métier (P1-A5) restent non livrés. La PR #6 reste une démo pour les données métier ; seul le healthcheck est relié à l'API.
+
+
+## 8. Contrôle de coordination — 26/11/2026, 03:24 CET
+
+### Preuves récentes
+
+- P1-A0 / PR #4 : run #117 (ID `45730025314`) terminé 7/7 sur la tête `25091e0`.
+- P1-A1 / PR #5 : run #73 7/7 ; correctif de lecture des comptes inactifs PR #8 : run #76 7/7, 32 tests API. La tête #5 est 1 commit derrière la tête P1-A0 mise à jour ; aucun chevauchement de fichier n'a été observé, et la branche #5 n'a pas été modifiée.
+- Sessions serveur / PR #10 : run #92 7/7.
+- Authentification locale / PR #11 : run #104 7/7, 55 tests API ; PR toujours en draft.
+- Synchronisation des dépendances Python / PR #13 : run #114 7/7, 55 tests API ; pip-audit sans avis connu sur l'arbre combiné ; PR draft.
+- Documentation / PR #9 : run #116 7/7 sur la tête `d12bb55`.
+
+### Décisions et limites
+
+- La synchronisation Python des PR #11/#12 est réalisée dans la PR #13 ; elle ne doit plus rester dans la liste des travaux à faire.
+- `npm audit` échoue toujours avec exit code 1 et 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). Le job global reste report-only. La résolution proposée automatiquement nécessite des changements majeurs (Next.js 16.4.6 et Zod 4.6.7) ; aucune mise à niveau forcée n'est acceptée sans compatibilité et tests.
+- Les branches de P1-A2 conservent des avertissements Node 20 d'actions GitHub : #13 signale checkout@v4/setup-node@v4/setup-python@v5 ; #4/#9 signalent checkout@v4 et Gitleaks v2. La migration Node 24 de la PR #7 est validée séparément mais pas encore propagée.
+- Node 22 du runtime applicatif reste distinct et validé.
+- OIDC/MFA n'est pas livré. RBAC, contexte tenant/RLS et audit trail métier restent TODO.
+- La PR #6 est une démonstration navigable ; les données métier restent simulées et seul le healthcheck appelle l'API.
+
+### Prochain lot
+
+1. Remédiation npm compatible avec Next.js/React existants, lockfile reproductible, lint, typecheck, build et audit sans avis connus.
+2. OIDC avec validation issuer/audience/signature/nonce/state/expiration, puis MFA/challenge et tests négatifs.
+3. RBAC côté API avec matrice permissions/rôles et tests positifs/négatifs.
+4. Isolation tenant/RLS et audit trail append-only avant toute exposition de données métier.
