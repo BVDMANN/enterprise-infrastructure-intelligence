@@ -88,3 +88,7 @@ The membership write and audit row are flushed and committed in the same SQL tra
 - Role catalogue administration remains a separate `roles.manage` capability.
 - PostgreSQL RLS enforcement under a dedicated non-superuser runtime role remains a separate infrastructure/security task.
 - The UI may expose only actions backed by these API endpoints; demo fixtures must not be represented as persisted memberships.
+
+## Member listing contract
+
+`GET /api/v1/organizations/{organization_id}/members` returns the stable `membership_id` and `role_id` alongside `user_id`, email, display name, role name and join timestamp. Clients must target mutations with `membership_id` and submit the selected role's `role_id`; role names are presentation labels, not identifiers. Both identifiers are scoped by the organization path and the server verifies tenant membership and `members.manage` before any mutation.
