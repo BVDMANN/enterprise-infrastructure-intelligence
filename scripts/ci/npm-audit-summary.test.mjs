@@ -80,3 +80,20 @@ test("nonzero totals without affected package details are rejected", () => {
     /lists no affected packages/,
   );
 });
+
+test("severity counts must add up to the reported total", () => {
+  const counts = { total: 2, critical: 0, high: 1, moderate: 0, low: 0, info: 0 };
+  const vulnerabilities = { "high-package": { severity: "high" } };
+  assert.throws(
+    () => summarizeNpmAudit(report({ counts, vulnerabilities }), 1),
+    /severity counts do not add up/,
+  );
+});
+
+test("zero total cannot be paired with affected package entries", () => {
+  const vulnerabilities = { "unexpected-package": { severity: "high" } };
+  assert.throws(
+    () => summarizeNpmAudit(report({ counts: emptyCounts, vulnerabilities }), 0),
+    /lists affected packages but reports zero/,
+  );
+});
