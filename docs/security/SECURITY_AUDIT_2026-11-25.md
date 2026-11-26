@@ -1,7 +1,7 @@
 # Audit sécurité — Enterprise Infrastructure Intelligence
 
 > **Date :** 25 novembre 2026 — **Périmètre :** PHASE 0, PR #2 (`audit/phase-0`) + PR #3 (`audit/phase-0-followup`), HEAD analysé `15ad9b9` (run CI #54, 19:09 UTC).
-> **Auditeur :** Ruby, suite à l'instruction de travail ChatGPT du 25/11 10h41 (PR #2).
+> **Auteur vérifié du rapport dans Git :** BVDMANN (commit `321dea311a87e222fa8dd00cbb068f70c2e8265d`, committer et auteur BVDMANN). Aucune contribution de Ruby n'est attribuée dans ce rapport : aucune PR, aucun commit ni commentaire Ruby vérifiable n'a été retrouvé dans ce dépôt au contrôle du 26/11/2026.
 > **Méthode :** lecture du code, des Dockerfiles, de Compose, de `.dockerignore` et de la CI ; tests locaux antérieurs ; inspection des logs du run CI #54 sur le commit `15ad9b9` (25/11, 19:09–19:11 UTC).
 > **Audit dépendances :** `pip-audit` et `npm audit --audit-level=high` exécutés en CI. Les deux commandes ont retourné le code 1 en raison de vulnérabilités ; les étapes restent volontairement `continue-on-error: true` et le job est report-only. Un job vert ne signifie donc pas zéro vulnérabilité.
 > **Règle :** aucune affirmation sans preuve ; ce qui n'est pas vérifiable est
