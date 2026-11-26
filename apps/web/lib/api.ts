@@ -29,20 +29,11 @@ export interface Organization {
 }
 
 export interface OrganizationMember {
-  membership_id: string;
   user_id: string;
-  role_id: string;
   email: string;
   display_name: string;
   role: string;
   joined_at: string;
-}
-
-export interface MembershipMutationResponse {
-  id: string;
-  user_id: string;
-  role_id: string;
-  created_at: string;
 }
 
 export interface OrganizationRole {
@@ -131,41 +122,5 @@ export function getOrganizationRoles(
 ): Promise<OrganizationRole[]> {
   return request<OrganizationRole[]>(
     `/api/v1/organizations/${encodeURIComponent(organizationId)}/roles`,
-  );
-}
-
-export function updateOrganizationMembership(
-  organizationId: string,
-  membershipId: string,
-  roleId: string,
-  csrfToken: string,
-): Promise<MembershipMutationResponse> {
-  if (!csrfToken.trim()) {
-    throw new ApiError(403, "Missing session CSRF token");
-  }
-  return request<MembershipMutationResponse>(
-    `/api/v1/organizations/${encodeURIComponent(organizationId)}/memberships/${encodeURIComponent(membershipId)}`,
-    {
-      method: "PATCH",
-      headers: { "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ role_id: roleId }),
-    },
-  );
-}
-
-export function deleteOrganizationMembership(
-  organizationId: string,
-  membershipId: string,
-  csrfToken: string,
-): Promise<void> {
-  if (!csrfToken.trim()) {
-    throw new ApiError(403, "Missing session CSRF token");
-  }
-  return request<void>(
-    `/api/v1/organizations/${encodeURIComponent(organizationId)}/memberships/${encodeURIComponent(membershipId)}`,
-    {
-      method: "DELETE",
-      headers: { "X-CSRF-Token": csrfToken },
-    },
   );
 }
