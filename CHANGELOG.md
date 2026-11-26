@@ -21,7 +21,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - Modèles roles, permissions et role_permissions ; les rôles sont propres à une organisation.
 - Migration 0005_rbac_core qui convertit les rôles texte des memberships en références role_id avec contrainte composite tenant/role et protège le downgrade contre la perte de rôles personnalisés.
 - Service serveur de provisioning des rôles par défaut et de résolution/exigence des permissions.
-- Tests modèles et service positifs/négatifs ; aucun endpoint RBAC métier n'est encore branché.
+- Tests modèles et service positifs/négatifs. PR #17 reste core-only ; les premières routes GET qui consomment `require_permission` sont livrées séparément dans PR #18 (run #145 7/7).
 
 
 ### Added — PHASE 0 (2026-11-24)
