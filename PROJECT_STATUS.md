@@ -403,12 +403,22 @@ fusionner dans `main`). Rapport complet :
 - Migration 0005_rbac_core : reprise des rôles historiques des memberships, ajout d'une FK composite organisation/rôle et matrice de permissions par rôle. Le downgrade refuse de supprimer des rôles personnalisés ou des affectations de permissions modifiées.
 - Service serveur : provisioning des rôles système et résolution des permissions à partir du compte et du membership actifs dans l'organisation demandée.
 - Tests ajoutés : unicité, rôle inter-tenant refusé, utilisateur sans membership, compte inactif/supprimé, organisation supprimée, permission accordée/refusée.
-- **Non livré dans ce lot :** routes HTTP métier et enforcement dans les endpoints ; ces routes devront appeler require_permission. OIDC/MFA, isolation RLS complète et audit trail restent distincts.
+- **Limite de PR #17 :** cette PR core seule n'ajoute pas de routes HTTP. Le lot enfant P1-A3.1/PR #18 branche désormais `require_permission` sur les premières lectures GET organisation/membres/rôles. OIDC/MFA, RLS complète et audit trail restent distincts.
 - Run #134 : 7/7 jobs réussis sur 7e37214 ; 67 tests API, Ruff check/format, Web lint/typecheck/build, 4 images Docker, non-root, Compose config/smoke et Gitleaks.
 - Smoke PostgreSQL : ancien membership owner créé sous 0004, backfill 0005 validé, rôle lié à la même organisation, 9 permissions owner, tentative inter-tenant rejetée par fk_memberships_organization_role, downgrade 0005 restaure owner, fixtures éphémères nettoyées, downgrade base puis nouvel upgrade head réussis.
 - pip-audit : aucun avis connu sur cet arbre ; npm audit : 7 avis (1 modéré, 5 élevés, 1 critique), exit 1 visible et report-only. Gitleaks v3 garde DEP0040/DEP0169 ; aucun avertissement de runtime Node 20.
-- PR #17 reste draft et non fusionnée ; aucun endpoint RBAC métier ne consomme encore require_permission. Aucun test local n'est revendiqué.
+- PR #17 reste draft et non fusionnée. PR #18 branche `require_permission` sur les premières routes GET et reste draft/non fusionnée ; run #145 7/7, 72 tests API. Aucun test local n'est revendiqué.
 
+## 16. P1-A3.1 — premières routes HTTP protégées (26/11/2026, PR #18)
+
+- Branche `phase1/p1-a3-rbac-http-api`, empilée sur PR #17 ; code HEAD validé `c9755828cbeacb88344b585a4c36e1011b025141` (run #145 7/7). HEAD actuel `7472459e794d96fa5707c130e9d8cfd458947427` après six commits documentaires ; 27 commits en avance, 0 en retard, 12 fichiers modifiés.
+- Dépendance de session opaque active et dépendance d'autorisation organisationnelle : le membership est vérifié avant la permission ; non-membre → 404, permission absente → 403.
+- Routes GET réelles : liste organisations (`organization.read`), détail (`organization.read`), membres (`members.read`), rôles (`roles.read`). Les comptes inactifs/supprimés sont exclus des membres.
+- Correction cookie : `eii_session` passe de `Path=/api/v1/auth` à `Path=/api/v1` pour être transmis aux ressources métier ; suppression avec le même chemin. HttpOnly, Secure hors développement, SameSite=Lax, Origin et CSRF logout conservés.
+- Tests : session absente, owner, viewer, rôle sans permission, cross-tenant, comptes inactifs, login-cookie vers API et révocation logout.
+- Run #145 : 7/7 ; API 72 tests + Ruff ; Web ; 4 images/non-root ; Compose config/smoke, loopback, services healthy, migration/backfill RBAC, 9 permissions owner, rejet inter-tenant, downgrade/upgrade ; Gitleaks.
+- pip-audit propre sur cet arbre ; npm audit 7 avis (1 modéré, 5 élevés, 1 critique), exit 1 report-only. DEP0040/DEP0169 restent visibles ; aucun runtime Node 20 observé.
+- Non inclus : mutations/invitations/gestion de rôles, OIDC/MFA, RLS complète, audit trail append-only. Le frontend de démonstration n'est pas encore connecté. PR #18 reste draft, revue indépendante attendue.
 ### Contrôle Phase 0 — preuves du 26/11/2026
 
 - PR #14 run #120 : 7/7, actions Node 24 sur la pile P1-A2, Node applicatif 22 conservé, ports loopback et Compose smoke validés.

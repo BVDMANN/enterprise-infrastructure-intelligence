@@ -1,14 +1,10 @@
-"""Enterprise Infrastructure Intelligence — API entrypoint.
-
-FastAPI application skeleton (PHASE 0). Only health endpoints exist so far;
-business modules arrive in PHASE 1.
-"""
+"""Enterprise Infrastructure Intelligence — API entrypoint."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import auth, health
+from app.routers import auth, health, organizations
 
 app = FastAPI(
     title="Enterprise Infrastructure Intelligence API",
@@ -28,6 +24,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(organizations.router)
 
 
 @app.get("/health", tags=["health"])

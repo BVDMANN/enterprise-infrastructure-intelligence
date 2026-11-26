@@ -83,7 +83,7 @@ def test_login_me_and_logout_round_trip(client: TestClient) -> None:
     cookie = login.headers["set-cookie"].lower()
     assert "httponly" in cookie
     assert "samesite=lax" in cookie
-    assert "path=/api/v1/auth" in cookie
+    assert "path=/api/v1" in cookie
     assert "secure" not in cookie
 
     me = client.get("/api/v1/auth/me")
@@ -95,6 +95,7 @@ def test_login_me_and_logout_round_trip(client: TestClient) -> None:
         headers={"Origin": ORIGIN, "X-CSRF-Token": payload["csrf_token"]},
     )
     assert logout.status_code == 204
+    assert "path=/api/v1" in logout.headers["set-cookie"].lower()
     assert client.get("/api/v1/auth/me").status_code == 401
 
 
