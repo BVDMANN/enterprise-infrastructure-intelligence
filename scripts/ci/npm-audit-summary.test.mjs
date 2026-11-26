@@ -130,7 +130,7 @@ test("low and info severities are valid report-only findings below the configure
     const counts = { ...emptyCounts, total: 1, [severity]: 1 };
     const vulnerabilities = { ["package-" + severity]: { severity } };
     const summary = summarizeNpmAudit(report({ counts, vulnerabilities }), 0);
-    assert.match(summary, /FINDINGS \\(report-only\\)/);
+    assert.ok(summary.includes("FINDINGS (report-only)"));
     assert.match(summary, new RegExp("package-" + severity + ": " + severity));
   }
 });
