@@ -12,38 +12,49 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeading } from "@/components/page-heading";
 import {
   ApiError,
-  deleteOrganizationMembership,
   getCurrentUser,
-  getOrganizationMembers,
   getOrganizationRoles,
   getOrganizations,
-  updateOrganizationMembership,
 } from "@/lib/api";
+import {
+  MembershipApiError,
+  deleteOrganizationMembership,
+  getOrganizationMembers,
+  updateOrganizationMembership,
+} from "@/lib/membership-api";
+
+function errorStatus(error: unknown): number | undefined {
+  if (error instanceof ApiError || error instanceof MembershipApiError) {
+    return error.status;
+  }
+  return undefined;
+}
 
 function AccessError({ error }: { error: unknown }) {
-  if (error instanceof ApiError && error.status === 401) {
+  const status = errorStatus(error);
+  if (status === 401) {
     return <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Session requise. <Link className="font-semibold underline" href="/login">Se connecter</Link>.</p>;
   }
-  if (error instanceof ApiError && error.status === 403) {
+  if (status === 403) {
     return <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Accès refusé : votre membership ne possède pas la permission demandée.</p>;
   }
-  if (error instanceof ApiError && error.status === 404) {
+  if (status === 404) {
     return <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Organisation introuvable ou non accessible avec cette session.</p>;
   }
   return <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Erreur lors de la lecture de l’API. Vérifiez le Control Plane puis réessayez.</p>;
 }
 
 function MutationError({ error }: { error: unknown }) {
-  if (error instanceof ApiError && error.status === 401) {
+  if (error instanceof MembershipApiError && error.status === 401) {
     return <p role="alert" className="text-sm text-rose-700">Session expirée. Reconnectez-vous avant de modifier les memberships.</p>;
   }
-  if (error instanceof ApiError && error.status === 403) {
+  if (error instanceof MembershipApiError && error.status === 403) {
     return <p role="alert" className="text-sm text-rose-700">Action refusée : vérifiez la permission members.manage, l’origine et le jeton CSRF.</p>;
   }
-  if (error instanceof ApiError && error.status === 404) {
+  if (error instanceof MembershipApiError && error.status === 404) {
     return <p role="alert" className="text-sm text-rose-700">Membership ou rôle introuvable dans cette organisation.</p>;
   }
-  if (error instanceof ApiError && error.status === 409) {
+  if (error instanceof MembershipApiError && error.status === 409) {
     return <p role="alert" className="text-sm text-rose-700">{error.message}</p>;
   }
   return <p role="alert" className="text-sm text-rose-700">La mutation a échoué. Vérifiez l’API puis réessayez.</p>;
