@@ -5,7 +5,7 @@
 > `TESTED` · `ACCEPTED` · `DEPLOYED`.
 > Rappel : développé ≠ testé ≠ accepté ≠ déployé ≠ prêt pour la production.
 
-## PHASE 0 — Fondations (terminée, en attente de validation)
+## PHASE 0 — Fondations (implémentée et validée par CI sur des PR ouvertes ; revue humaine et fusion en attente)
 
 | Tâche | Statut |
 |---|---|
@@ -32,7 +32,7 @@
 | Montée FastAPI (starlette ≥ 0.47.2 puis 1.x) — lot dédié avec re-tests | TODO — planifié, pas de patch silencieux |
 | Runtime Node 22 (Docker + CI) | TESTED — run #54 : npm ci/lint/typecheck/build + image Docker Web + Compose smoke réussis sur Node 22 |
 
-## PHASE 1 — MVP fonctionnel (à venir)
+## PHASE 1 — MVP fonctionnel (en cours ; P1-A0 et P1-A1 sont en PR ouvertes)
 
 Critère de sortie : un utilisateur peut connecter un environnement de
 test, synchroniser des ressources, les visualiser et consulter des
@@ -41,7 +41,7 @@ métriques fiables.
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
-| P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
+| P1-02 | Authentification locale + sessions + OIDC/MFA | IN_PROGRESS — PR #10 sessions (run #92 7/7) ; PR #11 login local Argon2id (run #104 : 7/7 jobs, API 55 tests passés). L'audit report-only de #11 signale encore 16 occurrences Python + 7 npm. OIDC provider et challenge MFA non implémentés. | P1-01 |
 | P1-03 | Organisations, membres, invitations | TODO | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
@@ -52,8 +52,8 @@ métriques fiables.
 | P1-10 | Première collecte de métriques (VictoriaMetrics) | TODO | P1-08/P1-09 |
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | TODO | P1-02 |
-| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
-| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | TESTED — lot P1-A1 livré sur `phase1/p1-a1-organisations-utilisateurs` (PR #5, empilée sur PR #4) : migration 0002_identity, 30 tests API passed en local, vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive) | P1-A0 |
+| P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | IN_REVIEW / TESTED — PR #4 ouverte (non-draft), run #67 : 7/7 jobs réussis ; migration/extension/downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
+| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 ouverte, run #73 7/7 jobs réussis ; correctif de sécurité complémentaire PR #8 ouverte, run #76 7/7 jobs réussis, 32 tests API ; aucune route d'identité publique ni authentification n'est encore livrée | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | TODO | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
 | P1-16 | Documentation mise à jour (API, déploiement, opérations) | TODO | P1-15 |
@@ -104,3 +104,92 @@ métriques fiables.
 - Les vulnérabilités Starlette/Pytest et npm restent ouvertes et suivies en report-only ; aucune mise à niveau majeure automatique n'a été appliquée.
 - Runtime des actions GitHub encore averti (checkout@v4/setup-node@v4/setup-python@v5 Node 20 forcé vers Node 24) — lot CI séparé.
 - Phase 1 : voir `PHASE1_PLAN.md`. L'implémentation métier ne démarre pas avant les critères de sécurité et la validation locale P1-01.
+
+
+## Mise à jour de pilotage — 25/11/2026, 23:23 CET
+
+| Lot | Statut actuel | Preuve / limite |
+|---|---|---|
+| Phase 0 — PR #2 à #4 | IN_REVIEW | PR ouvertes, non fusionnées ; #4 run #67 7/7 jobs réussis. Confirmation Compose locale encore attendue. |
+| P1-A0 | IN_REVIEW / TESTED | PR #4, migration `0001_pg_extensions` ; seule `citext` est installée. |
+| P1-A1 | IN_REVIEW | PR #5 (run #73) et correctif ciblé PR #8 (run #76) ; modèles et lectures membership-scoped, sans routes publiques. |
+| P1-A2 — sessions/authentification | IN_PROGRESS | PR #10 sessions run #92 7/7 ; PR #11 auth locale run #104 7/7. OIDC et challenge MFA restent TODO. |
+| P1-A3 — RBAC | TODO | Le rôle reste une chaîne contrôlée par CHECK ; permissions serveur non implémentées. |
+| P1-A4 — isolation multi-tenant | TODO | Les lectures P1-A1 sont limitées par membership ; pas encore de contexte tenant issu d'une session ni de RLS. |
+| P1-A5 — audit trail | TODO | Aucun journal d'audit métier append-only. |
+| Interface de démonstration | IN_REVIEW | PR #6, run #74 ; données métier simulées, healthcheck API réel uniquement. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 7/7 ; aucun avertissement runtime Node 20 dans les 7 logs. |
+| Vulnérabilités pip/npm | TODO / REPORT-ONLY | Run #77 : 16 occurrences Python dans pytest/Starlette et 7 vulnérabilités npm ; aucune correction revendiquée. |
+
+Les PR #2 à #8 sont ouvertes et non fusionnées. Ne pas confondre CI verte et acceptation produit : les lots restent en revue jusqu'à validation humaine.
+
+
+## Actualisation du pilotage — 25/11/2026, 23:58 CET
+
+- **P1-A2.1 sessions serveur :** PR #10 ouverte/non fusionnée, run #92 7/7 jobs réussis.
+- **P1-A2.2 authentification locale :** PR #11 draft ; Argon2id et routes login/me/logout présents ; run #104 terminé 7/7 jobs, API 55 tests passés et 1 avertissement. L'audit report-only signale encore 16 occurrences Python + 7 vulnérabilités npm.
+- **P1-A2.3 OIDC/MFA :** non livré. Aucun fournisseur OIDC, validation issuer/audience/signature/nonce/state ou challenge MFA.
+- **Dépendances Python :** PR #12 ouverte/non fusionnée, run #98 7/7 ; pip-audit propre sur cette branche. Le commit `8b1e157` ajoute `httpx2==2.16.2` ; run #107 terminé 7/7, pip-audit propre et aucun avertissement Starlette/TestClient dans les logs API. La synchronisation avec `argon2-cffi` de PR #11 doit préserver les deux changements.
+- **Dépendances npm :** 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), audit report-only ; aucune correction revendiquée.
+- **Actions GitHub :** PR #7 Node 24, run #77 7/7 ; la migration n'est pas encore présente sur toutes les branches empilées.
+- **P1-A3 RBAC, P1-A4 contexte tenant/RLS et P1-A5 audit trail :** restent à construire.
+- **Démonstration :** PR #6 navigable, mais données métier simulées ; seul le healthcheck API est réel.
+- Toutes les PR #2 à #12 restent ouvertes/non fusionnées à ce contrôle. Aucune contribution n'est attribuée à Ruby sans preuve de compte, commit ou commentaire vérifiable.
+
+
+## Actualisation post-CI — 25/11/2026
+
+- **PR #11 / P1-A2.2 :** run #104 terminé 7/7 jobs ; API 55 tests passés, 1 avertissement. L'audit report-only du même run reste à 16 occurrences Python (Starlette 0.41.3, pytest 8.3.4) et 7 vulnérabilités npm.
+- **PR #12 / dépendances Python :** run #98 7/7, pip-audit propre. Commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 en cours, API vert et avertissement Starlette/TestClient absent des logs API.
+- **npm :** Next.js (critique), glob et PostCSS (élevées), Zod (élevée), minimatch (modérée). Le correctif automatique proposé impose Next 16.4.6 et Zod 4.6.7 ; migration majeure à planifier avec tests, sans `npm audit fix --force` aveugle.
+- **PR #9 documentation :** run #106 sur la tête `0cfab788`, 7/7 jobs réussis.
+- **PR #11 reste draft et non fusionnée ;** la combinaison des dépendances PR #11/#12 doit être testée avant acceptation.
+
+
+## Actualisation de contrôle — 26/11/2026, 01:34 CET
+
+| Tâche | Statut vérifié |
+|---|---|
+| Dépendances Python combinées avec P1-A2.2 | IN_REVIEW / TESTED — PR #13, tête `a92ae9f`, run #114 : 7/7 jobs réussis ; 55 tests API ; pip-audit sans avis connu ; aucun avertissement Starlette/TestClient dans le job API. |
+| Dépendances npm | TODO / REPORT-ONLY — run #114 : 7 avis (1 modérée, 5 élevées, 1 critique), `npm audit` exit code 1 ; pas de correction revendiquée. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED — PR #7, tête `f5475b3`, run #77 : 7/7 jobs réussis. Les branches non descendantes de cette PR, dont #13, conservent les avertissements Node 20 (`checkout@v4`, `setup-node@v4`, `setup-python@v5`). |
+| P1-A2.3 OIDC / MFA | TODO — aucun provider OIDC ni challenge MFA livré. |
+| P1-A3 RBAC / P1-A4 isolation tenant / P1-A5 audit trail | TODO — enforcement RBAC, contexte tenant/RLS et journal métier append-only non livrés. |
+
+Le run #114 confirme également le build des images Docker, Compose config, smoke et Gitleaks. Les services API/Web/Worker deviennent healthy ; le connecteur de simulation termine avec exit 0. Les ports de l'hôte restent liés à `127.0.0.1`. Le job d'audit est report-only : son succès ne neutralise pas l'échec npm audit.
+
+
+## Snapshot de pilotage — 26/11/2026, 03:24 CET
+
+- **P1-A0 / PR #4 :** tête `25091e0`, run #117 terminé 7/7 ; migration PostgreSQL/Compose validée. PR ouverte, non fusionnée.
+- **P1-A1 / PR #5 :** run #73 7/7 ; correctif des comptes inactifs PR #8, run #76 7/7 et 32 tests API. La tête #5 est 1 commit derrière sa base mise à jour par le correctif documentaire P1-A0 ; aucun fichier commun n'est touché et aucune synchronisation n'a été poussée sur #5.
+- **P1-A2.1 sessions / PR #10 :** run #92 7/7.
+- **P1-A2.2 authentification locale / PR #11 :** run #104 7/7, 55 tests API ; PR draft. La branche #11 seule conserve l'ancien arbre de dépendances.
+- **Synchronisation Python / PR #13 :** run #114 7/7, 55 tests API, pip-audit sans avis connu sur l'arbre combiné ; PR draft et non fusionnée.
+- **npm :** run #114, 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), `npm audit` exit code 1 ; audit report-only. Aucune correction npm revendiquée.
+- **Actions Node 24 :** PR #7 run #77 7/7 ; les branches #13, #9 et #4 conservent des avertissements Node 20 dans les logs car elles n'intègrent pas cette migration.
+- **Documentation / PR #9 :** run #116 7/7 sur la tête `d12bb55`.
+- **Démo UI / PR #6 :** run #74 7/7 ; données métier encore simulées, healthcheck API réel uniquement.
+- **Prochain lot :** remédiation npm compatible, puis OIDC/MFA ; ne pas ouvrir RBAC tant que l'authentification complète et les contrôles négatifs ne sont pas en place.
+
+
+
+## Contrôle de pilotage — 26/11/2026, 04:40 CET
+
+| Lot | État vérifié | Prochaine acceptation |
+|---|---|---|
+| Phase 0 — Docker/loopback, Node applicatif 22 | Validés par Compose config/smoke sur les branches testées ; ports hôte liés à 127.0.0.1 | Conserver les assertions sur chaque branche empilée |
+| Actions GitHub Node 24 | PR #7 validée ; propagation P1-A2 PR #14 validée 7/7 ; PR #9/#4 restent sur actions anciennes | Propager uniquement par lots coordonnés, puis inspecter chaque log |
+| Audit Python | Propre sur arbre combiné #13/#14 ; 16 occurrences dans 2 paquets sur branche documentaire #9 | Synchroniser les dépendances sécurisées dans les branches concernées sans masquer les audits |
+| Audit npm | 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only | Migration Next.js/React/Zod/PostCSS contrôlée, lockfile reproductible, audit sans avis connus |
+| P1-A0 | PR #4, run #117 7/7 | Revue humaine ; aucune fusion automatique |
+| P1-A1 | PR #5 run #73 7/7 ; 11 commits en avance et 1 en retard sur sa base actuelle ; PR #8 run #76 7/7 (32 tests API) | Réconcilier la base dans un lot séparé, sans modifier les fichiers métier concurrents |
+| P1-A2 sessions/auth locale | PR #10 run #92 7/7 ; PR #11 run #104 7/7 ; PR #13 run #114 7/7 ; PR #14 run #120 7/7 | OIDC/JWKS/nonce/state puis challenge MFA avec tests négatifs |
+| P1-A3 RBAC | Non livré | Matrice rôles/permissions et enforcement API après authentification complète |
+| P1-A4 isolation tenant/RLS | Non livré intégralement | Contexte tenant issu de la session et tests inter-organisation négatifs |
+| P1-A5 audit trail métier | Non livré | Événements append-only et tests d'immutabilité/autorisation |
+| Démo frontend | PR #6 navigable, données métier simulées, healthcheck API réel | Brancher progressivement les API et étiqueter DEMO/INTÉGRÉ/NON IMPLÉMENTÉ |
+
+### Preuve CI de la branche documentaire
+
+Le run #125 (ID `45744077623`) a terminé 7/7 sur la tête précédente `81d2295`. L'audit de cette branche reste report-only : pip-audit 16 occurrences/2 paquets (pytest 8.3.4, Starlette 0.41.3) et npm audit 7 vulnérabilités, exit code 1. Les avertissements Node 20 et les dépréciations Python/Node sont visibles dans les logs. Le commit documentaire suivant doit obtenir son propre run avant d'être déclaré validé.

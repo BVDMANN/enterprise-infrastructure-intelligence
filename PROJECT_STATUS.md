@@ -1,14 +1,13 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026** (revue sécurité, ports loopback et Node 22 validés par CI run #54).
+> Dernière mise à jour : **26 novembre 2026, 03:24 CET** (revue GitHub des PR #2 à #13, des branches, commentaires/revues et des runs CI #73, #74, #76, #77, #92, #104, #107, #114, #116 et #117).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
 > validations CI manquantes ajoutées (build images + smoke test compose),
 > corrections dans une PR distincte (non fusionnée).
 > Spécification de référence : **MASTER PROMPT V3**.
-> Statut global : **PHASE 0 TERMINÉE — en attente de validation humaine
-> avant PHASE 1.**
+> Statut global : **PHASE 0 en revue dans des PR ouvertes/non fusionnées ; PHASE 1 en cours avec P1-A0, P1-A1 et P1-A2 en PR ouvertes. Aucune acceptation produit ni aucun déploiement.**
 
 ## 1. État initial (audit du repository existant)
 
@@ -396,3 +395,152 @@ fusionner dans `main`). Rapport complet :
 - Aucun endpoint métier, mécanisme d'authentification ou secret réel n'a été ajouté.
 
 **Statut :** lot livré, PR #5 ouverte. Prochain sous-lot : P1-A2 sessions et OIDC.
+
+
+## 12. Revue de pilotage — 25/11/2026, 23:23 CET
+
+Cette section remplace les anciens instantanés de statut des sections précédentes lorsqu'ils divergent des états GitHub ci-dessous. Contrôle effectué sur les PR, branches, commits, commentaires, revues et runs accessibles.
+
+### État des Pull Requests
+
+| PR | Branche | Base | Tête | Validation CI observée | État |
+|---|---|---|---|---|---|
+| #2 | `audit/phase-0` | `main` | `ec7c797` | Dernier état historique décrit dans la PR ; pas de nouvelle preuve de run sur cette tête dans ce contrôle | Ouverte, non fusionnée |
+| #3 | `audit/phase-0-followup` | PR #2 | `b916147` | Run #59 annoncé réussi dans la PR | Ouverte, non fusionnée |
+| #4 | `phase1/p1-a0-alembic-foundation` | PR #3 | `3b13af0` | Run #67 : 7/7 jobs réussis | Ouverte, non fusionnée |
+| #5 | `phase1/p1-a1-organisations-utilisateurs` | PR #4 | `5a6baea` | Run #73 : 7/7 jobs réussis | Ouverte, non fusionnée |
+| #6 | `phase1/demo-ui-shell` | PR #5 | `c054606` | Run #74 : 7/7 jobs réussis | Ouverte, non fusionnée |
+| #7 | `phase1/ci-node24-actions` | PR #5 | `f5475b3` | Run #77 : 7/7 jobs réussis | Ouverte, non fusionnée |
+| #8 | `phase1/p1-a1-active-user-filter` | PR #5 | `65d51bb` | Run #76 : 7/7 jobs réussis | Ouverte, non fusionnée |
+
+Les comparaisons GitHub confirment que les têtes des PR #6, #7 et #8 incluent la tête P1-A1 de la PR #5 : respectivement 18, 3 et 2 commits en avance, sans commit manquant par rapport à cette base. Les huit branches visibles sont `main`, les deux branches `audit/*`, puis les branches P1-A0, P1-A1, correctif utilisateur actif, UI et actions Node 24.
+
+### État produit vérifié
+
+- **P1-A0 :** migration `0001_pg_extensions` présente ; elle installe `citext` uniquement. La PR #4 reste ouverte. Le downgrade conserve volontairement l'extension partagée.
+- **P1-A1 :** modèles organisations/utilisateurs/memberships et migration `0002_identity` présents dans la PR #5. Aucune route HTTP d'identité n'est encore ouverte.
+- **Correctif de lecture P1-A1 :** PR #8 ajoute les filtres `is_active IS TRUE` et `deleted_at IS NULL` dans les deux helpers et deux tests négatifs ; API CI : 32 tests réussis.
+- **P1-A2 :** non implémenté. Le point d'entrée FastAPI expose encore les sondes de santé uniquement ; aucune session, route login/logout ou intégration OIDC réelle n'est revendiquée.
+- **Interface :** PR #6 ajoute les pages Dashboard, Organisations, Utilisateurs, Infrastructure et Audit. Les données métier sont explicitement fictives ; seul le healthcheck du Control Plane appelle l'API réelle.
+- **Actions CI :** PR #7 migre checkout vers v7.0.1, setup-node vers v7.1.0, setup-python vers v7.1.0 et Gitleaks vers v3. Les sept logs du run #77 ne contiennent aucun avertissement « Node.js 20 is deprecated ». Gitleaks émet encore DEP0040 (punycode) et DEP0169 (url.parse).
+- **Branches non migrées :** le run #76 de la PR #8 utilise encore les anciennes actions héritées de sa base P1-A1 ; au moins un log affiche l'avertissement Node 20. La PR #7 reste séparée et non fusionnée.
+
+### Risques et limites
+
+- Audit Python report-only, run #77 : 16 occurrences de vulnérabilités dans 2 paquets — pytest 8.3.4 et Starlette 0.41.3 — correspondant à 8 avis uniques.
+- Audit npm report-only, run #77 : 7 vulnérabilités — 1 modérée, 5 élevées, 1 critique. Les étapes d'audit restent visibles et ne sont pas considérées comme une validation de sécurité.
+- La confirmation de `docker compose up --build` sur un poste développeur normal reste à consigner ; la CI hébergée exécute déjà le build des images et le smoke Compose.
+- Aucun merge, déploiement, ajout de secret ou changement de permission sensible n'a été réalisé.
+
+### Coordination
+
+Au contrôle du 25/11 à 23:58, les PR #2 à #12, l'issue #1, les commentaires/révisions consultés, les branches visibles et les recherches de commits `author:Ruby` / `committer:Ruby` ne fournissent aucune preuve attribuable à Ruby. Les PR visibles sont publiées sous le compte `BVDMANN`, ce qui ne suffit pas à attribuer un travail à Ruby. Aucune contribution ne lui est attribuée sans preuve vérifiable.
+
+
+## 12. Actualisation du pilotage — 25/11/2026, 23:58 CET
+
+Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:23 ; les anciennes observations restent conservées comme historique.
+
+| Lot | Statut vérifié | Preuve et limite |
+|---|---|---|
+| Phase 0 — PR #2 à #4 | IN_REVIEW | PR ouvertes, non fusionnées. La description de #2 est corrigée ; #3 conserve les audits report-only. La confirmation `docker compose up --build` sur le poste développeur reste attendue, même si les smoke tests CI passent. |
+| P1-A0 | IN_REVIEW / TESTED | PR #4, migration `0001_pg_extensions`, run #67 : 7/7 jobs réussis ; cycle PostgreSQL upgrade/downgrade/upgrade vérifié. |
+| P1-A1 | IN_REVIEW / TESTED | PR #5 (run #73) et PR #8 (run #76, 32 tests API) : modèles et lectures membership-scoped. Aucune route HTTP d'organisation ou d'identité n'est livrée par ces lots. |
+| Interface de démonstration | IN_REVIEW / DEMO | PR #6, run #74 : pages Dashboard, Organisations, Utilisateurs, Infrastructure et Audit navigables ; données métier simulées, seul le healthcheck API est réel. |
+| Actions GitHub Node 24 | IN_REVIEW / TESTED | PR #7, run #77 : 7/7 jobs réussis, actions checkout/setup-node/setup-python mises à jour. Les branches non empilées sur #7 peuvent encore afficher les avertissements Node 20. Le runtime applicatif Web Node 22 reste distinct et validé. |
+| P1-A2.1 — sessions serveur | IN_REVIEW / TESTED | PR #10, tête `fff99f4`, run #92 : 7/7 jobs réussis. Sessions opaques, hashées, expirables et révocables ; PR ouverte, non fusionnée. |
+| P1-A2.2 — authentification locale | IN_REVIEW / TESTED | PR #11, draft, tête `acb12af`. Argon2id, login/me/logout, cookies HttpOnly et CSRF présents dans la branche. Run #104 : 7/7 jobs réussis ; API 55 tests passés, 1 avertissement. Le job d'audit reste report-only et signale 16 occurrences Python + 7 vulnérabilités npm. Aucun OIDC provider ni challenge MFA n'est livré. |
+| P1-A2.3 — OIDC / MFA | TODO | Validation issuer/audience/signature/nonce/state et flux MFA à implémenter ; un compte avec MFA activée est refusé au login local, sans second facteur disponible à ce stade. |
+| P1-A3 — RBAC | TODO | `memberships.role` reste une chaîne avec CHECK ; permissions serveur et matrice d'autorisation non implémentées. |
+| P1-A4 — isolation multi-tenant | TODO / SOCLE PARTIEL | Les helpers P1-A1 filtrent par membership, utilisateur actif et soft-delete ; pas encore de contexte tenant dérivé d'une session, de routes métier ni de RLS. |
+| P1-A5 — audit trail | TODO | Aucun journal métier append-only implémenté. |
+| Dépendances Python | IN_REVIEW / TESTED | PR #12, run #98 : 7/7 jobs réussis ; `pip-audit` indique « No known vulnerabilities found ». Le commit `8b1e157` ajoute `httpx2==2.16.2` pour le TestClient Starlette ; run #107 : 7/7 jobs réussis, pip-audit propre et aucun avertissement Starlette/TestClient dans les logs API. PR ouverte, non fusionnée. |
+| Dépendances npm | TODO / REPORT-ONLY | 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) : `next` critique, `glob`/`postcss` élevés, `zod` élevé et `minimatch` modéré. `npm audit fix --force` propose Next 16.4.6 et Zod 4.6.7 (breaking changes) ; aucune mise à niveau majeure aveugle. L'étape sort en erreur mais reste `continue-on-error` ; job vert ≠ audit propre. |
+
+### Coordination des dépendances et limites
+
+- PR #11 ajoute `argon2-cffi==25.1.0` dans `apps/api/requirements.txt`, tandis que PR #12 met à niveau FastAPI dans ce même fichier et pytest/pytest-asyncio dans `requirements-dev.txt`. La résolution combinée doit conserver les deux apports et être revalidée après synchronisation ; aucune fusion automatique n'a été effectuée.
+- Le run #104 de la PR #11 est terminé 7/7 ; ses logs montrent encore `checkout@v4` et `setup-python@v5` (avertissement runtime Node 20). La migration Node 24 de la PR #7 n'est pas encore intégrée à toutes les branches.
+- Le run #106 de cette PR documentaire est terminé 7/7 sur la tête `0cfab788`.
+- Aucun merge, déploiement, ajout de secret réel, changement de permission sensible ou suppression n'a été réalisé.
+
+
+## Actualisation du pilotage — 26/11/2026, 01:34 CET
+
+- **PR #13 — dépendances Python combinées avec l'authentification locale :** branche `phase1/p1-a2-python-dependency-sync`, tête `a92ae9f4caac3ff91a5db2bb0b65ff267b9399fa`, base PR #11 (`acb12af125409f7f6df69c04807af895e2b632eb`). Le diff reste limité à `apps/api/requirements.txt`, `apps/api/requirements-dev.txt` et `apps/api/pytest.ini`. Il conserve `argon2-cffi==25.1.0` et porte FastAPI 0.162.0, pytest 9.0.3, pytest-asyncio 1.4.1 et httpx2 2.16.2.
+- **CI PR #13 :** run #114 (ID `45727322292`) terminé avec **7/7 jobs réussis**. API : Ruff et 55 tests passés ; Web : lint, typecheck et build réussis ; Docker images build réussi ; Compose config et smoke réussis ; API, Web et Worker healthy ; connecteur de simulation exit 0 ; Gitleaks réussi. Le smoke confirme les ports publiés sur `127.0.0.1`.
+- **Audit du run #114 :** `pip-audit` ne trouve aucun avis connu sur l'arbre Python combiné. `npm audit` termine avec exit code 1 et signale toujours **7 vulnérabilités** (1 modérée, 5 élevées, 1 critique). Le job global est report-only ; son statut vert ne signifie pas que l'audit npm est propre. Aucune correction npm n'est revendiquée.
+- **Actions GitHub :** le run #114 émet encore des avertissements runtime Node 20 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`. La PR #7 porte séparément leur migration Node 24 (tête `f5475b3b28b1be63dbbb209bb9ef5f1513c54326`, run #77 / ID `45703042902`, 7/7 jobs réussis), mais cette branche n'est pas dans l'ascendance de PR #13 ; les avertissements restent donc présents sur #13.
+- **Phase 1 :** P1-A2.1 sessions (#10) et P1-A2.2 authentification locale (#11) restent en revue, non fusionnés. La synchronisation Python #13 est testée en CI, mais OIDC et challenge MFA ne sont pas livrés. RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail métier (P1-A5) restent TODO. L'interface #6 reste une démo pour les données métier ; seul le healthcheck est connecté à l'API.
+- **Coordination Ruby :** aucune PR ou aucun commit retourné par la recherche d'auteur `Ruby`, et aucun commentaire/review attribuable à Ruby dans les discussions relues sur les PR #2 à #13. Sans identifiant GitHub confirmé et preuve directe, aucune contribution ne lui est attribuée.
+- Toutes les PR #2 à #13 vérifiées restent ouvertes et non fusionnées. Aucun déploiement, secret réel, changement de permission sensible ni suppression n'a été effectué.
+
+
+## 13. Contrôle de coordination — 26/11/2026, 03:24 CET
+
+### État GitHub et preuves CI
+
+- **PR #2 et #3 :** toujours ouvertes, non fusionnées. Les descriptions et périmètres restent distincts : #2 corrige les fondations Docker/documentation ; #3 porte les validations CI, non-root, Compose et audits.
+- **P1-A0 / PR #4 :** branche `phase1/p1-a0-alembic-foundation`, tête `25091e090267d72fae394c80a21b5c563ea0fdf3`. Run #117 (ID `45730025314`) terminé avec 7/7 jobs réussis : API, Web, Docker images, Compose config, Compose smoke, Gitleaks et audit report-only. PR ouverte, non fusionnée.
+- **P1-A1 / PR #5 :** tête `5a6baea45ed5364eb02da306a65ec25698860b38`, run #73 (ID `45691374393`) réussi. La base PR #4 a avancé à `25091e0` ; la comparaison signalée dans le commentaire de coordination indique 11 commits en avance et 1 en retard, sans chevauchement sur `apps/api/alembic.ini`. La branche #5 n'a pas été modifiée pendant ce contrôle.
+- **Correctif P1-A1 / PR #8 :** run #76 réussi, 32 tests API ; les lectures membership-scoped excluent les utilisateurs inactifs et soft-deleted.
+- **Démonstration UI / PR #6 :** run #74 réussi. Les données métier restent simulées ; seul le healthcheck est relié à l'API.
+- **Actions Node 24 / PR #7 :** run #77 réussi sur la branche dédiée. Cette correction n'est pas dans l'ascendance des branches P1-A2 actuelles.
+- **Sessions / PR #10 :** run #92 réussi.
+- **Authentification locale / PR #11 :** run #104 réussi, 55 tests API. La PR reste draft.
+- **Dépendances Python combinées / PR #13 :** tête `a92ae9f4caac3ff91a5db2bb0b65ff267b9399fa`, run #114 (ID `45727322292`) terminé 7/7. API 55 tests, Ruff, Web lint/typecheck/build, Docker images, Compose config/smoke et Gitleaks réussis. PR draft, non fusionnée.
+- **Documentation / PR #9 :** tête `d12bb552c25fef63ae2ce2b59e624683b7824b95`, run #116 (ID `45729950390`) terminé 7/7. Les runs #115 et #116 sont réussis ; #116 porte la tête actuelle.
+
+### Audits et avertissements toujours visibles
+
+- **Python :** pip-audit ne trouve aucun avis connu sur l'arbre combiné de PR #13. Ce résultat ne s'applique pas rétroactivement à la branche #11 isolée ni aux autres branches non synchronisées.
+- **npm :** le run #114 conserve 7 vulnérabilités (1 modérée, 5 élevées, 1 critique). `npm audit` termine avec exit code 1 ; le job reste report-only et son statut global vert ne signifie pas audit propre.
+- **Actions GitHub :** le run #114 signale Node 20 forcé vers Node 24 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`. Les runs #116/#117 signalent encore `checkout@v4` et `gitleaks-action@v2`. La PR #7 porte la migration Node 24, mais elle n'est pas propagée à ces branches.
+- **Runtime applicatif :** Node 22 reste distinct du runtime des actions GitHub et continue d'être validé par les jobs Web/Docker.
+- Les jobs d'audit sont report-only ; aucun avis npm ni avertissement d'action n'est présenté comme corrigé.
+
+### Phase 1 — limites fonctionnelles
+
+- P1-A0 : fondation Alembic et migration `0001_pg_extensions` testées par le smoke PostgreSQL/Compose.
+- P1-A1 : organisations, utilisateurs, memberships et filtre des comptes inactifs présents dans les PR #5/#8 ; aucune route publique d'administration d'organisation n'est encore livrée.
+- P1-A2 : sessions serveur et authentification locale présentes dans #10/#11 ; OIDC et challenge MFA restent non livrés.
+- P1-A3 RBAC, P1-A4 isolation complète tenant/RLS et P1-A5 audit trail métier restent à construire.
+- PR #6 reste une démo pour les données métier ; les pages ne doivent pas être décrites comme connectées aux API métier.
+
+### Coordination et attribution
+
+- Les recherches de PR avec `author:Ruby` et de commits avec `author:Ruby` n'ont retourné aucun résultat.
+- Les timelines consultées des PR #2 à #13 ne montrent que des commentaires attribués à `BVDMANN` ; aucune revue formelle n'est enregistrée sur ces PR.
+- Aucun travail n'est attribué à Ruby sans preuve vérifiable. Aucune modification concurrente n'a été faite sur la branche P1-A1.
+
+### Prochain lot concret
+
+1. Réconcilier la migration Node 24 de PR #7 avec les branches empilées, en évitant une seconde modification concurrente de `.github/workflows/ci.yml`.
+2. Préparer une remédiation npm contrôlée : vérifier les versions correctives compatibles Next.js 14/React 18 avant tout changement majeur, puis tests lint/typecheck/build et audit complet.
+3. Poursuivre OIDC/MFA avec validation cryptographique et tests négatifs, puis RBAC réellement appliqué côté API.
+4. Garder P1-A4/P1-A5 bloquants avant toute exposition de données métier multi-tenant.
+
+
+### Contrôle complémentaire — 26/11/2026, 03:36 CET
+
+- **PR #9 / documentation :** les runs #118 (ID `45742481866`, commit `86c5144`) et #119 (ID `45742493310`, commit `75d2bfb`) sont terminés, chacun avec 7/7 jobs réussis. Ce vert concerne la CI, pas les audits de dépendances : sur cette branche documentaire, `pip-audit` retourne encore 16 vulnérabilités connues dans 2 paquets et `npm audit` 7 (1 modérée, 5 élevées, 1 critique), avec exit code 1 ; les deux étapes restent report-only.
+- **Différence de périmètre Python :** PR #13 (run #114) est propre pour `pip-audit` sur son arbre combiné Python. Le run #119 de PR #9 utilise une branche documentaire plus ancienne, qui n'intègre pas la synchronisation Python #13 ; ses 16 avis ne contredisent donc pas le résultat de #13.
+- **Avertissements CI sur la branche documentaire :** les logs #119 signalent encore Node 20 forcé vers Node 24 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`, ainsi que les avertissements Node `punycode` et pytest/Starlette TestClient. Ils restent visibles.
+- **Propagation Node 24 vers P1-A2 :** PR #14 ouverte en brouillon, branche `phase1/p1-a2-node24-actions`, tête `a27f7efe5d842f1503773597aa692694b70d0a5e`, base PR #13 (`a92ae9f`). Un seul fichier est modifié : `.github/workflows/ci.yml`. Références : checkout v7.0.1 (7), setup-node v7.1.0 (2), setup-python v7.1.0 (2), Gitleaks v3 (1). Node applicatif 22 et contrôles spécifiques P1-A2 conservés. CI de #14 / PR #14 : run #120 (ID `45743664932`) terminé avec 7/7 jobs réussis ; logs contrôlés sans avertissement runtime Node 20. `pip-audit` propre sur l'arbre Python combiné ; `npm audit` conserve 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1 sous report-only. Le run #121 (ID `45743726547`) a validé 7/7 jobs sur le SHA `17f5d03` (API, Web, Docker, Compose config/smoke, Gitleaks, audit report-only). Le run #122 (ID `45743973110`) a été lancé sur le SHA `28c9a0e` et était encore en cours au dernier contrôle. Ces résultats ne valent que pour leurs SHA respectifs : toute mise à jour documentaire ultérieure doit disposer de sa propre preuve CI avant d'être déclarée validée.
+- **Coordination :** commentaires de propagation publiés sur PR #7 et #13 ; leurs branches ne sont pas modifiées. Les recherches GitHub `author:Ruby` sur les PR et commits n'ont retourné aucun résultat ; aucune contribution n'est attribuée à Ruby sans preuve.
+- **P1-A1 :** PR #5 reste à 11 commits en avance et 1 en retard sur sa base, sans chevauchement de fichier avec le correctif P1-A0 ; aucune synchronisation poussée.
+
+
+
+## Contrôle continu — 26/11/2026, 04:40 CET
+
+- **PR #9 / documentation :** la tête précédente `81d2295b8d33d715c2b845a8678a4a0b0b44cb9b` a terminé le run #125 (ID `45744077623`) avec **7/7 jobs réussis** : API, Web, Docker images, Compose config, Compose smoke, Gitleaks et audit report-only. Ce résultat ne valide pas le commit documentaire ajouté après ce run.
+- **Audit sur cette branche documentaire ancienne :** `pip-audit` retourne 16 occurrences dans 2 paquets (pytest 8.3.4 et Starlette 0.41.3 ; 8 avis uniques) ; `npm audit` retourne 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) et exit code 1. Les deux étapes restent report-only ; aucune vulnérabilité n'est déclarée corrigée sur cette branche.
+- **Avertissements du run #125 :** Node 20 forcé vers Node 24 pour checkout@v4, setup-python@v5, setup-node@v4 et Gitleaks v2 ; avertissements DEP0040 (punycode), DEP0169 (url.parse), portée de fixtures pytest-asyncio et dépréciation Starlette/AnyIO TestClient. Ces messages restent visibles. Le runtime applicatif Node 22 est distinct et inchangé.
+- **PR #14 / pile P1-A2 :** commit `a27f7efe5d842f1503773597aa692694b70d0a5e`, run #120 (ID `45743664932`) terminé **7/7**. Actions checkout v7.0.1, setup-node v7.1.0, setup-python v7.1.0 et Gitleaks v3 ; aucun avertissement « Node.js 20 is deprecated » dans les 7 logs. Le log Gitleaks v3 conserve toutefois DEP0169 (`url.parse()`) ; cet avertissement distinct n'est pas masqué. 55 tests API, Web lint/typecheck/build, quatre images Docker, contrôle non-root, Compose/healthchecks, ports loopback et migrations 0001→0004 upgrade/downgrade/upgrade réussis. pip-audit propre sur cet arbre combiné ; npm audit reste à 7 vulnérabilités sous report-only.
+- **P1-A0 / PR #4 :** run #117 7/7 sur `25091e0`. **P1-A1 / PR #5 :** run #73 7/7 ; comparaison des refs actuelles `phase1/p1-a0-alembic-foundation...phase1/p1-a1-organisations-utilisateurs` : 11 commits en avance, 1 en retard. Aucun rebase/synchronisation n'a été poussé. PR #8 (filtre comptes inactifs) : run #76 7/7, 32 tests API.
+- **P1-A2 :** PR #10 run #92 7/7 ; PR #11 run #104 7/7 (55 tests API) ; synchronisation Python PR #13 run #114 7/7 (55 tests API, pip-audit propre). PR #11 et #13 restent en brouillon ; PR #14 reste en brouillon. Aucun OIDC ni challenge MFA n'est livré.
+- **PR #2/#3 :** descriptions et périmètres relus ; #2 indique explicitement que seules les sondes health existent et ne revendique ni correction PYTHONPATH ni routes métier inexistantes. Les deux PR restent ouvertes et non fusionnées.
+- **Frontend :** PR #6 reste une démo navigable ; les données organisations/utilisateurs/infrastructure/audit sont simulées. Seul le healthcheck API est réellement connecté.
+- **Coordination Ruby :** la recherche GitHub avec le qualificatif littéral `author:Ruby` ne retourne aucune PR ni aucun commit ; les timelines consultées ne montrent aucun retour Ruby vérifiable. Ne pas conclure à l'absence d'activité sous un autre identifiant et ne rien lui attribuer sans preuve.
+- Aucune fusion, aucun déploiement, aucun secret réel ni changement de permissions sensibles.
