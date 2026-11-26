@@ -17,7 +17,7 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_initial_head() -> None:
-    """The local-auth migration must be the only head."""
+    """The audit event migration must be the only head."""
     assert _script_directory().get_heads() == ["0006_audit_events"]
 
 
