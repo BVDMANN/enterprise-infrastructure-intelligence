@@ -125,13 +125,21 @@ Tests négatifs bloquants :
 
 **But :** tracer les actions sensibles sans enregistrer de secrets.
 
-Champs minimaux : actor_id, organization_id, action, target_type, target_id, outcome, request_id, timestamp, métadonnées filtrées.
+**Fondation livrée dans la PR #31 (en attente de CI/revue) :**
+- table `audit_events` et migration linéaire `0006_audit_events` ;
+- acteur, organisation, type d'événement, cible, request_id, détails JSON et horodatage UTC ;
+- FK composite organisation/acteur vers un membership du même tenant ;
+- triggers PostgreSQL refusant UPDATE, DELETE et TRUNCATE ; downgrade refusé tant que l'historique existe ;
+- writer interne qui vérifie le membership actif, filtre les clés de secrets et ne commit jamais ;
+- lecture GET protégée par `audit.read`, tenant résolu côté serveur et pagination limitée à 100.
+
+**Limite explicite :** aucune mutation métier existante n'appelle encore le writer ; la présence de la table et du GET ne signifie donc pas que toutes les opérations sont journalisées. RLS et séparation du rôle runtime restent un lot distinct.
 
 Tests :
-- écriture append-only via le service dédié ;
-- refus de modification/suppression par les rôles applicatifs ;
-- absence de token, mot de passe, secret ou contenu sensible dans les événements ;
-- tenant et acteur issus du contexte serveur.
+- écriture et lecture tenant-scoped, ordre chronologique et limites ;
+- refus d'acteur d'un autre tenant, utilisateur inactif/supprimé et détails contenant des credentials ;
+- 401/403/404 et contrôle de permission HTTP ;
+- smoke PostgreSQL : FK inter-tenant et refus UPDATE/DELETE/TRUNCATE ; cycle migration sans perte silencieuse.
 
 ## 4. Ordre et dépendances
 
@@ -214,4 +222,4 @@ Validation run #145 sur `c9755828cbeacb88344b585a4c36e1011b025141` : 7/7 jobs ve
 
 `pip-audit` ne trouve aucun avis connu sur cet arbre. `npm audit` signale toujours 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1 visible dans le job report-only. Les avertissements Gitleaks v3 DEP0040/DEP0169 restent visibles ; aucun avertissement runtime Node 20 n'a été observé.
 
-Aucune mutation, invitation, gestion de rôle, OIDC/MFA, RLS ou audit trail n'est incluse. Le frontend de démonstration n'est pas encore connecté à ces routes.
+La fondation audit trail est proposée dans la PR #31 : schéma, writer interne et lecture protégée ; aucune mutation métier n'est encore instrumentée. Les invitations, la gestion des rôles, OIDC/MFA et RLS restent distincts. Le frontend Audit reste à connecter à cette API.

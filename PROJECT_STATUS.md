@@ -426,3 +426,14 @@ fusionner dans `main`). Rapport complet :
 - PR #16 run #128 : 7/7, 32 tests API et pip-audit propre sur cet arbre P1-A1.
 - npm audit reste à 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only ; les avertissements DEP0040/DEP0169 et les dépréciations npm restent visibles.
 - La validation Compose sur le poste de développement n'est pas revendiquée. Phase 0 reste donc ouverte.
+
+## 17. P1-A5 — fondation audit trail (26/11/2026, PR #31 en attente de CI)
+
+- Migration Alembic `0006_audit_events` : table tenant-scoped, acteur lié par FK composite à un membership du même tenant, index par organisation/horodatage et acteur.
+- PostgreSQL : triggers refusant UPDATE, DELETE et TRUNCATE ; downgrade refuse de supprimer un historique non vide.
+- Service interne : vérifie organisation et utilisateur actifs avec membership, rejette les clés de credentials/secrets, exige un objet JSON de 16 KiB maximum et laisse le commit au caller.
+- Route réelle : `GET /api/v1/organizations/{organization_id}/audit-events`, session et permission `audit.read` obligatoires, 404 hors tenant, 403 sans permission, 50 événements par défaut et maximum 100.
+- Tests ajoutés : service tenant-scoped, ordre et limite, acteur inter-tenant, métadonnées sensibles, endpoint 401/403/404 et pagination. Le smoke Compose ajoute des assertions PostgreSQL pour la FK composite et l'immutabilité.
+- **Limite fonctionnelle :** aucune mutation métier existante n'appelle encore le writer ; ce lot fournit la fondation et l'API de lecture, pas une journalisation exhaustive. L'interface Audit n'est pas encore connectée.
+- **RLS non livré :** le rôle PostgreSQL runtime reste à séparer du rôle bootstrap/migrateur ; aucun privilège n'a été modifié dans ce lot.
+- Branche `phase1/p1-a5-audit-trail-foundation`, créée depuis le HEAD vérifié de PR #30 `d61db15f4da64d4c32ef4da4b49b683d338d394f`. La CI GitHub doit encore valider la migration et le smoke PostgreSQL avant toute acceptation.

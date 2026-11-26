@@ -5,6 +5,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — P1-A5 audit trail foundation (PR #31, validation pending)
+
+- Tenant-scoped `audit_events` schema with a composite actor/membership foreign key.
+- PostgreSQL append-only triggers reject UPDATE, DELETE and TRUNCATE; downgrade refuses to discard non-empty history.
+- Internal writer validates active membership and filters credential-like detail keys; protected GET endpoint requires `audit.read`.
+- SQLite service/HTTP tests and PostgreSQL Compose smoke assertions are added.
+- No existing business mutation calls the writer yet; audit coverage is not exhaustive. RLS and the non-superuser runtime database role remain outstanding.
+
 ### Added — P1-A3.1 HTTP organization reads
 
 - Session-authenticated GET endpoints for organizations, active members and organization roles.
