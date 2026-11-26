@@ -8,12 +8,13 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.core.config import settings
 from app.core.session_constants import SESSION_COOKIE
+from app.db.session import get_db
 from app.models.identity import Organization, User
 from app.services.identity import get_organization_for_user
 from app.services.rbac import PermissionDenied, require_permission
-from app.services.sessions import get_active_session
+from app.services.sessions import get_active_session, verify_csrf_token
 
 
 def get_current_user(
@@ -35,6 +36,27 @@ def get_current_user(
             detail="Not authenticated",
         )
     return user
+
+
+def require_session_csrf(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> None:
+    """Require a trusted Origin and CSRF token bound to the active session."""
+    origin = request.headers.get("origin")
+    if not origin or origin not in settings.cors_origins:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Untrusted origin",
+        )
+
+    token = request.cookies.get(SESSION_COOKIE)
+    csrf_token = request.headers.get("x-csrf-token")
+    if not verify_csrf_token(db, token, csrf_token):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
 
 
 def require_organization_permission(
