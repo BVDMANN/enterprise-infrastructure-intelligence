@@ -2,7 +2,7 @@
 
 > Version : 1.1 — 26 novembre 2026
 > Branche de préparation : `audit/phase-0-followup`
-> Statut : plan de livraison ; premières lectures HTTP organisation/membres/rôles en cours de validation ; aucun accès infrastructure réelle ajouté.
+> Statut : plan de livraison ; premières lectures HTTP organisation/membres/rôles validées par CI run #145 (7/7), revue indépendante en attente ; aucun accès infrastructure réelle ajouté.
 
 ## 1. Objectif de Phase 1
 
@@ -179,9 +179,9 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 
 **P1-A0 — Fondation Alembic** est implémenté dans la PR #4, branche `phase1/p1-a0-alembic-foundation`, empilée sur la PR #3. GitHub indique que la PR est ouverte et non-draft. Run CI #64 : 5 tests API passed (1 avertissement pytest-asyncio), build des 4 images, Web, gitleaks, validation Compose et smoke réussis. Le smoke PostgreSQL confirme `alembic upgrade head`, présence de `citext`, `alembic downgrade base`, puis nouvel upgrade vers `0001_pg_extensions (head)`. La migration ne crée aucune table métier. **Limite importante :** le downgrade retire la révision Alembic mais conserve volontairement l'extension partagée `citext` ; ce n'est donc pas un retour complet à une base strictement vierge. La PR reste ouverte et non fusionnée.
 
-**P1-A1 — Organisations, utilisateurs et memberships** est livré sur la branche `phase1/p1-a1-organisations-utilisateurs` (PR #5, ouverte, non fusionnée). Modèles SQLAlchemy 2, migration `0002_identity`, lectures limitées au membership ; aucune route métier d'organisation ou d'invitation n'est ouverte. Le rôle texte historique est remplacé par `role_id` tenant-scoped dans la migration 0005 proposée en PR #17. Détails : PROJECT_STATUS.md §14.
+**P1-A1 — Organisations, utilisateurs et memberships** est livré dans la PR #5 ouverte (non fusionnée) : modèles SQLAlchemy 2, migration `0002_identity` et lectures limitées au membership. La PR #5 elle-même n'inclut pas de routes publiques ni d'invitations ; les premières lectures GET organisation/membres/rôles sont ajoutées séparément dans P1-A3.1, PR #18 (run #145 7/7), sans mutation ni invitation. La migration 0005 de la PR #17 remplace le rôle texte par un `role_id` tenant-scoped.
 
-**P1-A2 :** sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14 ; OIDC/JWKS et MFA restent à livrer dans un module isolé. **P1-A3 core :** PR #17, modèle/migration/service validés par runs #134/#135 ; les guards HTTP et endpoints de gestion des rôles restent à intégrer.
+**P1-A2 :** sessions serveur et authentification locale sont présentes dans les PR #10/#11/#13/#14 ; OIDC/JWKS et MFA restent à livrer dans un module isolé. **P1-A3 core :** PR #17, modèle/migration/service validés par runs #134/#135 ; les premières lectures HTTP protégées sont livrées dans PR #18 (run #145 7/7), tandis que les mutations et la gestion des rôles restent à intégrer.
 
 
 ### État de livraison P1-A3 — PR #17 (brouillon, CI 7/7 run #135, revue indépendante en attente)
@@ -197,7 +197,7 @@ Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 va
 
 Les runs #134 (code/backfill) et #135 (tête documentaire) sont verts 7/7 ; le dernier teste la tête 0a724b6 : 67 tests API, Ruff check/format, Web, 4 images Docker, non-root, Compose config/smoke et Gitleaks. Le smoke PostgreSQL vérifie le backfill d'un ancien membership owner, ses 9 permissions, le rejet d'une affectation inter-tenant par la FK composite, le downgrade qui restaure le rôle texte puis un nouvel upgrade head. PR #17 reste en brouillon et en revue indépendante ; aucun endpoint RBAC métier n'est encore branché.
 
-### P1-A3.1 — enforcement HTTP initial (branche `phase1/p1-a3-rbac-http-api`)
+### P1-A3.1 — enforcement HTTP initial (PR #18, CI 7/7 run #145, revue indépendante en attente)
 
 Le lot enfant ajoute une dépendance de session active et les premières routes GET
 organisation/membres/rôles. Chaque route vérifie le membership de l'utilisateur et la
@@ -210,7 +210,8 @@ car `Path=/api/v1/auth` empêchait le navigateur de transmettre la session aux r
 métier. Les attributs HttpOnly, Secure hors développement, SameSite=Lax, le contrôle
 Origin et le CSRF logout sont conservés.
 
-Acceptation attendue : tests HTTP login→organisations, 401 sans session, 404 inter-tenant,
-403 par permission, lecture owner, refus viewer, liste membres sans comptes inactifs,
-Ruff, tests API, quatre images Docker, non-root, Compose config/smoke et Gitleaks.
-Aucune mutation, invitation, gestion de rôle, OIDC/MFA, RLS ou audit trail n'est incluse.
+Validation run #145 sur `c9755828cbeacb88344b585a4c36e1011b025141` : 7/7 jobs verts ; Ruff check/format et 72 tests API ; Web lint/TypeScript/build ; 4 images Docker et non-root ; Compose config/ports loopback/smoke ; services healthy ; migration 0005/backfill, 9 permissions owner, rejet inter-tenant, downgrade/upgrade ; connecteur simulé exit 0 ; Gitleaks.
+
+`pip-audit` ne trouve aucun avis connu sur cet arbre. `npm audit` signale toujours 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1 visible dans le job report-only. Les avertissements Gitleaks v3 DEP0040/DEP0169 restent visibles ; aucun avertissement runtime Node 20 n'a été observé.
+
+Aucune mutation, invitation, gestion de rôle, OIDC/MFA, RLS ou audit trail n'est incluse. Le frontend de démonstration n'est pas encore connecté à ces routes.
