@@ -155,9 +155,7 @@ def test_audit_service_is_tenant_scoped_and_newest_first(client) -> None:
         )
         db.commit()
 
-        first_page = list_audit_events(
-            db, UUID(organization_a), limit=1
-        )
+        first_page = list_audit_events(db, UUID(organization_a), limit=1)
         all_a = list_audit_events(db, UUID(organization_a), limit=100)
         all_b = list_audit_events(db, UUID(organization_b))
 
