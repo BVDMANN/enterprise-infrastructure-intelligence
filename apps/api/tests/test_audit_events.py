@@ -236,8 +236,11 @@ def test_audit_events_http_endpoint_enforces_session_tenant_and_permission(
     csrf = _login(test_client, "audit-owner@example.com")
     response = test_client.get(path)
     assert response.status_code == 200
-    assert response.json()[0]["id"] == stored_id
-    assert response.json()[0]["details"] == {"field": "display_name"}
+    events = response.json()
+    stored_event = next(item for item in events if item["id"] == stored_id)
+    assert stored_event["event_type"] == "organization.updated"
+    assert stored_event["details"] == {"field": "display_name"}
+    assert any(item["event_type"] == "auth.session.created" for item in events)
     assert (
         test_client.get(
             f"/api/v1/organizations/{organization_b}/audit-events"
