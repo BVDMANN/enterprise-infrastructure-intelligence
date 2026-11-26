@@ -36,10 +36,11 @@ class OrganizationResponse(BaseModel):
 
 
 class MemberResponse(BaseModel):
-    """Safe membership identity, user fields and organization-local role."""
+    """Safe membership identity, role identifier and organization-local role."""
 
     membership_id: UUID
     user_id: UUID
+    role_id: UUID
     email: str
     display_name: str
     role: str
@@ -211,6 +212,7 @@ def list_organization_members(
         select(
             Membership.id,
             User.id,
+            Role.id,
             User.email,
             User.display_name,
             Role.name,
@@ -235,10 +237,11 @@ def list_organization_members(
         MemberResponse(
             membership_id=row[0],
             user_id=row[1],
-            email=row[2],
-            display_name=row[3],
-            role=row[4],
-            joined_at=row[5],
+            role_id=row[2],
+            email=row[3],
+            display_name=row[4],
+            role=row[5],
+            joined_at=row[6],
         )
         for row in rows
     ]
