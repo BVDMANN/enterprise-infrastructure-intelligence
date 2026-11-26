@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import Base, get_db
 from app.main import app
 import app.routers.auth as auth_router
+import app.routers.organizations as organizations_router
 from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.rbac import Role
@@ -118,6 +119,36 @@ def _membership_count(engine, organization_id: str, user_id: str) -> int:
                 .where(Membership.user_id == UUID(user_id))
             ).all()
         )
+
+
+
+def _add_membership(
+    engine,
+    *,
+    organization_id: str,
+    user_id: str,
+    role_id: str,
+) -> str:
+    with Session(engine) as db:
+        membership = Membership(
+            organization_id=UUID(organization_id),
+            user_id=UUID(user_id),
+            role_id=UUID(role_id),
+        )
+        db.add(membership)
+        db.commit()
+        return str(membership.id)
+
+
+def _membership_id(engine, organization_id: str, user_id: str) -> str:
+    with Session(engine) as db:
+        membership_id = db.scalar(
+            select(Membership.id)
+            .where(Membership.organization_id == UUID(organization_id))
+            .where(Membership.user_id == UUID(user_id))
+        )
+        assert membership_id is not None
+        return str(membership_id)
 
 
 def _audit_events(engine, organization_id: str) -> list[AuditEvent]:
@@ -344,3 +375,284 @@ def test_membership_mutation_rejects_foreign_role_inactive_user_and_duplicates(
         if item.event_type == "membership.created"
     ]
     assert len(created_events) == 1
+
+def test_owner_changes_member_role_and_audit_event_atomically(client) -> None:
+    test_client, engine = client
+    seeded = _seed_organization(
+        engine,
+        slug="membership-role-change",
+        owner_email="membership-role-owner@example.com",
+        target_email="membership-role-target@example.com",
+    )
+    organization_id = str(seeded["organization_id"])
+    target_id = str(seeded["target_id"])
+    member_role_id = str(seeded["roles"]["member"])
+    viewer_role_id = str(seeded["roles"]["viewer"])
+    membership_id = _add_membership(
+        engine,
+        organization_id=organization_id,
+        user_id=target_id,
+        role_id=member_role_id,
+    )
+
+    csrf_token = _login(test_client, "membership-role-owner@example.com")
+    response = test_client.patch(
+        f"/api/v1/organizations/{organization_id}/memberships/{membership_id}",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+        json={"role_id": viewer_role_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == membership_id
+    assert response.json()["role_id"] == viewer_role_id
+    with Session(engine) as db:
+        membership = db.get(Membership, UUID(membership_id))
+        assert membership is not None
+        assert str(membership.role_id) == viewer_role_id
+
+    changed = [
+        item
+        for item in _audit_events(engine, organization_id)
+        if item.event_type == "membership.role_changed"
+    ]
+    assert len(changed) == 1
+    assert changed[0].target_id == membership_id
+    assert changed[0].details == {
+        "target_user_id": target_id,
+        "previous_role_id": member_role_id,
+        "previous_role_name": "member",
+        "role_id": viewer_role_id,
+        "role_name": "viewer",
+    }
+
+
+def test_last_active_owner_cannot_be_demoted_or_removed(client) -> None:
+    test_client, engine = client
+    seeded = _seed_organization(
+        engine,
+        slug="membership-last-owner",
+        owner_email="membership-last-owner@example.com",
+        target_email="membership-last-owner-target@example.com",
+    )
+    organization_id = str(seeded["organization_id"])
+    owner_id = str(seeded["owner_id"])
+    owner_membership_id = _membership_id(engine, organization_id, owner_id)
+    csrf_token = _login(test_client, "membership-last-owner@example.com")
+    headers = {"Origin": ORIGIN, "X-CSRF-Token": csrf_token}
+    path = (
+        f"/api/v1/organizations/{organization_id}/memberships/"
+        f"{owner_membership_id}"
+    )
+
+    demote = test_client.patch(
+        path,
+        headers=headers,
+        json={"role_id": str(seeded["roles"]["member"])},
+    )
+    remove = test_client.delete(path, headers=headers)
+
+    assert demote.status_code == 409
+    assert remove.status_code == 409
+    assert _membership_count(engine, organization_id, owner_id) == 1
+    assert not [
+        item
+        for item in _audit_events(engine, organization_id)
+        if item.event_type in {"membership.role_changed", "membership.deleted"}
+    ]
+
+
+def test_owner_can_remove_one_of_two_active_owners(client) -> None:
+    test_client, engine = client
+    seeded = _seed_organization(
+        engine,
+        slug="membership-two-owners",
+        owner_email="membership-two-owner-a@example.com",
+        target_email="membership-two-owner-b@example.com",
+    )
+    organization_id = str(seeded["organization_id"])
+    target_id = str(seeded["target_id"])
+    owner_role_id = str(seeded["roles"]["owner"])
+    target_membership_id = _add_membership(
+        engine,
+        organization_id=organization_id,
+        user_id=target_id,
+        role_id=owner_role_id,
+    )
+    csrf_token = _login(test_client, "membership-two-owner-a@example.com")
+
+    response = test_client.delete(
+        f"/api/v1/organizations/{organization_id}/memberships/{target_membership_id}",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+    )
+
+    assert response.status_code == 204
+    assert _membership_count(engine, organization_id, target_id) == 0
+    deleted = [
+        item
+        for item in _audit_events(engine, organization_id)
+        if item.event_type == "membership.deleted"
+    ]
+    assert len(deleted) == 1
+    assert deleted[0].target_id == target_membership_id
+    assert deleted[0].details == {
+        "target_user_id": target_id,
+        "role_id": owner_role_id,
+        "role_name": "owner",
+    }
+
+
+def test_membership_lifecycle_enforces_permission_csrf_and_tenant_scope(client) -> None:
+    test_client, engine = client
+    tenant_a = _seed_organization(
+        engine,
+        slug="membership-lifecycle-tenant-a",
+        owner_email="membership-lifecycle-owner-a@example.com",
+        target_email="membership-lifecycle-target-a@example.com",
+    )
+    tenant_b = _seed_organization(
+        engine,
+        slug="membership-lifecycle-tenant-b",
+        owner_email="membership-lifecycle-owner-b@example.com",
+        target_email="membership-lifecycle-target-b@example.com",
+    )
+    organization_a = str(tenant_a["organization_id"])
+    target_a = str(tenant_a["target_id"])
+    target_membership_a = _add_membership(
+        engine,
+        organization_id=organization_a,
+        user_id=target_a,
+        role_id=str(tenant_a["roles"]["member"]),
+    )
+    foreign_membership = _add_membership(
+        engine,
+        organization_id=str(tenant_b["organization_id"]),
+        user_id=str(tenant_b["target_id"]),
+        role_id=str(tenant_b["roles"]["member"]),
+    )
+
+    with Session(engine) as db:
+        viewer = User(
+            email="membership-lifecycle-viewer@example.com",
+            display_name="Membership lifecycle viewer",
+            password_hash=hash_password(PASSWORD),
+        )
+        db.add(viewer)
+        db.flush()
+        viewer_role = db.scalar(
+            select(Role)
+            .where(Role.organization_id == UUID(organization_a))
+            .where(Role.name == "viewer")
+        )
+        assert viewer_role is not None
+        db.add(
+            Membership(
+                organization_id=UUID(organization_a),
+                user_id=viewer.id,
+                role_id=viewer_role.id,
+            )
+        )
+        db.commit()
+
+    path = (
+        f"/api/v1/organizations/{organization_a}/memberships/"
+        f"{target_membership_a}"
+    )
+    viewer_csrf = _login(test_client, "membership-lifecycle-viewer@example.com")
+    viewer_headers = {"Origin": ORIGIN, "X-CSRF-Token": viewer_csrf}
+    assert (
+        test_client.patch(
+            path,
+            headers=viewer_headers,
+            json={"role_id": str(tenant_a["roles"]["viewer"])},
+        ).status_code
+        == 403
+    )
+    assert test_client.delete(path, headers=viewer_headers).status_code == 403
+    assert (
+        test_client.post(
+            "/api/v1/auth/logout",
+            headers=viewer_headers,
+        ).status_code
+        == 204
+    )
+
+    owner_csrf = _login(test_client, "membership-lifecycle-owner-a@example.com")
+    owner_headers = {"Origin": ORIGIN, "X-CSRF-Token": owner_csrf}
+    assert (
+        test_client.patch(
+            path,
+            headers={"Origin": "https://attacker.example", "X-CSRF-Token": owner_csrf},
+            json={"role_id": str(tenant_a["roles"]["viewer"])},
+        ).status_code
+        == 403
+    )
+    assert (
+        test_client.delete(
+            path,
+            headers={"Origin": ORIGIN, "X-CSRF-Token": "forged"},
+        ).status_code
+        == 403
+    )
+
+    foreign_path = (
+        f"/api/v1/organizations/{organization_a}/memberships/"
+        f"{foreign_membership}"
+    )
+    assert (
+        test_client.patch(
+            foreign_path,
+            headers=owner_headers,
+            json={"role_id": str(tenant_a["roles"]["viewer"])},
+        ).status_code
+        == 404
+    )
+    assert test_client.delete(foreign_path, headers=owner_headers).status_code == 404
+    assert _membership_count(engine, organization_a, target_a) == 1
+    assert _membership_count(
+        engine, str(tenant_b["organization_id"]), str(tenant_b["target_id"])
+    ) == 1
+
+
+def test_membership_role_change_rolls_back_when_audit_write_fails(
+    client, monkeypatch
+) -> None:
+    test_client, engine = client
+    seeded = _seed_organization(
+        engine,
+        slug="membership-audit-rollback",
+        owner_email="membership-audit-rollback-owner@example.com",
+        target_email="membership-audit-rollback-target@example.com",
+    )
+    organization_id = str(seeded["organization_id"])
+    target_id = str(seeded["target_id"])
+    member_role_id = str(seeded["roles"]["member"])
+    viewer_role_id = str(seeded["roles"]["viewer"])
+    membership_id = _add_membership(
+        engine,
+        organization_id=organization_id,
+        user_id=target_id,
+        role_id=member_role_id,
+    )
+    csrf_token = _login(test_client, "membership-audit-rollback-owner@example.com")
+
+    def fail_audit_write(*_args, **_kwargs):
+        raise RuntimeError("audit writer unavailable")
+
+    monkeypatch.setattr(organizations_router, "record_audit_event", fail_audit_write)
+    with pytest.raises(RuntimeError, match="audit writer unavailable"):
+        test_client.patch(
+            f"/api/v1/organizations/{organization_id}/memberships/{membership_id}",
+            headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+            json={"role_id": viewer_role_id},
+        )
+
+    with Session(engine) as db:
+        membership = db.get(Membership, UUID(membership_id))
+        assert membership is not None
+        assert str(membership.role_id) == member_role_id
+    assert not [
+        item
+        for item in _audit_events(engine, organization_id)
+        if item.event_type == "membership.role_changed"
+    ]
+
