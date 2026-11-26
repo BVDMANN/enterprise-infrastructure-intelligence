@@ -463,3 +463,14 @@ Cette section remplace les statuts opérationnels du snapshot §11 daté de 23:2
 - Le run #104 de la PR #11 est terminé 7/7 ; ses logs montrent encore `checkout@v4` et `setup-python@v5` (avertissement runtime Node 20). La migration Node 24 de la PR #7 n'est pas encore intégrée à toutes les branches.
 - Le run #106 de cette PR documentaire est terminé 7/7 sur la tête `0cfab788`.
 - Aucun merge, déploiement, ajout de secret réel, changement de permission sensible ou suppression n'a été réalisé.
+
+
+## Actualisation du pilotage — 26/11/2026, 01:34 CET
+
+- **PR #13 — dépendances Python combinées avec l'authentification locale :** branche `phase1/p1-a2-python-dependency-sync`, tête `a92ae9f4caac3ff91a5db2bb0b65ff267b9399fa`, base PR #11 (`acb12af125409f7f6df69c04807af895e2b632eb`). Le diff reste limité à `apps/api/requirements.txt`, `apps/api/requirements-dev.txt` et `apps/api/pytest.ini`. Il conserve `argon2-cffi==25.1.0` et porte FastAPI 0.162.0, pytest 9.0.3, pytest-asyncio 1.4.1 et httpx2 2.16.2.
+- **CI PR #13 :** run #114 (ID `45727322292`) terminé avec **7/7 jobs réussis**. API : Ruff et 55 tests passés ; Web : lint, typecheck et build réussis ; Docker images build réussi ; Compose config et smoke réussis ; API, Web et Worker healthy ; connecteur de simulation exit 0 ; Gitleaks réussi. Le smoke confirme les ports publiés sur `127.0.0.1`.
+- **Audit du run #114 :** `pip-audit` ne trouve aucun avis connu sur l'arbre Python combiné. `npm audit` termine avec exit code 1 et signale toujours **7 vulnérabilités** (1 modérée, 5 élevées, 1 critique). Le job global est report-only ; son statut vert ne signifie pas que l'audit npm est propre. Aucune correction npm n'est revendiquée.
+- **Actions GitHub :** le run #114 émet encore des avertissements runtime Node 20 pour `checkout@v4`, `setup-node@v4` et `setup-python@v5`. La PR #7 porte séparément leur migration Node 24 (tête `f5475b3b28b1be63dbbb209bb9ef5f1513c54326`, run #77 / ID `45703042902`, 7/7 jobs réussis), mais cette branche n'est pas dans l'ascendance de PR #13 ; les avertissements restent donc présents sur #13.
+- **Phase 1 :** P1-A2.1 sessions (#10) et P1-A2.2 authentification locale (#11) restent en revue, non fusionnés. La synchronisation Python #13 est testée en CI, mais OIDC et challenge MFA ne sont pas livrés. RBAC (P1-A3), contexte tenant/RLS (P1-A4) et audit trail métier (P1-A5) restent TODO. L'interface #6 reste une démo pour les données métier ; seul le healthcheck est connecté à l'API.
+- **Coordination Ruby :** aucune PR ou aucun commit retourné par la recherche d'auteur `Ruby`, et aucun commentaire/review attribuable à Ruby dans les discussions relues sur les PR #2 à #13. Sans identifiant GitHub confirmé et preuve directe, aucune contribution ne lui est attribuée.
+- Toutes les PR #2 à #13 vérifiées restent ouvertes et non fusionnées. Aucun déploiement, secret réel, changement de permission sensible ni suppression n'a été effectué.
