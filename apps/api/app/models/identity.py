@@ -24,9 +24,8 @@ Decisions (documented, reversible in later lots):
   login (P1-A2 fills it). The uniqueness constraint still applies to
   non-NULL values.
 - ``memberships.role`` is a plain string guarded by a CHECK constraint
-  (owner/admin/member/viewer). There is no ``roles`` table yet — RBAC
-  (P1-A3) replaces it with a ``role_id`` foreign key and may revise
-  the set; the migration that does so must drop this CHECK first.
+  (owner/admin/member/viewer). P1-A3 replaces this value with a
+  composite organization-scoped ``role_id`` foreign key.
 - ``organizations`` has no ``plan_id`` yet: the ``plans`` table does
   not exist (billing is a later lot). The foreign key is added with
   the plans table instead of forcing it into this lot.
@@ -47,9 +46,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     String,
     UniqueConstraint,
     false,
@@ -69,8 +68,7 @@ from app.db.session import Base
 #: every backend.
 EMAIL_TYPE = String().with_variant(CITEXT(), "postgresql")
 
-#: Roles accepted on a membership until RBAC (P1-A3) replaces the
-#: string role with a ``role_id`` foreign key.
+#: Built-in role names retained for the 0005 RBAC data migration.
 MEMBERSHIP_ROLES = ("owner", "admin", "member", "viewer")
 
 
@@ -186,9 +184,11 @@ class Membership(Base):
             "user_id",
             name="uq_memberships_organization_user",
         ),
-        CheckConstraint(
-            "role IN ('owner', 'admin', 'member', 'viewer')",
-            name="ck_memberships_role",
+        ForeignKeyConstraint(
+            ["organization_id", "role_id"],
+            ["roles.organization_id", "roles.id"],
+            name="fk_memberships_organization_role",
+            ondelete="RESTRICT",
         ),
     )
 
@@ -207,8 +207,8 @@ class Membership(Base):
         nullable=False,
         index=True,
     )
-    role: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="member", server_default="member"
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -230,5 +230,5 @@ class Membership(Base):
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return (
             f"Membership(organization_id={self.organization_id!r}, "
-            f"user_id={self.user_id!r}, role={self.role!r})"
+            f"user_id={self.user_id!r}, role_id={self.role_id!r})"
         )

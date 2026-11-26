@@ -180,3 +180,17 @@ Les tests d'isolation et d'autorisation sont introduits avec chaque sous-lot con
 **P1-A1 — Organisations, utilisateurs et memberships** est implémenté sur la branche `phase1/p1-a1-organisations-utilisateurs`, empilée sur P1-A0 (PR à créer, empilée sur PR #4). Modèles SQLAlchemy 2, migration `0002_identity` (tables `organizations`, `users`, `memberships`), lectures limitées au membership, tests unitaires + intégration + négatifs (30 tests API passed en local, 1 avertissement pytest-asyncio préexistant), vérification PostgreSQL 16 locale OK (upgrade/downgrade + `alembic check` sans dérive). Aucune route métier n'est ouverte. Détails : PROJECT_STATUS.md §14.
 
 **Prochain sous-lot : P1-A2 — sessions et OIDC**, sur une PR empilée après revue de P1-A1.
+
+
+### État de livraison P1-A3 — PR #17 (brouillon, validation CI en attente)
+
+Le lot RBAC core est implémenté sur une branche empilée sur la tête P1-A2 validée (#14), sans modifier les branches #10 à #14 :
+
+- Tables roles, permissions et role_permissions, avec unicité des noms et liaison composite de memberships(organization_id, role_id) vers roles(organization_id, id).
+- Migration 0005_rbac_core : conversion des anciens rôles texte en rôles système propres à chaque organisation, attribution d'un catalogue de permissions et downgrade protégé contre la perte de rôles ou d'affectations personnalisés.
+- Service serveur pour provisionner les rôles par défaut et résoudre/exiger les permissions depuis l'utilisateur actif, le membership et l'organisation actifs.
+- Tests modèles/service positifs et négatifs : rôles et permissions uniques, utilisateur sans membership, compte inactif/supprimé, organisation supprimée, refus d'une permission et impossibilité d'affecter un rôle d'un autre tenant.
+
+**Limite explicite :** cette PR livre le modèle, la migration et le service d'autorisation ; aucun endpoint métier ni dépendance FastAPI RBAC n'est encore branché. Les routes devront appeler require_permission dans un lot d'intégration distinct avant que RBAC soit considéré comme appliqué à l'API. Les rôles plateforme globaux sont différés ; les rôles de ce lot sont strictement organisationnels.
+
+Le lot reste IN_REVIEW jusqu'à validation des tests API, du cycle PostgreSQL Alembic et de la CI complète.

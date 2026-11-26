@@ -5,6 +5,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — P1-A3 RBAC core (2026-11-26, PR #17 en revue)
+
+- Modèles roles, permissions et role_permissions ; les rôles sont propres à une organisation.
+- Migration 0005_rbac_core qui convertit les rôles texte des memberships en références role_id avec contrainte composite tenant/role et protège le downgrade contre la perte de rôles personnalisés.
+- Service serveur de provisioning des rôles par défaut et de résolution/exigence des permissions.
+- Tests modèles et service positifs/négatifs ; aucun endpoint RBAC métier n'est encore branché.
+
+
 ### Added — PHASE 0 (2026-11-24)
 
 - Structure complète du repository (§6 de la spécification V3).

@@ -5,7 +5,7 @@
 > `TESTED` · `ACCEPTED` · `DEPLOYED`.
 > Rappel : développé ≠ testé ≠ accepté ≠ déployé ≠ prêt pour la production.
 
-## PHASE 0 — Fondations (terminée, en attente de validation)
+## PHASE 0 — Fondations (en revue, non clôturée)
 
 | Tâche | Statut |
 |---|---|
@@ -41,9 +41,9 @@ métriques fiables.
 | # | Tâche | Statut | Dépendances |
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #54 : 4 images + Compose smoke validés, reste la confirmation locale | TODO | — (bloque P1-02+) |
-| P1-02 | Authentification OIDC + sessions + MFA | TODO | P1-01 |
-| P1-03 | Organisations, membres, invitations | TODO | P1-02 |
-| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | TODO | P1-02 |
+| P1-02 | Authentification OIDC + sessions + MFA | IN_PROGRESS — sessions serveur et login local présents dans PR #10/#11/#13/#14 ; OIDC/MFA restent à livrer | P1-01 |
+| P1-03 | Organisations, membres, invitations | TESTED — modèles/migration/lectures P1-A1 dans PR #5 ; routes et invitations non livrées | P1-02 |
+| P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — modèle, migration 0005 et service de permissions dans PR #17 ; intégration aux routes non livrée | P1-02/P1-03 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
 | P1-06 | Infrastructure Manager (inventaire, recherche, filtres, détails) | TODO | P1-04 |
 | P1-07 | Connecteur de simulation (intégré au dashboard) | TODO | P1-06 |
@@ -104,3 +104,12 @@ métriques fiables.
 - Les vulnérabilités Starlette/Pytest et npm restent ouvertes et suivies en report-only ; aucune mise à niveau majeure automatique n'a été appliquée.
 - Runtime des actions GitHub encore averti (checkout@v4/setup-node@v4/setup-python@v5 Node 20 forcé vers Node 24) — lot CI séparé.
 - Phase 1 : voir `PHASE1_PLAN.md`. L'implémentation métier ne démarre pas avant les critères de sécurité et la validation locale P1-01.
+
+
+### Contrôle du 26/11/2026 — lots de sécurité
+
+- PR #14 : actions Node 24 sur P1-A2, run #120 7/7 ; runtime applicatif Node 22 conservé.
+- PR #15 : propagation Node 24 sur P1-A1/documentation, run #127 7/7 ; pip-audit ancien arbre 8 avis uniques, npm audit 7 vulnérabilités, report-only.
+- PR #16 : remédiation Python P1-A1, run #128 7/7 ; 32 tests API, pip-audit propre sur cet arbre. npm audit reste 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only.
+- PR #17 : P1-A3 RBAC core en brouillon ; validation CI requise avant de passer à TESTED/ACCEPTED.
+- Phase 0 reste ouverte tant que le lot npm et la confirmation Compose sur poste développeur normal ne sont pas traités/documentés.
