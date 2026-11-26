@@ -1,7 +1,6 @@
 # DATABASE_DESIGN.md — Enterprise Infrastructure Intelligence
 
-> Version : spécification V3 §8. Statut : PHASE 0 — modèle défini,
-> aucune migration créée. ORM : SQLAlchemy 2, migrations : Alembic.
+> Version : spécification V3 §8. Statut : schéma livré progressivement par migrations Alembic jusqu'à 0004 ; RBAC 0005 en revue dans PR #17. ORM : SQLAlchemy 2.
 > Base métier : PostgreSQL 16. Les métriques ne sont PAS stockées
 > indéfiniment dans PostgreSQL (VictoriaMetrics).
 
@@ -31,10 +30,10 @@
 |---|---|---|
 | `organizations` | `id` UUID PK, `name`, `slug` unique, `plan_id` FK, `deleted_at` | `slug` unique ; index `plan_id` |
 | `users` | `id` UUID PK, `email` unique (citext), `display_name`, `oidc_subject` unique, `mfa_enabled`, `is_active` | `email` unique ; index `oidc_subject` |
-| `memberships` | `id` PK, `organization_id` FK, `user_id` FK, `role_id` FK, `created_at` | unique (`organization_id`, `user_id`) |
-| `roles` | `id` PK, `organization_id` FK (null = rôle plateforme), `name`, `is_system` | unique (`organization_id`, `name`) |
+| `memberships` | `id` PK, `organization_id` FK, `user_id` FK, `role_id` FK composite avec `organization_id`, `created_at` | unique (`organization_id`, `user_id`) ; rôle limité au même tenant |
+| `roles` | `id` PK, `organization_id` FK NOT NULL, `name`, `is_system` | unique (`organization_id`, `name`) et (`organization_id`, `id`) ; rôles plateforme globaux différés |
 | `permissions` | `id` PK, `name` unique (ex. `infrastructure.read`), `description` | `name` unique |
-| `role_permissions` | `role_id` FK, `permission_id` FK | PK composite |
+| `role_permissions` | `role_id` FK, `permission_id` FK | PK composite ; suppression en cascade des liens |
 | `sessions` | `id` PK, `user_id` FK, `token_hash`, `expires_at`, `revoked_at`, `ip`, `user_agent` | index `user_id`, `expires_at` |
 
 ### 2.2 Inventaire
@@ -100,3 +99,13 @@
   `organization_id` en complément des vérifications applicatives.
 - **Tests** : tests de migration, tests d'isolation multi-tenant
   obligatoires avant ACCEPTED.
+
+
+### État RBAC P1-A3 (PR #17, brouillon)
+
+Le schéma cible est désormais matérialisé dans la branche P1-A3 : roles.organization_id est obligatoire, et la clé étrangère composite des memberships empêche au niveau PostgreSQL/SQLite d'affecter un rôle d'une organisation à une autre. Le catalogue de permissions est global (noms stables), mais chaque rôle est tenant-scoped. Les rôles de plateforme sont différés jusqu'à la création d'une frontière d'administration plateforme dédiée. La migration 0005 reprend les anciens rôles texte et refuse un downgrade qui supprimerait des rôles personnalisés ou une matrice de permissions modifiée.
+
+
+### Validation PostgreSQL du lot RBAC — run #134 (26/11/2026)
+
+Le smoke CI a testé une base avec un ancien membership owner sous la révision 0004 : après upgrade 0005, le membership référence un rôle owner de la même organisation et ce rôle porte 9 permissions. Une insertion de membership avec le role_id d'une autre organisation est rejetée par fk_memberships_organization_role. Le downgrade 0005 restaure le rôle texte owner ; les fixtures CI sont supprimées, puis downgrade base et nouvel upgrade head réussissent. Ce résultat valide la migration et la contrainte composite sur PostgreSQL dans l'environnement CI ; il ne constitue pas une validation RLS complète ni une validation locale.

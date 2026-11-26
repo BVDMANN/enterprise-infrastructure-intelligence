@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import Base
 from app.models.identity import Membership, Organization, User
+from app.models.rbac import Role
 
 
 @pytest.fixture()
@@ -65,12 +66,27 @@ def _make_user(
     return user
 
 
+def _make_role(db: Session, organization: Organization, name: str = "member") -> Role:
+    role = Role(
+        organization_id=organization.id,
+        name=name,
+        description=f"Built-in {name} role",
+        is_system=True,
+    )
+    db.add(role)
+    db.commit()
+    return role
+
+
 def test_metadata_registers_identity_tables() -> None:
-    """Importing app.models must register the three tables on Base.metadata."""
+    """Importing app.models must register identity and RBAC tables on Base.metadata."""
     assert set(Base.metadata.tables) >= {
         "organizations",
         "users",
         "memberships",
+        "roles",
+        "permissions",
+        "role_permissions",
     }
 
 
@@ -144,31 +160,35 @@ def test_user_defaults(db: Session) -> None:
     assert user.deleted_at is None
 
 
-def test_membership_default_role(db: Session) -> None:
-    """A membership without an explicit role defaults to member."""
+def test_membership_requires_explicit_role_reference(db: Session) -> None:
+    """A membership must reference an organization-scoped role."""
     org = _make_org(db)
     user = _make_user(db)
-    membership = Membership(organization_id=org.id, user_id=user.id)
+    role = _make_role(db, org)
+    membership = Membership(organization_id=org.id, user_id=user.id, role_id=role.id)
     db.add(membership)
     db.commit()
-    assert membership.role == "member"
+    assert membership.role_id == role.id
 
 
 def test_membership_unique_per_organization_and_user(db: Session) -> None:
     """A user holds at most one membership per organization."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="admin"))
+    role = _make_role(db, org, name="admin")
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     db.commit()
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="member"))
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     with pytest.raises(IntegrityError):
         db.commit()
 
 
 def test_membership_requires_existing_organization(db: Session) -> None:
     """A membership cannot reference a missing organization."""
+    org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=uuid.uuid4(), user_id=user.id, role="member"))
+    role = _make_role(db, org)
+    db.add(Membership(organization_id=uuid.uuid4(), user_id=user.id, role_id=role.id))
     with pytest.raises(IntegrityError):
         db.commit()
 
@@ -176,25 +196,49 @@ def test_membership_requires_existing_organization(db: Session) -> None:
 def test_membership_requires_existing_user(db: Session) -> None:
     """A membership cannot reference a missing user."""
     org = _make_org(db)
-    db.add(Membership(organization_id=org.id, user_id=uuid.uuid4(), role="member"))
+    role = _make_role(db, org)
+    db.add(Membership(organization_id=org.id, user_id=uuid.uuid4(), role_id=role.id))
     with pytest.raises(IntegrityError):
         db.commit()
 
 
-def test_membership_invalid_role_rejected(db: Session) -> None:
-    """Roles outside owner/admin/member/viewer are rejected by the CHECK."""
+def test_membership_requires_existing_role(db: Session) -> None:
+    """A membership cannot reference a missing role."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="superuser"))
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=uuid.uuid4()))
+    with pytest.raises(IntegrityError):
+        db.commit()
+
+
+def test_membership_role_must_belong_to_same_organization(db: Session) -> None:
+    """A role from organization A cannot be assigned to organization B."""
+    org_a = _make_org(db, slug="org-a")
+    org_b = _make_org(db, slug="org-b")
+    user = _make_user(db)
+    role_a = _make_role(db, org_a, name="admin")
+    db.add(Membership(organization_id=org_b.id, user_id=user.id, role_id=role_a.id))
+    with pytest.raises(IntegrityError):
+        db.commit()
+
+
+def test_role_name_unique_within_organization(db: Session) -> None:
+    """The same role name is unique within one organization but reusable elsewhere."""
+    org_a = _make_org(db, slug="org-a")
+    org_b = _make_org(db, slug="org-b")
+    _make_role(db, org_a, name="admin")
+    _make_role(db, org_b, name="admin")
+    db.add(Role(organization_id=org_a.id, name="admin", is_system=False))
     with pytest.raises(IntegrityError):
         db.commit()
 
 
 def test_soft_delete_organization_keeps_rows(db: Session) -> None:
-    """Soft delete marks the organization; memberships stay intact."""
+    """Soft delete marks the organization; roles and memberships stay intact."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="owner"))
+    role = _make_role(db, org, name="owner")
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     db.commit()
     org.deleted_at = datetime.now(timezone.utc)
     db.commit()
@@ -207,7 +251,8 @@ def test_soft_delete_user_keeps_rows(db: Session) -> None:
     """Soft delete marks the user; memberships stay intact."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="owner"))
+    role = _make_role(db, org, name="owner")
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     db.commit()
     user.deleted_at = datetime.now(timezone.utc)
     db.commit()
@@ -215,13 +260,12 @@ def test_soft_delete_user_keeps_rows(db: Session) -> None:
     assert db.query(Membership).count() == 1
 
 
-def test_hard_delete_organization_with_memberships_restricted(
-    db: Session,
-) -> None:
-    """RESTRICT: an organization with memberships cannot be hard-deleted."""
+def test_hard_delete_organization_with_memberships_restricted(db: Session) -> None:
+    """RESTRICT: an organization with roles and memberships cannot be hard-deleted."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="owner"))
+    role = _make_role(db, org, name="owner")
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     db.commit()
     db.delete(org)
     with pytest.raises(IntegrityError):
@@ -232,7 +276,8 @@ def test_hard_delete_user_with_memberships_restricted(db: Session) -> None:
     """RESTRICT: a user with memberships cannot be hard-deleted."""
     org = _make_org(db)
     user = _make_user(db)
-    db.add(Membership(organization_id=org.id, user_id=user.id, role="owner"))
+    role = _make_role(db, org, name="owner")
+    db.add(Membership(organization_id=org.id, user_id=user.id, role_id=role.id))
     db.commit()
     db.delete(user)
     with pytest.raises(IntegrityError):

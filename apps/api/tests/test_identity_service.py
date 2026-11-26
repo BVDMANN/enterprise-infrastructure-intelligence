@@ -14,11 +14,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from app.db.session import Base
 from app.models.identity import Membership, Organization, User
+from app.models.rbac import Role
 from app.services.identity import (
     get_organization_for_user,
     list_organizations_for_user,
@@ -60,7 +61,28 @@ def _make_user(db: Session, email: str) -> User:
 
 
 def _add_member(db: Session, org: Organization, user: User, role: str) -> None:
-    db.add(Membership(organization_id=org.id, user_id=user.id, role=role))
+    role_record = db.scalar(
+        select(Role).where(
+            Role.organization_id == org.id,
+            Role.name == role,
+        )
+    )
+    if role_record is None:
+        role_record = Role(
+            organization_id=org.id,
+            name=role,
+            description=f"Built-in {role} role",
+            is_system=True,
+        )
+        db.add(role_record)
+        db.flush()
+    db.add(
+        Membership(
+            organization_id=org.id,
+            user_id=user.id,
+            role_id=role_record.id,
+        )
+    )
     db.commit()
 
 

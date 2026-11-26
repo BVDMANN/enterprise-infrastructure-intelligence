@@ -1,14 +1,13 @@
 # PROJECT_STATUS.md — Enterprise Infrastructure Intelligence
 
-> Dernière mise à jour : **25 novembre 2026** (revue sécurité, ports loopback et Node 22 validés par CI run #54).
+> Dernière mise à jour : **26 novembre 2026** (runs #120, #126, #127 et #128 vérifiés).
 > Audit PHASE 0 : voir §10 — 81/81 fichiers vérifiés, CI verte (dernier run 4/4 jobs),
 > 4 corrections (Dockerfiles COPY + `.dockerignore` + `npm ci` + harmonisation Worker) dans la PR `audit/phase-0`.
 > Audit suite (instruction ChatGPT 25/11) : voir §11 — audit sécurité concret,
 > validations CI manquantes ajoutées (build images + smoke test compose),
 > corrections dans une PR distincte (non fusionnée).
 > Spécification de référence : **MASTER PROMPT V3**.
-> Statut global : **PHASE 0 TERMINÉE — en attente de validation humaine
-> avant PHASE 1.**
+> Statut global : **PHASE 0 EN REVUE — non clôturée ; Phase 1 P1-A0/A1/A2 livrés sur branches de PR, P1-A3 RBAC core en revue.**
 
 ## 1. État initial (audit du repository existant)
 
@@ -396,3 +395,24 @@ fusionner dans `main`). Rapport complet :
 - Aucun endpoint métier, mécanisme d'authentification ou secret réel n'a été ajouté.
 
 **Statut :** lot livré, PR #5 ouverte. Prochain sous-lot : P1-A2 sessions et OIDC.
+
+
+## 15. P1-A3 — RBAC core (26/11/2026, PR #17 en brouillon)
+
+- Modèles ajoutés : roles, permissions et role_permissions ; chaque rôle est rattaché à une seule organisation.
+- Migration 0005_rbac_core : reprise des rôles historiques des memberships, ajout d'une FK composite organisation/rôle et matrice de permissions par rôle. Le downgrade refuse de supprimer des rôles personnalisés ou des affectations de permissions modifiées.
+- Service serveur : provisioning des rôles système et résolution des permissions à partir du compte et du membership actifs dans l'organisation demandée.
+- Tests ajoutés : unicité, rôle inter-tenant refusé, utilisateur sans membership, compte inactif/supprimé, organisation supprimée, permission accordée/refusée.
+- **Non livré dans ce lot :** routes HTTP métier et enforcement dans les endpoints ; ces routes devront appeler require_permission. OIDC/MFA, isolation RLS complète et audit trail restent distincts.
+- Run #134 : 7/7 jobs réussis sur 7e37214 ; 67 tests API, Ruff check/format, Web lint/typecheck/build, 4 images Docker, non-root, Compose config/smoke et Gitleaks.
+- Smoke PostgreSQL : ancien membership owner créé sous 0004, backfill 0005 validé, rôle lié à la même organisation, 9 permissions owner, tentative inter-tenant rejetée par fk_memberships_organization_role, downgrade 0005 restaure owner, fixtures éphémères nettoyées, downgrade base puis nouvel upgrade head réussis.
+- pip-audit : aucun avis connu sur cet arbre ; npm audit : 7 avis (1 modéré, 5 élevés, 1 critique), exit 1 visible et report-only. Gitleaks v3 garde DEP0040/DEP0169 ; aucun avertissement de runtime Node 20.
+- PR #17 reste draft et non fusionnée ; aucun endpoint RBAC métier ne consomme encore require_permission. Aucun test local n'est revendiqué.
+
+### Contrôle Phase 0 — preuves du 26/11/2026
+
+- PR #14 run #120 : 7/7, actions Node 24 sur la pile P1-A2, Node applicatif 22 conservé, ports loopback et Compose smoke validés.
+- PR #15 run #127 : 7/7, propagation Node 24 sur P1-A1/documentation.
+- PR #16 run #128 : 7/7, 32 tests API et pip-audit propre sur cet arbre P1-A1.
+- npm audit reste à 7 vulnérabilités (1 modérée, 5 élevées, 1 critique), exit code 1, report-only ; les avertissements DEP0040/DEP0169 et les dépréciations npm restent visibles.
+- La validation Compose sur le poste de développement n'est pas revendiquée. Phase 0 reste donc ouverte.

@@ -14,6 +14,7 @@
 | [ADR-0003](ADR-0003.md) | PostgreSQL + Redis + Celery | Accepté | 2026-11-24 |
 | [ADR-0004](ADR-0004.md) | Métriques : VictoriaMetrics (+ Prometheus) | Accepté | 2026-11-24 |
 | [ADR-0005](ADR-0005.md) | Authentification OIDC + RBAC ; RLS à évaluer | Accepté | 2026-11-24 |
+| [ADR-0006](../architecture/ADR-0006-rbac-scope.md) | RBAC strictement organisation-scoped, FK composite tenant/rôle | Proposé — PR #17, CI 7/7, revue indépendante en attente | 2026-11-26 |
 
 ## Règles
 

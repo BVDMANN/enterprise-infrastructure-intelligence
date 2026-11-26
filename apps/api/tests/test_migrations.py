@@ -18,7 +18,7 @@ def _script_directory() -> ScriptDirectory:
 
 def test_alembic_has_one_initial_head() -> None:
     """The local-auth migration must be the only head."""
-    assert _script_directory().get_heads() == ["0004_user_password_hash"]
+    assert _script_directory().get_heads() == ["0005_rbac_core"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -49,11 +49,19 @@ def test_password_hash_migration_follows_sessions() -> None:
     assert revision.down_revision == "0003_auth_sessions"
 
 
+def test_rbac_migration_follows_local_auth() -> None:
+    """0005_rbac_core must descend directly from local authentication."""
+    revision = _script_directory().get_revision("0005_rbac_core")
+    assert revision is not None
+    assert revision.down_revision == "0004_user_password_hash"
+
+
 def test_migration_history_is_linear() -> None:
-    """The history must be one chain: 0001 -> 0002 -> 0003 -> 0004 (head)."""
+    """The history must be one chain: 0001 -> 0002 -> 0003 -> 0004 -> 0005."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
+        "0005_rbac_core",
         "0004_user_password_hash",
         "0003_auth_sessions",
         "0002_identity",
