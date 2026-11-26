@@ -53,3 +53,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/).
 - pip-audit ne trouve aucun avis connu sur l'arbre Python combiné. npm audit reste en échec (exit code 1) avec 7 vulnérabilités (1 modérée, 5 élevées, 1 critique) ; audit global report-only, aucune correction npm revendiquée.
 - PR #7 valide séparément les actions Node 24 (run #77, 7/7), mais PR #13 n'en descend pas et conserve les avertissements Node 20 des actions checkout/setup-node/setup-python.
 - OIDC/MFA, RBAC, isolation tenant/RLS et audit trail métier restent non implémentés. Aucune PR fusionnée ni aucun déploiement.
+
+
+### Updated — 2026-11-26 (03:24 CET)
+
+- P1-A0 / PR #4 : run CI #117 (ID `45730025314`) terminé 7/7 sur la tête `25091e0`, incluant migration PostgreSQL dans le smoke Compose.
+- Documentation / PR #9 : run CI #116 (ID `45729950390`) terminé 7/7 sur la tête `d12bb55`.
+- P1-A1 / PR #5 : run #73 7/7 ; la tête de base P1-A0 a reçu un commit documentaire supplémentaire, laissant #5 à 1 commit derrière sans chevauchement de fichiers. PR #5 n'a pas été modifiée.
+- P1-A2 / PR #13 : run #114 7/7 ; 55 tests API, lint/typecheck/build Web, Docker, Compose config/smoke et Gitleaks réussis. pip-audit ne trouve aucun avis connu sur l'arbre Python combiné.
+- npm audit reste en échec (exit code 1) avec 7 vulnérabilités : 1 modérée, 5 élevées et 1 critique. Le job reste report-only ; aucune correction npm n'est revendiquée.
+- Les logs #114 signalent Node 20 forcé vers Node 24 pour checkout@v4, setup-node@v4 et setup-python@v5 ; les logs #116/#117 signalent checkout@v4 et gitleaks-action@v2. La PR #7 porte la migration Node 24, mais elle n'est pas intégrée à ces branches.
+- OIDC/MFA, RBAC, isolation tenant/RLS et audit trail métier restent non livrés. Les données métier de la PR #6 restent simulées.
