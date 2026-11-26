@@ -124,3 +124,26 @@ test("unknown or missing package severities are malformed audit findings", () =>
     /invalid severity for package missing-severity/,
   );
 });
+
+test("low and info severities are valid report-only findings below the configured high threshold", () => {
+  for (const severity of ["low", "info"]) {
+    const counts = { ...emptyCounts, total: 1, [severity]: 1 };
+    const vulnerabilities = { ["package-" + severity]: { severity } };
+    const summary = summarizeNpmAudit(report({ counts, vulnerabilities }), 0);
+    assert.match(summary, /FINDINGS \\(report-only\\)/);
+    assert.match(summary, new RegExp("package-" + severity + ": " + severity));
+  }
+});
+
+test("non-string package severities are rejected", () => {
+  const counts = { total: 1, critical: 0, high: 1, moderate: 0, low: 0, info: 0 };
+  for (const severity of [null, 1]) {
+    assert.throws(
+      () => summarizeNpmAudit(
+        report({ counts, vulnerabilities: { "invalid-package": { severity } } }),
+        1,
+      ),
+      /invalid severity for package invalid-package/,
+    );
+  }
+});
