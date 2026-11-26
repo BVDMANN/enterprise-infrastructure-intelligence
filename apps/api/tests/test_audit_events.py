@@ -71,6 +71,7 @@ def _seed_membership(
         db.add_all([organization, user])
         db.flush()
         roles = create_default_roles_for_organization(db, organization.id)
+        db.flush()
         role = next(item for item in roles if item.name == role_name)
         db.add(
             Membership(
