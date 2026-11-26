@@ -82,6 +82,32 @@ def test_user_with_membership_sees_its_organization(db: Session) -> None:
     assert get_organization_for_user(db, alice.id, org.id) is not None
 
 
+def test_inactive_user_cannot_see_organizations(db: Session) -> None:
+    """A disabled account loses all membership-scoped organization visibility."""
+    org = _make_org(db, "Acme Corp", "acme")
+    alice = _make_user(db, "alice@example.com")
+    _add_member(db, org, alice, "owner")
+
+    alice.is_active = False
+    db.commit()
+
+    assert list_organizations_for_user(db, alice.id) == []
+    assert get_organization_for_user(db, alice.id, org.id) is None
+
+
+def test_soft_deleted_user_cannot_see_organizations(db: Session) -> None:
+    """A soft-deleted account loses all membership-scoped organization visibility."""
+    org = _make_org(db, "Acme Corp", "acme")
+    alice = _make_user(db, "alice@example.com")
+    _add_member(db, org, alice, "owner")
+
+    alice.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
+    assert list_organizations_for_user(db, alice.id) == []
+    assert get_organization_for_user(db, alice.id, org.id) is None
+
+
 def test_user_does_not_see_other_organizations(db: Session) -> None:
     """Membership in org A gives no visibility into org B (cross-tenant)."""
     org_a = _make_org(db, "Org A", "org-a")

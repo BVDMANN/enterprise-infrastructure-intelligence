@@ -14,7 +14,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.identity import Membership, Organization
+from app.models.identity import Membership, Organization, User
 
 
 def list_organizations_for_user(db: Session, user_id: uuid.UUID) -> list[Organization]:
@@ -25,7 +25,10 @@ def list_organizations_for_user(db: Session, user_id: uuid.UUID) -> list[Organiz
     stmt = (
         select(Organization)
         .join(Membership, Membership.organization_id == Organization.id)
-        .where(Membership.user_id == user_id)
+        .join(User, User.id == Membership.user_id)
+        .where(User.id == user_id)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
         .where(Organization.deleted_at.is_(None))
         .order_by(Organization.name)
     )
@@ -43,7 +46,10 @@ def get_organization_for_user(
     stmt = (
         select(Organization)
         .join(Membership, Membership.organization_id == Organization.id)
-        .where(Membership.user_id == user_id)
+        .join(User, User.id == Membership.user_id)
+        .where(User.id == user_id)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
         .where(Organization.id == organization_id)
         .where(Organization.deleted_at.is_(None))
     )
