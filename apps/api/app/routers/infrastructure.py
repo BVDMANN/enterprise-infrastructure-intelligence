@@ -15,6 +15,7 @@ from app.core.authorization import (
 )
 from app.db.session import get_db
 from app.models.identity import Organization, User
+from app.models.infrastructure import InfrastructureAsset
 from app.schemas.infrastructure import (
     AssetStatus,
     AssetType,
@@ -46,7 +47,7 @@ def list_assets(
     asset_type: AssetType | None = Query(default=None),
     status_filter: AssetStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
-) -> list:
+) -> list[InfrastructureAsset]:
     """List only non-deleted assets belonging to the authorized organization."""
     return list_infrastructure_assets(
         db,
@@ -67,7 +68,7 @@ def get_asset(
         require_organization_permission("infrastructure.read")
     ),
     db: Session = Depends(get_db),
-) -> object:
+) -> InfrastructureAsset:
     """Read one asset after membership and infrastructure.read checks."""
     asset = get_infrastructure_asset(db, organization.id, asset_id)
     if asset is None:
