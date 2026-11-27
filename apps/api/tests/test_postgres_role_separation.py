@@ -82,7 +82,10 @@ def test_runtime_role_can_insert_update_and_delete_migrator_created_rows() -> No
 
         with runtime_engine.begin() as connection:
             connection.execute(
-                text(f"INSERT INTO public.{table_name} (id, value) VALUES (:id, :value)"),
+                text(
+                    f"INSERT INTO public.{table_name} (id, value) "
+                    "VALUES (:id, :value)"
+                ),
                 {"id": probe_id, "value": "created"},
             )
             updated_value = connection.execute(
