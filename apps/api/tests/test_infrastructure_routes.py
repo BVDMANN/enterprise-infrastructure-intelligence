@@ -177,9 +177,7 @@ def test_owner_can_create_list_update_and_soft_delete_assets(client) -> None:
             ).all()
         )
     asset_events = [
-        item
-        for item in events
-        if item.event_type.startswith("infrastructure.asset.")
+        item for item in events if item.event_type.startswith("infrastructure.asset.")
     ]
     assert len(asset_events) == 3
     assert {item.event_type for item in asset_events} == {
