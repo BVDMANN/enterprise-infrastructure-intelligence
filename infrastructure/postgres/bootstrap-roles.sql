@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 -- Create the least-privilege roles when absent, then normalize their
 -- attributes and development credentials on every idempotent bootstrap.
@@ -10,14 +10,14 @@ SELECT format(
 WHERE NOT EXISTS (
     SELECT 1 FROM pg_roles WHERE rolname = :'runtime_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
     :'runtime_role',
     :'runtime_password'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'CREATE ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
@@ -27,18 +27,18 @@ SELECT format(
 WHERE NOT EXISTS (
     SELECT 1 FROM pg_roles WHERE rolname = :'migrator_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
     :'migrator_role',
     :'migrator_password'
 )
-\\gexec
+\gexec
 
 -- Existing-volume ownership adoption is deliberately opt-in. It changes
 -- object ownership but never deletes or rewrites application data.
-\\if :adopt_existing_schema_ownership
+\if :adopt_existing_schema_ownership
 SELECT format(
     'ALTER TABLE %I.%I OWNER TO %I',
     schemaname,
@@ -48,7 +48,7 @@ SELECT format(
 FROM pg_tables
 WHERE schemaname = 'public'
   AND tableowner <> :'migrator_role'
-\\gexec
+\gexec
 
 SELECT format(
     'ALTER SEQUENCE %I.%I OWNER TO %I',
@@ -62,8 +62,8 @@ JOIN pg_namespace AS namespace
 WHERE namespace.nspname = 'public'
   AND sequence.relkind = 'S'
   AND pg_get_userbyid(sequence.relowner) <> :'migrator_role'
-\\gexec
-\\endif
+\gexec
+\endif
 
 -- The bootstrap administrator remains the only superuser. The migrator can
 -- install trusted extensions and create/alter application objects; it cannot
@@ -73,23 +73,23 @@ SELECT format(
     current_database(),
     :'runtime_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'GRANT CONNECT, CREATE ON DATABASE %I TO %I',
     current_database(),
     :'migrator_role'
 )
-\\gexec
+\gexec
 
 SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'runtime_role')
-\\gexec
+\gexec
 
 SELECT format(
     'GRANT USAGE, CREATE ON SCHEMA public TO %I',
     :'migrator_role'
 )
-\\gexec
+\gexec
 
 -- Existing objects receive explicit grants. New objects created by Alembic
 -- inherit the runtime grants through the migrator's default privileges.
@@ -97,25 +97,25 @@ SELECT format(
     'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I',
     :'runtime_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO %I',
     :'migrator_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I',
     :'runtime_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %I',
     :'migrator_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public '
@@ -123,7 +123,7 @@ SELECT format(
     :'migrator_role',
     :'runtime_role'
 )
-\\gexec
+\gexec
 
 SELECT format(
     'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public '
@@ -131,6 +131,6 @@ SELECT format(
     :'migrator_role',
     :'runtime_role'
 )
-\\gexec
+\gexec
 
-\\echo 'PostgreSQL runtime and migrator roles are provisioned.'
+\echo 'PostgreSQL runtime and migrator roles are provisioned.'
