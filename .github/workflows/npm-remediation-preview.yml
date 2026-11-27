@@ -1,0 +1,52 @@
+name: npm remediation preview
+
+on:
+  push:
+    branches:
+      - automation/npm-remediation-preview
+
+permissions:
+  contents: read
+
+jobs:
+  validate-web-dependency-migration:
+    name: Resolve lockfile and validate Next.js 16
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Resolve package-lock from the updated manifest
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Upload generated lockfile for review
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: npm-remediation-lockfile-preview
+          path: apps/web/package-lock.json
+          if-no-files-found: error
+
+      - name: Install exactly from generated lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Require a clean dependency audit
+        run: npm audit --audit-level=low
+
+      - name: Run frontend unit tests
+        run: npm run test:api
+
+      - name: Run ESLint flat config
+        run: npm run lint
+
+      - name: Run TypeScript checks
+        run: npm run typecheck
+
+      - name: Build Next.js application
+        run: npm run build
