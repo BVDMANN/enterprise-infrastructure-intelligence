@@ -41,8 +41,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - name: Show Ruff formatter diff for infrastructure files
-        run: ruff format --diff app/schemas/infrastructure.py tests/test_infrastructure_routes.py
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
