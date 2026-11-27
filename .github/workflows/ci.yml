@@ -41,8 +41,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - name: Show formatter diff for PostgreSQL role test
-        run: ruff format --diff tests/test_postgres_role_separation.py
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
