@@ -41,6 +41,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
+      - name: Show Ruff formatting diff (diagnostic; strict check remains below)
+        run: ruff format --diff app tests
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
