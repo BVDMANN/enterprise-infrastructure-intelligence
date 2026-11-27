@@ -32,7 +32,12 @@ SENSITIVE_ATTRIBUTE_FRAGMENTS = (
     "cookie",
     "csrf",
     "apikey",
+    "accesskey",
+    "credential",
+    "bearer",
+    "session",
     "privatekey",
+    "sshkey",
 )
 MAX_ATTRIBUTES_BYTES = 16 * 1024
 
