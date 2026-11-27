@@ -89,9 +89,23 @@ jobs:
       - name: Validate PostgreSQL role bootstrap shell syntax
         run: sh -n ../../infrastructure/postgres/bootstrap-roles.sh
       - name: Provision least-privilege PostgreSQL roles
-        run: sh ../../infrastructure/postgres/bootstrap-roles.sh
+        run: |
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE/infrastructure/postgres:/scripts:ro" \
+            --env PGHOST --env PGPORT --env PGDATABASE --env PGUSER --env PGPASSWORD \
+            --env EII_RUNTIME_ROLE --env EII_RUNTIME_PASSWORD \
+            --env EII_MIGRATOR_ROLE --env EII_MIGRATOR_PASSWORD \
+            --env EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP \
+            postgres:16-alpine /bin/sh /scripts/bootstrap-roles.sh
       - name: Verify PostgreSQL role bootstrap is idempotent
-        run: sh ../../infrastructure/postgres/bootstrap-roles.sh
+        run: |
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE/infrastructure/postgres:/scripts:ro" \
+            --env PGHOST --env PGPORT --env PGDATABASE --env PGUSER --env PGPASSWORD \
+            --env EII_RUNTIME_ROLE --env EII_RUNTIME_PASSWORD \
+            --env EII_MIGRATOR_ROLE --env EII_MIGRATOR_PASSWORD \
+            --env EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP \
+            postgres:16-alpine /bin/sh /scripts/bootstrap-roles.sh
       - name: Apply migrations using the dedicated migrator connection
         run: alembic upgrade head
       - name: Verify runtime and migrator role boundaries
