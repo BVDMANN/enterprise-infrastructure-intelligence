@@ -63,6 +63,7 @@ def test_migrator_role_is_non_superuser_and_can_manage_schema_objects() -> None:
     finally:
         migration_engine.dispose()
 
+
 def test_runtime_role_can_insert_update_and_delete_migrator_created_rows() -> None:
     """Default privileges let the runtime perform DML on future Alembic objects."""
     migration_engine = create_engine(settings.alembic_database_url)
