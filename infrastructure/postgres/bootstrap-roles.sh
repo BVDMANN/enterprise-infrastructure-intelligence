@@ -26,13 +26,13 @@ fi
 
 adopt_existing="${EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP:-false}"
 case "$adopt_existing" in
-  true|false) ;;
+  true|false) export EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP="$adopt_existing" ;;
   *)
     echo "EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP must be true or false." >&2
     exit 2
     ;;
 esac
 
-# psql reads role names and passwords from its environment via \\getenv;
+# psql reads role names and passwords from its environment via \getenv;
 # credentials are not placed in the psql process argument list.
 psql --no-psqlrc --set=ON_ERROR_STOP=1 --file=/scripts/bootstrap-roles.sql
