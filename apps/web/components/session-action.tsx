@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, getCurrentUser, logout } from "@/lib/api";
+import { clearCsrfToken, useCsrfToken } from "@/lib/csrf-token";
 
 export function SessionAction() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const csrfToken = useCsrfToken();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,9 +26,6 @@ export function SessionAction() {
     staleTime: 30_000,
   });
 
-  useEffect(() => {
-    setCsrfToken(window.sessionStorage.getItem("eii_csrf_token"));
-  }, []);
 
   async function signOut() {
     if (!csrfToken) return;
@@ -35,9 +33,8 @@ export function SessionAction() {
     setError("");
     try {
       await logout(csrfToken);
-      window.sessionStorage.removeItem("eii_csrf_token");
+      clearCsrfToken();
       queryClient.clear();
-      setCsrfToken(null);
       router.replace("/login");
     } catch {
       setError("Déconnexion refusée. La session ou le jeton CSRF a peut-être expiré.");
