@@ -34,8 +34,13 @@ boundary, not only the role flags:
   privilege). Probe tables are dropped by the migrator in test cleanup; a
   database probe is uniquely named and dropped if an unexpected grant allows
   its creation.
-- These tests verify role privileges only. They do not prove tenant isolation
-  or activate RLS on application tables.
+- The existing-schema adoption check creates a legacy table and sequence
+  owned by the bootstrap administrator. It verifies that the default
+  `false` setting preserves ownership, explicit `true` transfers both
+  objects to the migrator, the row remains intact, and a repeated opt-in
+  bootstrap is idempotent.
+- These tests verify role privileges and ownership migration only. They do not
+  prove tenant isolation or activate RLS on application tables.
 
 ## Existing development volumes
 

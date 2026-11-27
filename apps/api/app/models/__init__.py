@@ -1,13 +1,15 @@
 """ORM models. Importing this package registers every model on Base.metadata."""
 
+from app.models.audit import AuditEvent
 from app.models.identity import Invitation, Membership, Organization, User
+from app.models.infrastructure import InfrastructureAsset
 from app.models.rbac import Permission, Role, RolePermission
 from app.models.sessions import AuthSession
-from app.models.audit import AuditEvent
 
 __all__ = [
     "AuditEvent",
     "AuthSession",
+    "InfrastructureAsset",
     "Invitation",
     "Membership",
     "Organization",

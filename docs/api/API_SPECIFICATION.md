@@ -1,7 +1,9 @@
 # API_SPECIFICATION.md — Enterprise Infrastructure Intelligence
 
-> Version : spécification V3 §16. Statut : PHASE 0 — contrats définis,
-> aucune route métier implémentée (squelette : `/health`, `/api/v1/health`).
+> Version : spécification V3 §16. Statut : implémentation partielle.
+> Cette page décrit le contrat cible ; les routes réellement livrées, leurs
+> permissions et leurs limites sont suivies dans INFRASTRUCTURE_ASSETS.md.
+> Ne pas supposer que toutes les routes de la table ci-dessous sont actives.
 
 ## 1. Principes
 
