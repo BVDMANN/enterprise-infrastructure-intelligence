@@ -374,3 +374,154 @@ def test_concurrent_invitation_acceptance_is_single_use(monkeypatch) -> None:
             )
         )
         assert membership_count == 1
+
+def _seed_status_membership_race() -> tuple[str, str, str, str, str, str, str]:
+    """Create two tenants, with the target user initially a member of A only."""
+    suffix = uuid4().hex
+    organization_a = Organization(
+        name="Status race organization A",
+        slug=f"status-race-a-{suffix}",
+    )
+    organization_b = Organization(
+        name="Status race organization B",
+        slug=f"status-race-b-{suffix}",
+    )
+    owner_a_email = f"status-owner-a-{suffix}@example.test"
+    owner_b_email = f"status-owner-b-{suffix}@example.test"
+    target_email = f"status-target-{suffix}@example.test"
+
+    with SessionLocal() as db:
+        owner_a = User(
+            email=owner_a_email,
+            display_name="Status race owner A",
+            password_hash=hash_password(PASSWORD),
+        )
+        owner_b = User(
+            email=owner_b_email,
+            display_name="Status race owner B",
+            password_hash=hash_password(PASSWORD),
+        )
+        target = User(
+            email=target_email,
+            display_name="Status race target",
+            password_hash=hash_password(PASSWORD),
+        )
+        db.add_all([organization_a, organization_b, owner_a, owner_b, target])
+        db.flush()
+        roles_a = {
+            role.name: role
+            for role in create_default_roles_for_organization(db, organization_a.id)
+        }
+        roles_b = {
+            role.name: role
+            for role in create_default_roles_for_organization(db, organization_b.id)
+        }
+        membership_a = Membership(
+            organization_id=organization_a.id,
+            user_id=target.id,
+            role_id=roles_a["member"].id,
+        )
+        db.add_all(
+            [
+                Membership(
+                    organization_id=organization_a.id,
+                    user_id=owner_a.id,
+                    role_id=roles_a["owner"].id,
+                ),
+                Membership(
+                    organization_id=organization_b.id,
+                    user_id=owner_b.id,
+                    role_id=roles_b["owner"].id,
+                ),
+                membership_a,
+            ]
+        )
+        db.commit()
+        return (
+            str(organization_a.id),
+            str(organization_b.id),
+            owner_a_email,
+            owner_b_email,
+            str(target.id),
+            str(membership_a.id),
+            str(roles_b["member"].id),
+        )
+
+
+def test_concurrent_account_deactivation_and_membership_add_are_serialized(
+    monkeypatch,
+) -> None:
+    """Either deactivation wins or the second-tenant membership wins, never both."""
+    assert engine.dialect.name == "postgresql"
+    (
+        organization_a_id,
+        organization_b_id,
+        owner_a_email,
+        owner_b_email,
+        target_user_id,
+        membership_a_id,
+        member_role_b_id,
+    ) = _seed_status_membership_race()
+
+    monkeypatch.setattr(
+        auth_router,
+        "_enforce_login_rate_limit",
+        lambda _request, _email: None,
+    )
+    original_lock = organizations_router._lock_user_for_membership_mutation
+    rendezvous = Barrier(2)
+
+    def synchronize_before_user_lock(db: Session, user_id: UUID):
+        if user_id == UUID(target_user_id):
+            rendezvous.wait(timeout=20)
+        return original_lock(db, user_id)
+
+    monkeypatch.setattr(
+        organizations_router,
+        "_lock_user_for_membership_mutation",
+        synchronize_before_user_lock,
+    )
+
+    with TestClient(app) as owner_a_client, TestClient(app) as owner_b_client:
+        csrf_a = _login(owner_a_client, owner_a_email)
+        csrf_b = _login(owner_b_client, owner_b_email)
+
+        def deactivate():
+            return owner_a_client.patch(
+                f"/api/v1/organizations/{organization_a_id}/members/"
+                f"{membership_a_id}/status",
+                headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_a},
+                json={"is_active": False},
+            )
+
+        def add_membership():
+            return owner_b_client.post(
+                f"/api/v1/organizations/{organization_b_id}/memberships",
+                headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_b},
+                json={"user_id": target_user_id, "role_id": member_role_b_id},
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            status_future = executor.submit(deactivate)
+            membership_future = executor.submit(add_membership)
+            status_response = status_future.result(timeout=40)
+            membership_response = membership_future.result(timeout=40)
+
+    assert (
+        status_response.status_code,
+        membership_response.status_code,
+    ) in {(200, 404), (409, 201)}
+
+    with SessionLocal() as db:
+        target = db.get(User, UUID(target_user_id))
+        membership_b = db.scalar(
+            select(Membership.id)
+            .where(Membership.organization_id == UUID(organization_b_id))
+            .where(Membership.user_id == UUID(target_user_id))
+        )
+        if status_response.status_code == 200:
+            assert target.is_active is False
+            assert membership_b is None
+        else:
+            assert target.is_active is True
+            assert membership_b is not None
