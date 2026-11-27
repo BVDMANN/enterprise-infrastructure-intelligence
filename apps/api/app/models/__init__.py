@@ -4,9 +4,11 @@ from app.models.identity import Membership, Organization, User
 from app.models.rbac import Permission, Role, RolePermission
 from app.models.sessions import AuthSession
 from app.models.audit import AuditEvent
+from app.models.infrastructure import InfrastructureAsset
 
 __all__ = [
     "AuditEvent",
+    "InfrastructureAsset",
     "AuthSession",
     "Membership",
     "Organization",
