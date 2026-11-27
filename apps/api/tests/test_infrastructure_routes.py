@@ -320,6 +320,26 @@ def test_asset_writes_require_session_csrf_and_reject_sensitive_attributes(clien
         },
     )
     assert access_key.status_code == 422
+    oversized = test_client.post(
+        collection,
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+        json={
+            "name": "API server",
+            "asset_type": "server",
+            "attributes": {"description": "x" * (16 * 1024)},
+        },
+    )
+    assert oversized.status_code == 422
+    naive_timestamp = test_client.post(
+        collection,
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+        json={
+            "name": "API server",
+            "asset_type": "server",
+            "last_seen_at": "2026-11-27T12:00:00",
+        },
+    )
+    assert naive_timestamp.status_code == 422
     assert _asset_count(engine, organization_id) == 0
 
 
