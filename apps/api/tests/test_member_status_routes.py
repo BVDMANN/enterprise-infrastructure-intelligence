@@ -16,6 +16,7 @@ import app.routers.auth as auth_router
 from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.rbac import Role
+from app.services.organizations import OrganizationActorInactiveError, create_organization
 from app.services.passwords import hash_password
 from app.services.rbac import create_default_roles_for_organization
 
@@ -438,3 +439,12 @@ def test_account_wide_status_change_is_refused_for_multi_tenant_user(client) -> 
             )
         )
         assert membership_count == 2
+
+        with pytest.raises(OrganizationActorInactiveError):
+            create_organization(
+                db,
+                creator=target,
+                name="Should not be created",
+                slug="should-not-be-created",
+            )
+        db.rollback()
