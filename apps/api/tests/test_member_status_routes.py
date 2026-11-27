@@ -352,3 +352,89 @@ def test_status_change_unknown_membership_is_404(client) -> None:
         test_client, csrf, organization_id, str(uuid4()), is_active=False
     )
     assert response.status_code == 404
+
+def test_account_wide_status_change_is_refused_for_multi_tenant_user(client) -> None:
+    test_client, engine = client
+    organization_a_id, _, _ = _seed_membership(
+        engine,
+        slug="status-org-a",
+        email="status-owner-a@example.com",
+        role_name="owner",
+    )
+    organization_b_id, _, _ = _seed_membership(
+        engine,
+        slug="status-org-b",
+        email="status-owner-b@example.com",
+        role_name="owner",
+    )
+    target_email = "multi-tenant-member@example.com"
+
+    with Session(engine) as db:
+        target = User(
+            email=target_email,
+            display_name="Multi tenant member",
+            password_hash=hash_password(PASSWORD),
+        )
+        db.add(target)
+        db.flush()
+        role_a = db.scalar(
+            select(Role).where(
+                Role.organization_id == UUID(organization_a_id),
+                Role.name == "member",
+            )
+        )
+        role_b = db.scalar(
+            select(Role).where(
+                Role.organization_id == UUID(organization_b_id),
+                Role.name == "member",
+            )
+        )
+        membership_a = Membership(
+            organization_id=UUID(organization_a_id),
+            user_id=target.id,
+            role_id=role_a.id,
+        )
+        membership_b = Membership(
+            organization_id=UUID(organization_b_id),
+            user_id=target.id,
+            role_id=role_b.id,
+        )
+        db.add_all([membership_a, membership_b])
+        db.commit()
+        membership_a_id = str(membership_a.id)
+        target_user_id = target.id
+
+    csrf = _login(test_client, "status-owner-a@example.com")
+    deactivation = _set_status(
+        test_client,
+        csrf,
+        organization_a_id,
+        membership_a_id,
+        is_active=False,
+    )
+    assert deactivation.status_code == 409
+
+    with Session(engine) as db:
+        target = db.get(User, target_user_id)
+        assert target.is_active is True
+        target.is_active = False
+        db.commit()
+
+    reactivation = _set_status(
+        test_client,
+        csrf,
+        organization_a_id,
+        membership_a_id,
+        is_active=True,
+    )
+    assert reactivation.status_code == 409
+
+    with Session(engine) as db:
+        target = db.get(User, target_user_id)
+        assert target.is_active is False
+        membership_count = db.scalar(
+            select(func.count(Membership.id)).where(
+                Membership.user_id == target_user_id
+            )
+        )
+        assert membership_count == 2
