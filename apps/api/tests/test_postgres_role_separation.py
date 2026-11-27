@@ -111,4 +111,3 @@ def test_runtime_role_can_insert_update_and_delete_migrator_created_rows() -> No
             with migration_engine.begin() as connection:
                 connection.exec_driver_sql(f"DROP TABLE IF EXISTS public.{table_name}")
         migration_engine.dispose()
-
