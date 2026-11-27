@@ -21,5 +21,5 @@ La configuration CORS doit autoriser exactement l'origine du frontend. En dével
 
 - **Inventaire ≠ supervision temps réel :** les ressources Infrastructure sont persistées, mais `last_seen_at` n'est pas une preuve d'agent actif. Aucune collecte CPU/RAM, time-series, découverte automatique, synchronisation de connecteur, règle d'alerte ou gestion d'incident n'est livrée par ces écrans.
 - **Audit partiel :** les événements affichés proviennent du journal backend. Toutes les opérations métier ne sont pas encore instrumentées ; l'absence d'un événement ne prouve donc pas qu'aucune action n'a eu lieu.
-- **Dashboard DEMO :** les ressources/indicateurs de supervision et alertes conservés depuis les fixtures sont explicitement simulés. Seuls les compteurs et événements portant la mention API utilisent des données réelles.
+- **Dashboard :** les compteurs organisations/utilisateurs, les ressources d'inventaire et les événements d'audit sont lus depuis les API tenant-scoped. Les ressources sont un inventaire enregistré, pas une télémétrie ; les agents, métriques CPU/RAM, alertes et incidents ne sont pas intégrés.
 - **Sécurité restante :** OIDC/MFA et RLS PostgreSQL sur les véritables tables métier restent à valider séparément. Le prototype RLS isolé de CI ne prouve pas que les tables métier sont protégées par RLS.
