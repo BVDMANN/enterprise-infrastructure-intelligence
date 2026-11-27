@@ -375,6 +375,7 @@ def test_concurrent_invitation_acceptance_is_single_use(monkeypatch) -> None:
         )
         assert membership_count == 1
 
+
 def _seed_status_membership_race() -> tuple[str, str, str, str, str, str, str]:
     """Create two tenants, with the target user initially a member of A only."""
     suffix = uuid4().hex
