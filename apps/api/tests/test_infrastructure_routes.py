@@ -310,6 +310,16 @@ def test_asset_writes_require_session_csrf_and_reject_sensitive_attributes(clien
         },
     )
     assert secret.status_code == 422
+    access_key = test_client.post(
+        collection,
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf_token},
+        json={
+            "name": "API server",
+            "asset_type": "server",
+            "attributes": {"access_key": "must-not-be-stored"},
+        },
+    )
+    assert access_key.status_code == 422
     assert _asset_count(engine, organization_id) == 0
 
 
