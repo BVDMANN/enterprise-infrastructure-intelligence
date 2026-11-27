@@ -31,6 +31,7 @@ from app.services.invitations import (
     revoke_invitation,
 )
 from app.services.organizations import (
+    OrganizationActorInactiveError,
     OrganizationSlugConflictError,
     OrganizationValidationError,
     create_organization as create_organization_service,
@@ -169,6 +170,16 @@ def _lock_organization_for_membership_mutation(
     )
 
 
+def _lock_user_for_membership_mutation(db: Session, user_id: UUID) -> User | None:
+    """Serialize account-wide status changes with every membership creation path."""
+    return db.scalar(
+        select(User)
+        .where(User.id == user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
 def _active_owner_membership_count(
     db: Session,
     organization_id: UUID,
@@ -286,6 +297,11 @@ def create_organization(
             db, creator=actor, name=payload.name, slug=payload.slug
         )
         db.commit()
+    except OrganizationActorInactiveError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except OrganizationSlugConflictError as exc:
         db.rollback()
         raise HTTPException(
@@ -458,13 +474,12 @@ def create_organization_membership(
 ) -> MembershipResponse:
     """Add an existing user and append the audit event in the same transaction."""
     _lock_organization_for_membership_mutation(db, organization.id)
-    target_user = db.scalar(
-        select(User)
-        .where(User.id == payload.user_id)
-        .where(User.is_active.is_(True))
-        .where(User.deleted_at.is_(None))
-    )
-    if target_user is None:
+    target_user = _lock_user_for_membership_mutation(db, payload.user_id)
+    if (
+        target_user is None
+        or not target_user.is_active
+        or target_user.deleted_at is not None
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Active user not found",
@@ -720,10 +735,10 @@ def update_member_status(
 ) -> MemberResponse:
     """Deactivate or reactivate a member's user account.
 
-    Deactivation is account-wide (the user is inactive everywhere),
-    so it requires ``members.manage`` in this organization and is
-    refused for the actor's own account and for the last active
-    Organization Owner. Reactivation restores access. Idempotent.
+    The status is account-wide, so it is refused when the target has an
+    active membership in another organization. Use tenant-scoped membership
+    removal to revoke access in only one organization. The actor's own account
+    and the last active Organization Owner are also protected. Idempotent.
     """
     _lock_organization_for_membership_mutation(db, organization.id)
     membership = db.scalar(
@@ -752,7 +767,7 @@ def update_member_status(
             status_code=status.HTTP_409_CONFLICT,
             detail="Membership role is invalid for this organization",
         )
-    target_user = db.get(User, membership.user_id)
+    target_user = _lock_user_for_membership_mutation(db, membership.user_id)
     if target_user is None or target_user.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -768,6 +783,23 @@ def update_member_status(
             role=current_role.name,
             is_active=target_user.is_active,
             joined_at=membership.created_at,
+        )
+
+    other_active_membership = db.scalar(
+        select(Membership.id)
+        .join(Organization, Organization.id == Membership.organization_id)
+        .where(Membership.user_id == target_user.id)
+        .where(Membership.organization_id != organization.id)
+        .where(Organization.deleted_at.is_(None))
+        .limit(1)
+    )
+    if other_active_membership is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Account-wide status cannot be changed while the user belongs "
+                "to another organization"
+            ),
         )
 
     if not payload.is_active:
