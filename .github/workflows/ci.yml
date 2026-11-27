@@ -44,6 +44,41 @@ jobs:
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
+  api-postgres-integration:
+    name: API PostgreSQL integration (membership concurrency)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: eii_test
+          POSTGRES_USER: eii
+          POSTGRES_PASSWORD: eii_test_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eii -d eii_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://eii:eii_test_only@localhost:5432/eii_test
+      EII_POSTGRES_INTEGRATION: "1"
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Apply migrations to the ephemeral PostgreSQL service
+        run: alembic upgrade head
+      - name: Verify concurrent owner demotions remain serialized
+        run: python -m pytest tests/test_membership_postgres_concurrency.py -q
+
   compose-validate:
     name: Compose config validation
     runs-on: ubuntu-latest

@@ -68,7 +68,9 @@ A tenant must retain at least one active, non-deleted owner membership. Demoting
 
 Each membership mutation locks the organization row with `SELECT ... FOR UPDATE` before reading or changing memberships. The create path takes the same lock, so concurrent membership writes for a tenant are serialized on PostgreSQL. The safeguard counts only memberships whose user is active and not soft-deleted.
 
-SQLite-based route tests validate the business rules but do not prove PostgreSQL row-lock behavior; the Compose PostgreSQL integration suite remains the required runtime verification.
+SQLite-based route tests validate the business rules but do not prove PostgreSQL row-lock behavior. The dedicated CI job `API PostgreSQL integration (membership concurrency)` now runs against an ephemeral PostgreSQL 16 service after applying all Alembic migrations.
+
+The integration test synchronizes two authenticated owners immediately before the tenant-row lock, then submits concurrent role demotions. It requires exactly one HTTP 200, one HTTP 409, exactly one active owner remaining and exactly one `membership.role_changed` audit event. This verifies the row-lock safeguard under PostgreSQL contention; it does not claim that production RLS or a dedicated runtime database role has been configured.
 
 ## Audit and transaction
 
