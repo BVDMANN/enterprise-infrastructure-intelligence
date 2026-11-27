@@ -103,9 +103,10 @@ def test_runtime_role_can_insert_update_and_delete_migrator_created_rows() -> No
                 {"id": probe_id},
             ).scalar_one()
             assert deleted_id == probe_id
-            assert connection.scalar(
-                text(f"SELECT count(*) FROM public.{table_name}")
-            ) == 0
+            assert (
+                connection.scalar(text(f"SELECT count(*) FROM public.{table_name}"))
+                == 0
+            )
     finally:
         if table_created:
             with migration_engine.begin() as connection:
