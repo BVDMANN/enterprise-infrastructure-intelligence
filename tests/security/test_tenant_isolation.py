@@ -1,21 +1,23 @@
-"""Security tests — multi-tenant isolation (PHASE 0 skeleton).
+"""Legacy index for multi-tenant security test coverage.
 
-The real isolation tests arrive in PHASE 1 with the first models and a
-test database (see docs/architecture/DATABASE_DESIGN.md §6 and
-docs/security/SECURITY_ARCHITECTURE.md §4).
+Executable application-layer isolation tests now live in:
+- apps/api/tests/test_organization_routes.py
+- apps/api/tests/test_membership_mutation_routes.py
+- apps/api/tests/test_audit_events.py
 
-Planned cases:
-- user from organization A cannot read resources of organization B (404/403)
-- user from organization A cannot list users of organization B
-- cross-tenant writes are rejected (403) and audited
-- RLS evaluation (ADR-0005) is decided before these tests are finalized
+The isolated PostgreSQL RLS mechanics prototype lives in
+apps/api/tests/test_postgres_rls_evaluation.py and runs only in its dedicated
+ephemeral PostgreSQL CI job. It does not enable RLS in the application schema.
+
+The skipped tests below are retained as historical placeholders only; they are
+not security coverage and are not collected by the API CI job.
 """
 
 import pytest
 
 
 @pytest.mark.skip(
-    reason="PHASE 1: requires models, test database and authenticated fixtures."
+    reason="Historical placeholder; executable tenant read tests live in apps/api/tests."
 )
 def test_cross_tenant_resource_read_is_denied() -> None:
     """A user from org A must not read a resource of org B."""
@@ -23,7 +25,7 @@ def test_cross_tenant_resource_read_is_denied() -> None:
 
 
 @pytest.mark.skip(
-    reason="PHASE 1: requires models, test database and authenticated fixtures."
+    reason="Historical placeholder; executable tenant write/audit tests live in apps/api/tests."
 )
 def test_cross_tenant_write_is_denied_and_audited() -> None:
     """A cross-tenant write must be rejected and recorded in the audit log."""

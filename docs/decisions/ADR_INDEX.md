@@ -15,6 +15,7 @@
 | [ADR-0004](ADR-0004.md) | Métriques : VictoriaMetrics (+ Prometheus) | Accepté | 2026-11-24 |
 | [ADR-0005](ADR-0005.md) | Authentification OIDC + RBAC ; RLS à évaluer | Accepté | 2026-11-24 |
 | [ADR-0006](../architecture/ADR-0006-rbac-scope.md) | RBAC strictement organisation-scoped, FK composite tenant/rôle | Proposé — PR #17, CI 7/7, revue indépendante en attente | 2026-11-26 |
+| [ADR-0007](ADR-0007-postgresql-rls-evaluation.md) | Évaluation PostgreSQL RLS par prototype isolé | Proposé — évaluation uniquement, pas d’adoption production | 2026-11-27 |
 
 ## Règles
 
