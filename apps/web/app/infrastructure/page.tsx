@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
-  AlertTriangle,
   Database,
   HardDrive,
   Network,
@@ -249,7 +248,7 @@ export default function InfrastructurePage() {
 
           <section aria-label="Indicateurs d’inventaire" className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs text-slate-500">Ressources enregistrées</p>
+              <p className="text-xs text-slate-500">Ressources filtrées</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
                 {assets.isLoading ? "—" : assetsList.length}
               </p>
