@@ -15,11 +15,20 @@ class Settings(BaseSettings):
 
     api_env: str = "development"
     database_url: str = "postgresql+psycopg://eii:change_me_dev_only@localhost:5432/eii"
+    # Optional, dedicated connection for Alembic. Keep unset until a separate
+    # non-superuser migration role is provisioned; the fallback preserves the
+    # current development and CI behavior.
+    migration_database_url: str | None = None
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
     secret_key: str = "change_me_dev_only"
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    @property
+    def alembic_database_url(self) -> str:
+        """Return the dedicated migration URL, or the legacy DB URL."""
+        return self.migration_database_url or self.database_url
 
 
 settings = Settings()
