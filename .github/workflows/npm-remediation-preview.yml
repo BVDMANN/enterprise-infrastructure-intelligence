@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - automation/npm-remediation-preview
+  pull_request:
+    branches:
+      - phase1/p1-a5-postgres-owner-concurrency
 
 permissions:
   contents: read
