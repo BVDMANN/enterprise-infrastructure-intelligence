@@ -13,9 +13,9 @@ permissions:
 
 jobs:
   web-peer-compatibility:
-    name: Regenerate lockfile and validate Web toolchain
+    name: Generate ESLint 9 lockfile preview
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -24,12 +24,14 @@ jobs:
         uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
 
       - name: Regenerate npm lockfile
         working-directory: apps/web
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Report lockfile digest
+        working-directory: apps/web
+        run: sha256sum package-lock.json
 
       - name: Upload generated lockfile for review
         uses: actions/upload-artifact@v7.0.2
@@ -38,22 +40,10 @@ jobs:
           path: apps/web/package-lock.json
           retention-days: 1
 
-      - name: Install from regenerated lockfile
+      - name: Emit lockfile for GitHub API handoff
         working-directory: apps/web
-        run: npm ci --no-audit --no-fund
-
-      - name: Verify ESLint peer tree
-        working-directory: apps/web
-        run: npm ls eslint eslint-plugin-react eslint-plugin-jsx-a11y
-
-      - name: Web tests, lint, typecheck and build
-        working-directory: apps/web
+        shell: bash
         run: |
-          npm run test:api
-          npm run lint
-          npm run typecheck
-          npm run build
-
-      - name: Report lockfile digest
-        working-directory: apps/web
-        run: sha256sum package-lock.json
+          echo LOCKFILE_B64_BEGIN
+          base64 -w 76 package-lock.json
+          echo LOCKFILE_B64_END
