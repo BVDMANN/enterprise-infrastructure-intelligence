@@ -52,7 +52,9 @@ def _contains_sensitive_key(value: Any) -> bool:
             if not isinstance(key, str):
                 raise ValueError("Asset attribute keys must be strings")
             normalized = _normalized_key(key)
-            if any(fragment in normalized for fragment in SENSITIVE_ATTRIBUTE_FRAGMENTS):
+            if any(
+                fragment in normalized for fragment in SENSITIVE_ATTRIBUTE_FRAGMENTS
+            ):
                 return True
             if _contains_sensitive_key(nested):
                 return True
@@ -82,9 +84,7 @@ def validate_asset_attributes(value: dict[str, Any]) -> dict[str, Any]:
 
 
 def _aware_timestamp(value: datetime | None) -> datetime | None:
-    if value is not None and (
-        value.tzinfo is None or value.utcoffset() is None
-    ):
+    if value is not None and (value.tzinfo is None or value.utcoffset() is None):
         raise ValueError("last_seen_at must be timezone-aware")
     return value
 
@@ -177,7 +177,10 @@ class InfrastructureAssetUpdateRequest(BaseModel):
     @model_validator(mode="after")
     def reject_null_required_fields(self) -> InfrastructureAssetUpdateRequest:
         for field_name in ("name", "asset_type", "status", "attributes"):
-            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+            if (
+                field_name in self.model_fields_set
+                and getattr(self, field_name) is None
+            ):
                 raise ValueError(f"{field_name} cannot be null")
         return self
 
