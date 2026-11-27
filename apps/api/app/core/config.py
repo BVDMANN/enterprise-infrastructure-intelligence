@@ -14,10 +14,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     api_env: str = "development"
-    database_url: str = "postgresql+psycopg://eii:change_me_dev_only@localhost:5432/eii"
-    # Optional, dedicated connection for Alembic. Keep unset until a separate
-    # non-superuser migration role is provisioned; the fallback preserves the
-    # current development and CI behavior.
+    database_url: str = (
+        "postgresql+psycopg://eii_runtime:change_me_runtime_dev_only@localhost:5432/eii"
+    )
+    # Optional, dedicated connection for Alembic. If unset, Alembic falls
+    # back to the non-privileged runtime URL and schema changes fail closed.
     migration_database_url: str | None = None
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str = "redis://localhost:6379/0"
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
 
     @property
     def alembic_database_url(self) -> str:
-        """Return the dedicated migration URL, or the legacy DB URL."""
+        """Return the dedicated migration URL, or the non-privileged runtime URL."""
         return self.migration_database_url or self.database_url
 
 
