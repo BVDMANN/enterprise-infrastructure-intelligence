@@ -26,7 +26,8 @@ services:
       retries: 10
 
   # Creates/normalizes least-privilege application roles. The admin password
-  # is confined to this bootstrap container and the PostgreSQL healthcheck.
+  # is confined to bootstrap/healthcheck and explicit ephemeral smoke commands;
+  # API, Worker, and migration containers never receive it.
   db-bootstrap:
     image: postgres:16-alpine
     entrypoint: ["/bin/sh", "/scripts/bootstrap-roles.sh"]
