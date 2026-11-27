@@ -44,16 +44,15 @@ export function latestAuditEvents<T extends AuditEventTimestamp>(
     .sort((left, right) => {
       const leftTime = Date.parse(left.occurred_at);
       const rightTime = Date.parse(right.occurred_at);
-      const safeLeftTime = Number.isFinite(leftTime)
-        ? leftTime
-        : Number.NEGATIVE_INFINITY;
-      const safeRightTime = Number.isFinite(rightTime)
-        ? rightTime
-        : Number.NEGATIVE_INFINITY;
-      const timeDifference = safeRightTime - safeLeftTime;
+      const leftIsValid = Number.isFinite(leftTime);
+      const rightIsValid = Number.isFinite(rightTime);
 
-      if (Number.isFinite(timeDifference) && timeDifference !== 0) {
-        return timeDifference;
+      if (leftIsValid !== rightIsValid) {
+        return rightIsValid ? 1 : -1;
+      }
+
+      if (leftIsValid && rightIsValid && leftTime !== rightTime) {
+        return rightTime - leftTime;
       }
 
       return left.id.localeCompare(right.id);
