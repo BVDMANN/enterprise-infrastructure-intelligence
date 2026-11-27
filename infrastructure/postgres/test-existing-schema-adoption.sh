@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
 
 : "${PGHOST:?PGHOST is required}"
 : "${PGDATABASE:?PGDATABASE is required}"
@@ -66,8 +66,10 @@ assert_owners() {
 assert_data_preserved() {
   row_count=$(psql --no-psqlrc --tuples-only --no-align --quiet \
     --set=ON_ERROR_STOP=1 \
-    --set=probe_table="$probe_table" \
-    -c 'SELECT count(*) FROM public.:"probe_table";')
+    --set=probe_table="$probe_table" <<'SQL'
+SELECT count(*) FROM public.:"probe_table";
+SQL
+  )
   if [ "$row_count" != "1" ]; then
     echo "Expected the legacy row to remain present, got count '$row_count'." >&2
     exit 1
