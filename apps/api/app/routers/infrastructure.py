@@ -92,7 +92,7 @@ def create_asset(
     ),
     _csrf: None = Depends(require_session_csrf),
     db: Session = Depends(get_db),
-) -> object:
+) -> InfrastructureAsset:
     """Create an asset and its audit event in one database transaction."""
     try:
         asset = create_infrastructure_asset(
@@ -133,7 +133,7 @@ def update_asset(
     ),
     _csrf: None = Depends(require_session_csrf),
     db: Session = Depends(get_db),
-) -> object:
+) -> InfrastructureAsset:
     """Update one tenant asset and append a redacted audit event atomically."""
     asset = get_infrastructure_asset(db, organization.id, asset_id)
     if asset is None:
