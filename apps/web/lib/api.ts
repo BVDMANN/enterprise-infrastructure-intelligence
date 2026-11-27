@@ -1,5 +1,5 @@
 /**
- * Typed browser API client for the authenticated EII read-only surface.
+ * Typed browser API client for the authenticated EII surface.
  * Browser requests include the HttpOnly session cookie; never read it in JS.
  */
 
@@ -44,6 +44,57 @@ export interface OrganizationRole {
   permissions: string[];
 }
 
+export type InfrastructureAssetType =
+  | "server"
+  | "virtual_machine"
+  | "container"
+  | "cluster"
+  | "database"
+  | "network"
+  | "storage"
+  | "cloud_resource"
+  | "service"
+  | "other";
+
+export type InfrastructureAssetStatus =
+  | "unknown"
+  | "healthy"
+  | "degraded"
+  | "unhealthy"
+  | "offline";
+
+export interface InfrastructureAsset {
+  id: string;
+  organization_id: string;
+  name: string;
+  asset_type: InfrastructureAssetType;
+  external_id: string | null;
+  provider: string | null;
+  region: string | null;
+  status: InfrastructureAssetStatus;
+  attributes: Record<string, unknown>;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InfrastructureAssetInput {
+  name: string;
+  asset_type: InfrastructureAssetType;
+  external_id?: string | null;
+  provider?: string | null;
+  region?: string | null;
+  status?: InfrastructureAssetStatus;
+  attributes?: Record<string, unknown>;
+  last_seen_at?: string | null;
+}
+
+export interface InfrastructureAssetFilters {
+  asset_type?: InfrastructureAssetType;
+  status?: InfrastructureAssetStatus;
+  limit?: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -60,7 +111,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(API_URL + path, {
     ...init,
     headers,
     credentials: "include",
@@ -76,7 +127,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const detail =
       payload && typeof payload === "object" && "detail" in payload
         ? String((payload as { detail: unknown }).detail)
-        : `API request failed with status ${response.status}`;
+        : "API request failed with status " + response.status;
     throw new ApiError(response.status, detail);
   }
 
@@ -113,7 +164,7 @@ export function getOrganizationMembers(
   organizationId: string,
 ): Promise<OrganizationMember[]> {
   return request<OrganizationMember[]>(
-    `/api/v1/organizations/${encodeURIComponent(organizationId)}/members`,
+    "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/members",
   );
 }
 
@@ -121,6 +172,70 @@ export function getOrganizationRoles(
   organizationId: string,
 ): Promise<OrganizationRole[]> {
   return request<OrganizationRole[]>(
-    `/api/v1/organizations/${encodeURIComponent(organizationId)}/roles`,
+    "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
+  );
+}
+
+function infrastructureAssetsPath(organizationId: string): string {
+  return (
+    "/api/v1/organizations/" +
+    encodeURIComponent(organizationId) +
+    "/infrastructure/assets"
+  );
+}
+
+export function getOrganizationInfrastructureAssets(
+  organizationId: string,
+  filters: InfrastructureAssetFilters = {},
+): Promise<InfrastructureAsset[]> {
+  const params = new URLSearchParams();
+  if (filters.asset_type) params.set("asset_type", filters.asset_type);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.limit !== undefined) params.set("limit", String(filters.limit));
+  const query = params.toString();
+  return request<InfrastructureAsset[]>(
+    infrastructureAssetsPath(organizationId) + (query ? "?" + query : ""),
+  );
+}
+
+export function createInfrastructureAsset(
+  organizationId: string,
+  payload: InfrastructureAssetInput,
+  csrfToken: string,
+): Promise<InfrastructureAsset> {
+  return request<InfrastructureAsset>(infrastructureAssetsPath(organizationId), {
+    method: "POST",
+    headers: { "x-csrf-token": csrfToken },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateInfrastructureAsset(
+  organizationId: string,
+  assetId: string,
+  changes: Partial<InfrastructureAssetInput>,
+  csrfToken: string,
+): Promise<InfrastructureAsset> {
+  return request<InfrastructureAsset>(
+    infrastructureAssetsPath(organizationId) + "/" + encodeURIComponent(assetId),
+    {
+      method: "PATCH",
+      headers: { "x-csrf-token": csrfToken },
+      body: JSON.stringify(changes),
+    },
+  );
+}
+
+export function deleteInfrastructureAsset(
+  organizationId: string,
+  assetId: string,
+  csrfToken: string,
+): Promise<void> {
+  return request<void>(
+    infrastructureAssetsPath(organizationId) + "/" + encodeURIComponent(assetId),
+    {
+      method: "DELETE",
+      headers: { "x-csrf-token": csrfToken },
+    },
   );
 }
