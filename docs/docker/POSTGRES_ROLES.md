@@ -45,8 +45,9 @@ separately reviewed migration and recovery plan.
   locally; never commit a real `.env` or secret.
 - Use URL-safe generated credentials or percent-encode reserved characters in
   PostgreSQL URLs.
-- The bootstrap administrator is still a superuser by design, but is not
-  injected into API, Worker, or migration containers.
+- The bootstrap administrator is still a superuser by design. It is confined to
+  the DB healthcheck/bootstrap path and explicit administrative or ephemeral CI
+  smoke commands; it is not injected into API, Worker, or migration containers.
 - This lot does not enable RLS on application tables and does not establish a
   trusted tenant context. The isolated RLS prototype remains an evaluation,
   not a production security guarantee.
