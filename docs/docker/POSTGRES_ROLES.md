@@ -21,6 +21,22 @@ can be installed by the initial migration. It has CREATE on schema
 minimum runtime privileges through ALTER DEFAULT PRIVILEGES. The bootstrap
 script also grants privileges on objects that already exist.
 
+## CI privilege checks
+
+The dedicated PostgreSQL 16 integration job verifies the actual SQL privilege
+boundary, not only the role flags:
+
+- Runtime can perform SELECT, INSERT, UPDATE, and DELETE on a table created by
+  the migrator, but cannot create schema objects or TRUNCATE that table.
+- The migrator can create application schema objects, but cannot CREATE ROLE
+  or CREATE DATABASE.
+- Negative DDL checks assert PostgreSQL SQLSTATE `42501` (insufficient
+  privilege). Probe tables are dropped by the migrator in test cleanup; a
+  database probe is uniquely named and dropped if an unexpected grant allows
+  its creation.
+- These tests verify role privileges only. They do not prove tenant isolation
+  or activate RLS on application tables.
+
 ## Existing development volumes
 
 For a fresh volume, migrations create objects as `eii_migrator`.
