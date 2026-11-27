@@ -17,7 +17,7 @@ const errors = (transpiled.diagnostics ?? []).filter(
 assert.deepEqual(errors, [], "dashboard metric helper TypeScript must transpile");
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpiled.outputText).toString("base64")}`;
-const { countUniqueMembers, formatApiMetric } = await import(moduleUrl);
+const { countUniqueMembers, formatApiMetric, latestAuditEvents } = await import(moduleUrl);
 
 test("deduplicates users who belong to several organizations", () => {
   assert.equal(
@@ -81,4 +81,36 @@ test("does not substitute demo data when the API fails", () => {
     formatApiMetric({ loading: false, errorStatus: 503, count: 5, detail: "API" }),
     { value: "—", detail: "API indisponible — aucune valeur simulée affichée" },
   );
+});
+
+test("orders persisted audit events newest-first without mutating cached data", () => {
+  const events = [
+    { id: "event-old", occurred_at: "2026-11-25T10:00:00Z" },
+    { id: "event-new", occurred_at: "2026-11-27T08:00:00Z" },
+    { id: "event-middle", occurred_at: "2026-11-26T10:00:00Z" },
+  ];
+
+  assert.deepEqual(
+    latestAuditEvents(events, 2).map((event) => event.id),
+    ["event-new", "event-middle"],
+  );
+  assert.deepEqual(
+    events.map((event) => event.id),
+    ["event-old", "event-new", "event-middle"],
+  );
+});
+
+test("keeps invalid timestamps last and bounds the requested preview size", () => {
+  const events = [
+    { id: "event-invalid", occurred_at: "not-a-date" },
+    { id: "event-valid", occurred_at: "2026-11-27T08:00:00Z" },
+    { id: "event-valid-2", occurred_at: "2026-11-26T08:00:00Z" },
+  ];
+
+  assert.deepEqual(
+    latestAuditEvents(events, 2).map((event) => event.id),
+    ["event-valid", "event-valid-2"],
+  );
+  assert.deepEqual(latestAuditEvents(events, -1), []);
+  assert.equal(latestAuditEvents(events, Number.NaN).length, 3);
 });
