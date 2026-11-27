@@ -77,17 +77,17 @@ SQL
 }
 
 # The default/false mode must leave objects owned by the old bootstrap role.
-EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=false "$script_dir/bootstrap-roles.sh"
+EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=false sh "$script_dir/bootstrap-roles.sh"
 assert_owners "$PGUSER|$PGUSER"
 assert_data_preserved
 
 # Explicit opt-in transfers both legacy tables and sequences to the migrator.
-EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=true "$script_dir/bootstrap-roles.sh"
+EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=true sh "$script_dir/bootstrap-roles.sh"
 assert_owners "$EII_MIGRATOR_ROLE|$EII_MIGRATOR_ROLE"
 assert_data_preserved
 
 # Repeating the opt-in bootstrap must remain safe and preserve the data.
-EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=true "$script_dir/bootstrap-roles.sh"
+EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP=true sh "$script_dir/bootstrap-roles.sh"
 assert_owners "$EII_MIGRATOR_ROLE|$EII_MIGRATOR_ROLE"
 assert_data_preserved
 
