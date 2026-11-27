@@ -76,6 +76,7 @@ jobs:
       EII_MIGRATOR_PASSWORD: eii_migrator_test_only
       EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP: "false"
       EII_POSTGRES_INTEGRATION: "1"
+      EII_POSTGRES_ROLE_SEPARATION: "1"
     defaults:
       run:
         working-directory: apps/api
@@ -85,23 +86,16 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
+      - name: Validate PostgreSQL role bootstrap shell syntax
+        run: sh -n ../../infrastructure/postgres/bootstrap-roles.sh
       - name: Provision least-privilege PostgreSQL roles
+        run: sh ../../infrastructure/postgres/bootstrap-roles.sh
+      - name: Verify PostgreSQL role bootstrap is idempotent
         run: sh ../../infrastructure/postgres/bootstrap-roles.sh
       - name: Apply migrations using the dedicated migrator connection
         run: alembic upgrade head
-      - name: Verify API engine uses the runtime role
-        run: |
-          python - <<'PY'
-          from sqlalchemy import text
-
-          from app.db.session import engine
-
-          with engine.connect() as connection:
-              current_user = connection.scalar(text("SELECT current_user"))
-
-          assert current_user == "eii_runtime", current_user
-          print(f"API database identity: {current_user}")
-          PY
+      - name: Verify runtime and migrator role boundaries
+        run: python -m pytest tests/test_postgres_role_separation.py -q
       - name: Verify concurrent owner demotions remain serialized
         run: python -m pytest tests/test_membership_postgres_concurrency.py -q
 
