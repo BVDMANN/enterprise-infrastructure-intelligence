@@ -149,7 +149,7 @@ export default function AuditPage() {
       />
 
       <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <strong>API réelle · couverture partielle.</strong> Le journal affiche uniquement les événements effectivement enregistrés. À ce stade, les créations/révocations de sessions et les créations de memberships sont instrumentées ; les autres opérations ne sont pas encore couvertes.
+        <strong>API réelle · couverture partielle.</strong> Le journal affiche uniquement les événements effectivement enregistrés. La couverture métier reste partielle : certaines opérations (sessions, memberships, organisations, invitations et inventaire Infrastructure) sont instrumentées, mais toutes les opérations ne sont pas encore couvertes.
       </div>
 
       {organizations.isLoading && (
