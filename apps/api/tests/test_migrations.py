@@ -85,6 +85,7 @@ def test_migration_history_is_linear() -> None:
         "0001_pg_extensions",
     ]
 
+
 def test_infrastructure_assets_migration_follows_invitations() -> None:
     """0008_infrastructure_assets must descend from 0007_organization_invitations."""
     revision = _script_directory().get_revision("0008_infrastructure_assets")
