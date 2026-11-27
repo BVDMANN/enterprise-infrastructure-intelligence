@@ -44,6 +44,18 @@ export interface OrganizationRole {
   permissions: string[];
 }
 
+export interface AuditEvent {
+  id: string;
+  organization_id: string;
+  actor_user_id: string;
+  event_type: string;
+  target_type: string | null;
+  target_id: string | null;
+  request_id: string | null;
+  details: Record<string, unknown>;
+  occurred_at: string;
+}
+
 export type InfrastructureAssetType =
   | "server"
   | "virtual_machine"
@@ -173,6 +185,18 @@ export function getOrganizationRoles(
 ): Promise<OrganizationRole[]> {
   return request<OrganizationRole[]>(
     "/api/v1/organizations/" + encodeURIComponent(organizationId) + "/roles",
+  );
+}
+
+export function getOrganizationAuditEvents(
+  organizationId: string,
+  limit = 50,
+): Promise<AuditEvent[]> {
+  const boundedLimit = Number.isFinite(limit)
+    ? Math.min(100, Math.max(1, Math.trunc(limit)))
+    : 50;
+  return request<AuditEvent[]>(
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/audit-events?limit=${boundedLimit}`,
   );
 }
 
