@@ -246,7 +246,12 @@ def accept_invitation(
             raise InvitationUnauthorizedError(
                 "Password is required to accept this invitation"
             )
-        existing = db.scalar(select(User).where(User.email == invitation.email))
+        existing = db.scalar(
+            select(User)
+            .where(User.email == invitation.email)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if existing is not None:
             authenticated = authenticate_user(db, invitation.email, password)
             if authenticated is None:

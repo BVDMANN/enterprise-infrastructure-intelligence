@@ -33,6 +33,10 @@ class OrganizationSlugConflictError(ValueError):
     """The slug is already taken by another organization (HTTP 409)."""
 
 
+class OrganizationActorInactiveError(PermissionError):
+    """The creator became inactive before organization creation acquired its lock."""
+
+
 def normalize_slug(value: str) -> str:
     """Lowercase a slug without surrounding whitespace."""
     return value.strip().lower()
@@ -70,6 +74,20 @@ def create_organization(
     """
     validated_name = validate_organization_name(name)
     validated_slug = validate_slug(slug)
+
+    locked_creator = db.scalar(
+        select(User)
+        .where(User.id == creator.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if (
+        locked_creator is None
+        or not locked_creator.is_active
+        or locked_creator.deleted_at is not None
+    ):
+        raise OrganizationActorInactiveError("Creator account is not active")
+    creator = locked_creator
 
     existing = db.scalar(
         select(Organization.id).where(Organization.slug == validated_slug)
