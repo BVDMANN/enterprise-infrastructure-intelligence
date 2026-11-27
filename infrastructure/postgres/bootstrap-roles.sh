@@ -33,13 +33,6 @@ case "$adopt_existing" in
     ;;
 esac
 
-# Passwords are passed as psql variables and quoted by :'variable' in SQL.
-# They are never printed. The role names are validated above and identifiers
-# are still quoted with format('%I', ...).
-psql --no-psqlrc --set=ON_ERROR_STOP=1 \
-  --set=runtime_role="$EII_RUNTIME_ROLE" \
-  --set=runtime_password="$EII_RUNTIME_PASSWORD" \
-  --set=migrator_role="$EII_MIGRATOR_ROLE" \
-  --set=migrator_password="$EII_MIGRATOR_PASSWORD" \
-  --set=adopt_existing_schema_ownership="$adopt_existing" \
-  --file=/scripts/bootstrap-roles.sql
+# psql reads role names and passwords from its environment via \\getenv;
+# credentials are not placed in the psql process argument list.
+psql --no-psqlrc --set=ON_ERROR_STOP=1 --file=/scripts/bootstrap-roles.sql
