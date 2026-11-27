@@ -1,4 +1,9 @@
 \set ON_ERROR_STOP on
+\getenv runtime_role EII_RUNTIME_ROLE
+\getenv runtime_password EII_RUNTIME_PASSWORD
+\getenv migrator_role EII_MIGRATOR_ROLE
+\getenv migrator_password EII_MIGRATOR_PASSWORD
+\getenv adopt_existing_schema_ownership EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP
 
 -- Create the least-privilege roles when absent, then normalize their
 -- attributes and development credentials on every idempotent bootstrap.
