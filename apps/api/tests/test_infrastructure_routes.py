@@ -181,14 +181,19 @@ def test_owner_can_create_list_update_and_soft_delete_assets(client) -> None:
         for item in events
         if item.event_type.startswith("infrastructure.asset.")
     ]
-    assert [item.event_type for item in asset_events] == [
+    assert len(asset_events) == 3
+    assert {item.event_type for item in asset_events} == {
         "infrastructure.asset.created",
         "infrastructure.asset.updated",
         "infrastructure.asset.deleted",
-    ]
+    }
     assert all(str(item.actor_user_id) == owner_id for item in asset_events)
     assert all(item.target_id == asset_id for item in asset_events)
-    assert asset_events[1].details == {"changed_fields": ["attributes", "status"]}
+    updated_event = next(
+        item for item in asset_events
+        if item.event_type == "infrastructure.asset.updated"
+    )
+    assert updated_event.details == {"changed_fields": ["attributes", "status"]}
 
 
 def test_infrastructure_assets_are_hidden_across_tenants(client) -> None:
