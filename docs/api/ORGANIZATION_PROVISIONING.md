@@ -48,11 +48,17 @@ call.
 - `POST /memberships` adds an existing user by `user_id` + `role_id`
   (see [MEMBERSHIP_MUTATIONS.md](MEMBERSHIP_MUTATIONS.md)).
 - `PATCH /members/{mid}/status` body: `{ "is_active": boolean }`.
-  Deactivation is account-wide: the user can no longer log in anywhere.
-  Refused with 409 for the actor's own account and for the last active
-  Organization Owner. Idempotent (repeating the same state returns 200
-  without a new audit event). Audited as `user.deactivated` /
-  `user.reactivated`.
+  Deactivation/reactivation is account-wide: the user is enabled or disabled
+  everywhere. The endpoint is refused with 409 when the user has a membership
+  in another active organization; use the tenant-scoped `DELETE /memberships`
+  route to revoke access in only this organization. The User row is locked
+  while checking memberships and changing status, and membership creation,
+  organization creation and existing-account invitation acceptance take the
+  same lock. This prevents a concurrent membership from appearing in another
+  tenant during a global status change. The actor's own account and the last
+  active Organization Owner are also protected. Idempotent (repeating the
+  same state returns 200 without a new audit event). Audited as
+  `user.deactivated` / `user.reactivated`.
 
 ## Invitations (manual link, no email in PHASE 1)
 
