@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useMutation,
   useQuery,
@@ -16,6 +17,7 @@ import {
   getOrganizationRoles,
   getOrganizations,
 } from "@/lib/api";
+import { useCsrfToken } from "@/lib/csrf-token";
 import {
   MembershipApiError,
   deleteOrganizationMembership,
@@ -60,18 +62,14 @@ function MutationError({ error }: { error: unknown }) {
   return <p role="alert" className="text-sm text-rose-700">La mutation a échoué. Vérifiez l’API puis réessayez.</p>;
 }
 
-export default function UsersPage() {
+function UsersPageContent() {
   const queryClient = useQueryClient();
-  const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
-  const [csrfToken, setCsrfToken] = useState<string | null>(null);
-  const [roleSelections, setRoleSelections] = useState<Record<string, string>>({});
+  const searchParams = useSearchParams();
+  const requestedOrganizationId = searchParams.get("organization") ?? "";
+  const [manualSelection, setManualSelection] = useState<{ query: string; id: string } | null>(null);
+  const csrfToken = useCsrfToken();
+  const [roleOverrides, setRoleOverrides] = useState<Record<string, string>>({});
   const [actionMessage, setActionMessage] = useState("");
-
-  useEffect(() => {
-    const requestedOrganization = new URLSearchParams(window.location.search).get("organization");
-    if (requestedOrganization) setSelectedOrganizationId(requestedOrganization);
-    setCsrfToken(window.sessionStorage.getItem("eii_csrf_token"));
-  }, []);
 
   const organizations = useQuery({
     queryKey: ["organizations"],
@@ -79,7 +77,10 @@ export default function UsersPage() {
     retry: false,
   });
   const organizationId =
-    selectedOrganizationId || organizations.data?.[0]?.id || "";
+    (manualSelection?.query === requestedOrganizationId ? manualSelection.id : "") ||
+    requestedOrganizationId ||
+    organizations.data?.[0]?.id ||
+    "";
 
   const currentUser = useQuery({
     queryKey: ["current-user"],
@@ -101,15 +102,6 @@ export default function UsersPage() {
     retry: false,
   });
 
-  useEffect(() => {
-    if (members.data) {
-      setRoleSelections(
-        Object.fromEntries(
-          members.data.map((member) => [member.membership_id, member.role_id]),
-        ),
-      );
-    }
-  }, [members.data]);
 
   const updateMembership = useMutation({
     mutationFn: ({
@@ -132,6 +124,7 @@ export default function UsersPage() {
     onMutate: () => setActionMessage(""),
     onSuccess: async () => {
       setActionMessage("Rôle mis à jour et événement d’audit enregistré.");
+      setRoleOverrides({});
       await queryClient.invalidateQueries({
         queryKey: ["organization-members", organizationId],
       });
@@ -152,6 +145,7 @@ export default function UsersPage() {
     onMutate: () => setActionMessage(""),
     onSuccess: async () => {
       setActionMessage("Membership retiré et événement d’audit enregistré.");
+      setRoleOverrides({});
       await queryClient.invalidateQueries({
         queryKey: ["organization-members", organizationId],
       });
@@ -182,7 +176,8 @@ export default function UsersPage() {
                 <select
                   value={organizationId}
                   onChange={(event) => {
-                    setSelectedOrganizationId(event.target.value);
+                    setManualSelection({ query: requestedOrganizationId, id: event.target.value });
+                    setRoleOverrides({});
                     setActionMessage("");
                     updateMembership.reset();
                     removeMembership.reset();
@@ -212,7 +207,7 @@ export default function UsersPage() {
                 {members.data && (members.data.length === 0
                   ? <p className="p-5 text-sm text-slate-500">Aucun membre actif retourné par l’API.</p>
                   : <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Utilisateur</th><th className="px-5 py-3">Rôle actuel</th><th className="px-5 py-3">Membre depuis</th><th className="px-5 py-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{members.data.map((member) => {
-                    const selectedRoleId = roleSelections[member.membership_id] ?? member.role_id;
+                    const selectedRoleId = roleOverrides[member.membership_id] ?? member.role_id;
                     const roleChanged = selectedRoleId !== member.role_id;
                     const isSelf = currentUser.data?.id === member.user_id;
                     return (
@@ -225,7 +220,7 @@ export default function UsersPage() {
                             <select
                               aria-label={`Nouveau rôle pour ${member.display_name}`}
                               value={selectedRoleId}
-                              onChange={(event) => setRoleSelections((current) => ({ ...current, [member.membership_id]: event.target.value }))}
+                              onChange={(event) => setRoleOverrides((current) => ({ ...current, [member.membership_id]: event.target.value }))}
                               disabled={!csrfToken || !currentUser.data || !roles.data || updateMembership.isPending || removeMembership.isPending}
                               className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs disabled:bg-slate-100"
                             >
@@ -283,5 +278,13 @@ export default function UsersPage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<main aria-busy="true" className="p-6 text-sm text-slate-500">Chargement des paramètres…</main>}>
+      <UsersPageContent />
+    </Suspense>
   );
 }
