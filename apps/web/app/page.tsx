@@ -20,6 +20,7 @@ import {
   ApiError,
   getApiHealth,
   getOrganizationAuditEvents,
+  getOrganizationInfrastructureAssets,
   getOrganizationMembers,
   getOrganizations,
   type AuditEvent,
@@ -29,8 +30,6 @@ import {
   formatApiMetric,
   latestAuditEvents,
 } from "@/lib/dashboard-metrics";
-import { demoAssets } from "@/lib/demo-data";
-
 const EVENT_LABELS: Record<string, string> = {
   "auth.session.created": "Session créée",
   "auth.session.revoked": "Session révoquée",
@@ -116,6 +115,16 @@ export default function DashboardPage() {
     })),
   });
 
+  const assetQueries = useQueries({
+    queries: (organizations.data ?? []).map((organization) => ({
+      queryKey: ["organization-infrastructure-assets", organization.id, 100],
+      queryFn: () =>
+        getOrganizationInfrastructureAssets(organization.id, { limit: 100 }),
+      retry: false,
+      staleTime: 30_000,
+    })),
+  });
+
   const organizationErrorStatus =
     organizations.error instanceof ApiError ? organizations.error.status : undefined;
   const organizationMetric = formatApiMetric({
@@ -158,11 +167,29 @@ export default function DashboardPage() {
   });
   const recentAuditEvents = latestAuditEvents(auditEvents, 3);
 
+  const failedAssetQuery = assetQueries.find((query) => query.isError);
+  const assetQueryErrorStatus =
+    failedAssetQuery?.error instanceof ApiError
+      ? failedAssetQuery.error.status
+      : undefined;
+  const infrastructureAssets = assetQueries.flatMap((query) => query.data ?? []);
+  const assetMetric = formatApiMetric({
+    loading: organizations.isLoading || assetQueries.some((query) => query.isLoading),
+    errorStatus: organizations.isError
+      ? organizationErrorStatus ?? 0
+      : failedAssetQuery
+        ? assetQueryErrorStatus ?? 0
+        : undefined,
+    count: infrastructureAssets.length,
+    detail: "Inventaire API · jusqu’à 100 par organisation",
+  });
+
   const isDashboardFetching =
     isFetching ||
     organizations.isFetching ||
     memberQueries.some((query) => query.isFetching) ||
-    auditQueries.some((query) => query.isFetching);
+    auditQueries.some((query) => query.isFetching) ||
+    assetQueries.some((query) => query.isFetching);
 
   const refreshDashboard = async () => {
     await Promise.all([
@@ -170,6 +197,7 @@ export default function DashboardPage() {
       organizations.refetch(),
       ...memberQueries.map((query) => query.refetch()),
       ...auditQueries.map((query) => query.refetch()),
+      ...assetQueries.map((query) => query.refetch()),
     ]);
   };
 
@@ -189,12 +217,11 @@ export default function DashboardPage() {
       source: "API",
     },
     {
-      label: "Ressources",
-      value: demoAssets.length.toString().padStart(2, "0"),
-      detail: "Inventaire simulé",
+      label: "Ressources recensées",
+      ...assetMetric,
       href: "/infrastructure",
       icon: Server,
-      source: "DÉMO",
+      source: "API",
     },
     {
       label: "Événements récents",
@@ -227,12 +254,12 @@ export default function DashboardPage() {
             Démonstration produit
           </p>
           <p className="mt-0.5 text-xs leading-5 text-amber-800">
-            Organisations, utilisateurs et journal d’audit : API authentifiée selon vos permissions.
-            Ressources : exemples fictifs, aucune infrastructure client connectée.
+            Organisations, utilisateurs, inventaire et audit : API authentifiée selon vos permissions.
+            Agents, métriques temps réel, alertes et incidents ne sont pas encore intégrés.
           </p>
         </div>
         <span className="rounded-full border border-amber-300 bg-white/70 px-3 py-1 text-[10px] font-bold tracking-[0.12em] text-amber-800">
-          API + DÉMO
+          API PARTIELLE
         </span>
       </div>
 
@@ -283,9 +310,9 @@ export default function DashboardPage() {
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
-              <h2 className="font-semibold text-slate-900">État des ressources</h2>
+              <h2 className="font-semibold text-slate-900">Inventaire Infrastructure</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Inventaire simulé · aperçu de supervision
+                Ressources enregistrées · sans télémétrie temps réel
               </p>
             </div>
             <Link
@@ -296,38 +323,54 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-slate-100">
-            {demoAssets.slice(0, 3).map((asset) => (
-              <div key={asset.name} className="flex items-center justify-between gap-4 px-5 py-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                    <Server aria-hidden="true" className="h-4 w-4" />
+            {organizations.isLoading || assetQueries.some((query) => query.isLoading) ? (
+              <p aria-busy="true" className="px-5 py-6 text-sm text-slate-500">
+                Chargement de l’inventaire depuis l’API…
+              </p>
+            ) : organizations.isError || failedAssetQuery ? (
+              <p role="status" className="px-5 py-6 text-sm text-slate-500">
+                {assetMetric.detail}. Aucun inventaire fictif n’est utilisé en remplacement.
+              </p>
+            ) : infrastructureAssets.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-slate-500">
+                Aucune ressource enregistrée dans les organisations accessibles.
+              </p>
+            ) : (
+              infrastructureAssets.slice(0, 3).map((asset) => (
+                <div key={asset.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                      <Server aria-hidden="true" className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {asset.name}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-slate-400">
+                        {asset.asset_type.replace(/_/g, " ")} · {[asset.provider, asset.region].filter(Boolean).join(" · ") || "Emplacement non renseigné"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">
-                      {asset.name}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-slate-400">
-                      {asset.kind} · {asset.location}
-                    </p>
-                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      asset.status === "healthy"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : asset.status === "degraded"
+                          ? "bg-amber-50 text-amber-700"
+                          : asset.status === "unhealthy" || asset.status === "offline"
+                            ? "bg-rose-50 text-rose-700"
+                            : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {asset.status}
+                  </span>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                    asset.status === "Opérationnel"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : asset.status === "À surveiller"
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {asset.status}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
           <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3 text-xs text-slate-400">
             <Activity aria-hidden="true" className="mr-1.5 inline h-3.5 w-3.5" />
-            Les états et métriques ci-dessus ne proviennent pas d&apos;équipements réels.
+            Inventaire persistant API ; aucun agent ni flux CPU/RAM/état temps réel n’est connecté.
           </div>
         </section>
 
