@@ -87,7 +87,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - name: Validate PostgreSQL role bootstrap shell syntax
-        run: sh -n ../../infrastructure/postgres/bootstrap-roles.sh
+        run: |
+          sh -n ../../infrastructure/postgres/bootstrap-roles.sh
+          sh -n ../../infrastructure/postgres/test-existing-schema-adoption.sh
       - name: Provision least-privilege PostgreSQL roles
         run: |
           docker run --rm --network host \
