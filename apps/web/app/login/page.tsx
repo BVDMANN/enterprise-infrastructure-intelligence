@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, login } from "@/lib/api";
+import { storeCsrfToken } from "@/lib/csrf-token";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function LoginPage() {
     setPending(true);
     try {
       const result = await login(email.trim(), password);
-      window.sessionStorage.setItem("eii_csrf_token", result.csrf_token);
+      storeCsrfToken(result.csrf_token);
       queryClient.clear();
       router.replace("/organisations");
     } catch (caught) {
