@@ -51,3 +51,14 @@
 Aucune fonctionnalité métier acceptée. Les squelettes (health checks)
 sont couverts par des tests unitaires locaux ; les parcours A–F ne sont
 pas implémentables avant la PHASE 1.
+
+## État actuel (P1-A1 completion, 27/11/2026 — local, CI non exécutée)
+
+Le module P1-A1 est complet en local sur `phase1/p1-a1-crud-complet`
+(base PR #51) : création/renommage/suppression logique d'organisation,
+invitations par lien manuel avec acceptation double mode, statuts de membre
+(désactivation/réactivation), réparation de `bootstrap_admin.py`, migration
+0007, frontend connecté aux API réelles. 125 tests API locaux (7 skipped) et
+36 tests web `test:api` passent ; la CI GitHub n'a pas encore tourné sur ce
+lot, donc aucune acceptation n'est revendiquée ici. Voir
+`docs/api/ORGANIZATION_PROVISIONING.md` et ADR-0008.

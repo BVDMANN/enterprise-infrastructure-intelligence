@@ -42,7 +42,7 @@ métriques fiables.
 |---|---|---|---|
 | P1-01 | Valider le workflow `docker compose up --build` sur le poste de développement ; CI run #135 : 4 images + Compose smoke validés, reste la confirmation locale | IN_REVIEW — CI 7/7 ; validation locale non revendiquée | — (CI validée ; confirmation locale avant intégrations réelles) |
 | P1-02 | Authentification OIDC + sessions + MFA | IN_PROGRESS — sessions serveur et login local présents dans PR #10/#11/#13/#14 ; OIDC/MFA restent à livrer | P1-01 |
-| P1-03 | Organisations, membres, invitations | IN_REVIEW — modèles/migration P1-A1 PR #5 ; lectures GET organisation/membres/rôles dans PR #18, run #145 7/7 ; invitations et mutations non livrées | P1-02 |
+| P1-03 | Organisations, membres, invitations | IN_REVIEW — modèles/migration P1-A1 PR #5 ; lectures GET organisation/membres/rôles dans PR #18, run #145 7/7 ; création org, renommage/suppression, invitations (lien manuel, acceptation double mode) et statuts livrés localement sur `phase1/p1-a1-crud-complet` (base #51), 125 tests API locaux, CI à exécuter | P1-02 |
 | P1-04 | Rôles et permissions (RBAC) + tests d'autorisation | IN_REVIEW — PR #17 core run #136 7/7 ; PR #18 guards HTTP GET run #145 7/7, 72 tests API ; mutations/gestion des rôles, RLS et audit restent à livrer | P1-02/P1-03 |
 | P1-05 | Dashboard central (états chargement/vide/erreur, données du backend) | TODO | P1-04 |
 | P1-06 | Infrastructure Manager (inventaire, recherche, filtres, détails) | TODO | P1-04 |
@@ -53,7 +53,7 @@ métriques fiables.
 | P1-11 | Monitoring Center (graphiques, seuils, historique) | TODO | P1-10 |
 | P1-12 | Audit de base (journal des opérations sensibles) | IN_REVIEW — PR #31 : migration 0006, writer tenant-scoped, GET audit.read et triggers PostgreSQL ; aucune mutation métier n'émet encore automatiquement d'événement | P1-02/P1-04 |
 | P1-A0 | Fondation Alembic + migration `citext` + cycle upgrade/downgrade PostgreSQL 16 | TESTED — PR #4 ouverte (non-draft), run #64 : 5 tests API passed ; migration/extension/transition downgrade puis nouvel upgrade validés en Compose ; l'extension citext est volontairement conservée au downgrade | P1-01 |
-| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 migration 0002_identity ; PR #17 migration 0005_rbac_core : run #135 valide backfill owner, 9 permissions, rejet inter-tenant, downgrade/restauration du rôle texte et re-upgrade PostgreSQL | P1-A0 |
+| P1-13 | Migrations Alembic des entités métier (organisations, utilisateurs, memberships, RBAC) | IN_REVIEW — PR #5 migration 0002_identity ; PR #17 migration 0005_rbac_core : run #135 valide backfill owner, 9 permissions, rejet inter-tenant, downgrade/restauration du rôle texte et re-upgrade PostgreSQL ; migration 0007_organization_invitations livrée localement (tête, chaîne linéaire 0001 → 0007) | P1-A0 |
 | P1-14 | Tests d'isolation multi-tenant (+ évaluation RLS, ADR-0005) | IN_PROGRESS — FK composite role/tenant testée en PostgreSQL ; isolation de toutes les lectures/écritures et RLS restent à livrer | P1-04, P1-13 |
 | P1-15 | Tests backend / frontend / e2e (Playwright) du MVP | TODO | P1-05…P1-12 |
 | P1-16 | Documentation mise à jour (API, déploiement, opérations) | TODO | P1-15 |
