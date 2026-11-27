@@ -79,6 +79,39 @@ jobs:
       - name: Verify concurrent owner demotions remain serialized
         run: python -m pytest tests/test_membership_postgres_concurrency.py -q
 
+  api-postgres-rls-evaluation:
+    name: PostgreSQL RLS evaluation (isolated prototype)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: eii_rls_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: eii_rls_poc_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eii_rls_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:eii_rls_poc_only@localhost:5432/eii_rls_test
+      EII_POSTGRES_RLS_EVALUATION: "1"
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Verify isolated PostgreSQL RLS policies and transaction cleanup
+        run: python -m pytest tests/test_postgres_rls_evaluation.py -q
+
   compose-validate:
     name: Compose config validation
     runs-on: ubuntu-latest
