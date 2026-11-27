@@ -1,12 +1,12 @@
 # docker-compose.yml — Environnement de développement
-# Enterprise Infrastructure Intelligence (PHASE 0)
+# Enterprise Infrastructure Intelligence
 #
-# Usage : cp .env.example .env  puis  docker compose up --build
+# Usage : cp .env.example .env puis docker compose up --build
 # Web : http://localhost:3000 — API : http://localhost:8000 — Docs : http://localhost:8000/docs
 # Les ports publiés sont limités à 127.0.0.1 (poste local uniquement).
 #
-# Les mots de passe par défaut ci-dessous sont des PLACEHOLDERS de dev
-# uniquement (surchargés par .env). Ne jamais les utiliser hors dev.
+# Les mots de passe par défaut sont des PLACEHOLDERS de développement
+# uniquement. Ne jamais les utiliser hors développement.
 
 services:
   db:
@@ -25,6 +25,45 @@ services:
       timeout: 5s
       retries: 10
 
+  # Creates/normalizes least-privilege application roles. The admin password
+  # is confined to bootstrap/healthcheck and explicit ephemeral smoke commands;
+  # API, Worker, and migration containers never receive it.
+  db-bootstrap:
+    image: postgres:16-alpine
+    entrypoint: ["/bin/sh", "/scripts/bootstrap-roles.sh"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-eii}
+      PGUSER: ${POSTGRES_USER:-eii}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_only}
+      EII_RUNTIME_ROLE: ${POSTGRES_RUNTIME_USER:-eii_runtime}
+      EII_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:-change_me_runtime_dev_only}
+      EII_MIGRATOR_ROLE: ${POSTGRES_MIGRATOR_USER:-eii_migrator}
+      EII_MIGRATOR_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:-change_me_migrator_dev_only}
+      EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP: ${EII_ADOPT_EXISTING_SCHEMA_OWNERSHIP:-false}
+    volumes:
+      - ./infrastructure/postgres/bootstrap-roles.sh:/scripts/bootstrap-roles.sh:ro
+      - ./infrastructure/postgres/bootstrap-roles.sql:/scripts/bootstrap-roles.sql:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # Alembic runs in a separate one-shot container. This container alone gets
+  # MIGRATION_DATABASE_URL; the long-running API/Worker never receive it.
+  migrate:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_MIGRATOR_USER:-eii_migrator}:${POSTGRES_MIGRATOR_PASSWORD:-change_me_migrator_dev_only}@db:5432/${POSTGRES_DB:-eii}
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
+    restart: "no"
+
   redis:
     image: redis:7-alpine
     ports:
@@ -40,7 +79,7 @@ services:
       context: .
       dockerfile: infrastructure/docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eii}:${POSTGRES_PASSWORD:-change_me_dev_only}@db:5432/${POSTGRES_DB:-eii}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_RUNTIME_USER:-eii_runtime}:${POSTGRES_RUNTIME_PASSWORD:-change_me_runtime_dev_only}@db:5432/${POSTGRES_DB:-eii}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
@@ -49,8 +88,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -65,18 +104,15 @@ services:
       context: .
       dockerfile: infrastructure/docker/worker.Dockerfile
     # Démarrage : CMD de l'image (celery -A app.celery_app.celery_app worker).
-    # Ne pas surcharger avec `command:` ici : une seule source de vérité.
-    # (La forme courte `-A app.celery_app` démarre aussi — Celery retrouve
-    # l'instance par balayage du module — mais elle est implicite et fragile
-    # si une seconde instance Celery apparaît un jour dans le module.)
+    # Ne pas surcharger avec command: ici : une seule source de vérité.
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-eii}:${POSTGRES_PASSWORD:-change_me_dev_only}@db:5432/${POSTGRES_DB:-eii}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_RUNTIME_USER:-eii_runtime}:${POSTGRES_RUNTIME_PASSWORD:-change_me_runtime_dev_only}@db:5432/${POSTGRES_DB:-eii}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -105,7 +141,6 @@ services:
       start_period: 20s
 
   # Connecteur de SIMULATION — données explicitement simulées (SIMULATED=true).
-  # Ne jamais présenter ses données comme une infrastructure réelle.
   # One-shot : il exécute un cycle découverte+synchro puis s'arrête (exit 0).
   # Pas de healthcheck — un service qui s'arrête normalement n'en a pas besoin.
   connector-sim:
