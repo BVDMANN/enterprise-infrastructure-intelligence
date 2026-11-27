@@ -77,7 +77,12 @@ call.
   token.
 - `DELETE` revokes. Revoking an already revoked invitation is a no-op (204,
   no new audit event); revoking an accepted invitation is 409. Audited as
-  `invitation.revoked`.
+  `invitation.revoked`. Acceptance and revocation both take a PostgreSQL
+  `SELECT ... FOR UPDATE` lock on the invitation row until commit/rollback:
+  the first terminal transition wins, and the competing request observes the
+  committed state (409 for revocation after acceptance, 404 for acceptance
+  after revocation). The PostgreSQL integration job tests accept-vs-revoke and
+  concurrent double-accept races.
 - `GET /api/v1/invitations/{token}` (public preview) returns the organization
   name/slug, role name, invited email and expiry. Unknown, expired, revoked
   or accepted token → 404.
