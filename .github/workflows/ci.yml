@@ -274,7 +274,7 @@ jobs:
 
           # Fail if the migration graph unexpectedly has multiple heads.
           expected_heads=$(docker compose exec -T api alembic heads | awk 'NF {print $1}')
-          head_count=$(printf '%s\\n' "$expected_heads" | sed '/^$/d' | wc -l | tr -d '[:space:]')
+          head_count=$(echo "$expected_heads" | awk 'NF {count++} END {print count+0}')
           if [ "$head_count" != "1" ]; then
             echo "Expected exactly one Alembic head, found: $expected_heads"
             exit 1
