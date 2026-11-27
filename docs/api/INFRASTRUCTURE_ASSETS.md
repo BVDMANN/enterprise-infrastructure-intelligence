@@ -41,8 +41,10 @@ most recently updated, then by id.
   Soft deletion does not release this identifier; reuse requires a separately
   reviewed retention/purge policy.
 - attributes is a JSON object capped at 16 KiB. Nested keys containing
-  password, secret, token, authorization, cookie, CSRF, API-key, or private-key
-  markers are rejected. Do not store credentials in this field.
+  password, secret, token, authorization, cookie, CSRF, API-key, access-key,
+  credential, bearer, session, SSH-key, or private-key markers are rejected.
+  This is a key-name guardrail, not a secret scanner; do not store credentials
+  or secret values in this field.
 - last_seen_at must be timezone-aware. It is not proof of a live collector.
 
 Every create/update/delete appends a tenant-attributed audit event in the same
