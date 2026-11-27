@@ -2,6 +2,11 @@ export interface MemberIdentity {
   user_id: string;
 }
 
+export interface AuditEventTimestamp {
+  id: string;
+  occurred_at: string;
+}
+
 export interface MetricDisplay {
   value: string;
   detail: string;
@@ -24,6 +29,36 @@ export function countUniqueMembers(members: readonly MemberIdentity[]): number {
   }
 
   return userIds.size;
+}
+
+/** Return the newest persisted audit events without mutating query-cache arrays. */
+export function latestAuditEvents<T extends AuditEventTimestamp>(
+  events: readonly T[],
+  limit = 3,
+): T[] {
+  const boundedLimit = Number.isFinite(limit)
+    ? Math.min(100, Math.max(0, Math.trunc(limit)))
+    : 3;
+
+  return [...events]
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.occurred_at);
+      const rightTime = Date.parse(right.occurred_at);
+      const safeLeftTime = Number.isFinite(leftTime)
+        ? leftTime
+        : Number.NEGATIVE_INFINITY;
+      const safeRightTime = Number.isFinite(rightTime)
+        ? rightTime
+        : Number.NEGATIVE_INFINITY;
+      const timeDifference = safeRightTime - safeLeftTime;
+
+      if (Number.isFinite(timeDifference) && timeDifference !== 0) {
+        return timeDifference;
+      }
+
+      return left.id.localeCompare(right.id);
+    })
+    .slice(0, boundedLimit);
 }
 
 /** Render API metrics without falling back to fictitious demo values. */
