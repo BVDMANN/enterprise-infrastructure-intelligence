@@ -378,7 +378,7 @@ jobs:
           version_rows=$(docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM alembic_version;" | tr -d '[:space:]')
           test "$version_rows" = "1"
           docker compose run --rm migrate alembic current
-          docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('organizations','users','memberships','roles','permissions','role_permissions','audit_events');" | tr -d '[:space:]' | grep -qx 7
+          docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('organizations','users','memberships','roles','permissions','role_permissions','audit_events','organization_invitations','infrastructure_assets');" | tr -d '[:space:]' | grep -qx 9
           docker compose exec -T db psql -U eii -d eii -tAc "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='password_hash';" | tr -d '[:space:]' | grep -qx 1
       - name: Check simulation connector ran once
         run: |
