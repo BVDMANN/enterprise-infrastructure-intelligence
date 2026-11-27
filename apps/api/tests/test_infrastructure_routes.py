@@ -190,7 +190,8 @@ def test_owner_can_create_list_update_and_soft_delete_assets(client) -> None:
     assert all(str(item.actor_user_id) == owner_id for item in asset_events)
     assert all(item.target_id == asset_id for item in asset_events)
     updated_event = next(
-        item for item in asset_events
+        item
+        for item in asset_events
         if item.event_type == "infrastructure.asset.updated"
     )
     assert updated_event.details == {"changed_fields": ["attributes", "status"]}
@@ -221,12 +222,8 @@ def test_infrastructure_assets_are_hidden_across_tenants(client) -> None:
         foreign_asset_id = str(foreign_asset.id)
 
     _login(test_client, "infrastructure-owner-a@example.com")
-    foreign_collection = (
-        f"/api/v1/organizations/{organization_b}/infrastructure/assets"
-    )
-    own_collection = (
-        f"/api/v1/organizations/{organization_a}/infrastructure/assets"
-    )
+    foreign_collection = f"/api/v1/organizations/{organization_b}/infrastructure/assets"
+    own_collection = f"/api/v1/organizations/{organization_a}/infrastructure/assets"
     assert test_client.get(foreign_collection).status_code == 404
     assert test_client.get(f"{own_collection}/{foreign_asset_id}").status_code == 404
 
@@ -272,7 +269,9 @@ def test_viewer_can_read_assets_but_cannot_manage_them(client) -> None:
     assert denied.status_code == 403
 
 
-def test_asset_writes_require_session_csrf_and_reject_sensitive_attributes(client) -> None:
+def test_asset_writes_require_session_csrf_and_reject_sensitive_attributes(
+    client,
+) -> None:
     test_client, engine = client
     organization_id, _ = _seed_membership(
         engine,
@@ -358,7 +357,9 @@ def test_duplicate_external_id_and_invalid_asset_type_are_rejected(client) -> No
         "asset_type": "server",
         "external_id": "app-server-01",
     }
-    assert test_client.post(collection, headers=headers, json=payload).status_code == 201
+    assert (
+        test_client.post(collection, headers=headers, json=payload).status_code == 201
+    )
     duplicate = test_client.post(collection, headers=headers, json=payload)
     assert duplicate.status_code == 409
     invalid_type = test_client.post(
