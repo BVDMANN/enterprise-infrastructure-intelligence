@@ -973,10 +973,13 @@ def revoke_organization_invitation(
     db: Session = Depends(get_db),
 ) -> Response:
     """Revoke an invitation. Revoking an already revoked invitation is a no-op."""
+    # Match the acceptance path's row lock. After waiting, PostgreSQL
+    # returns the committed terminal state instead of a stale pending object.
     invitation = db.scalar(
         select(Invitation)
         .where(Invitation.id == invitation_id)
         .where(Invitation.organization_id == organization.id)
+        .with_for_update()
     )
     if invitation is None:
         raise HTTPException(
