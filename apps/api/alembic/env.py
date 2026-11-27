@@ -1,7 +1,8 @@
 """Alembic environment for the EII PostgreSQL schema.
 
-The database URL is supplied by application settings. Migration history is
-kept under alembic/versions and is the source of truth for schema changes.
+The migration database URL may be supplied separately from the application
+runtime URL. Until a dedicated migration role is provisioned, settings retain
+the existing DATABASE_URL fallback.
 """
 
 import os
@@ -26,8 +27,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# The URL comes from the application settings (environment), never hardcoded here.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Prefer MIGRATION_DATABASE_URL when explicitly configured. The application
+# engine continues to use DATABASE_URL through app.db.session.
+config.set_main_option("sqlalchemy.url", settings.alembic_database_url)
 target_metadata = Base.metadata
 
 
