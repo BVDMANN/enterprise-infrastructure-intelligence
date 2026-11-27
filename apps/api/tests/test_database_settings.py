@@ -20,6 +20,7 @@ def test_alembic_database_url_prefers_dedicated_migration_url() -> None:
     assert settings.alembic_database_url == migration_url
     assert settings.database_url == runtime_url
 
+
 def test_default_database_url_uses_non_privileged_runtime_role(monkeypatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("MIGRATION_DATABASE_URL", raising=False)
