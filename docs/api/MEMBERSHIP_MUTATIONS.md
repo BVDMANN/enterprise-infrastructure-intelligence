@@ -86,17 +86,35 @@ The membership write and audit row are flushed and committed in the same SQL tra
 
 ## Remaining limitations
 
-- Invitations and email delivery are not implemented.
 - Role catalogue administration remains a separate `roles.manage` capability.
 - PostgreSQL RLS enforcement under a dedicated non-superuser runtime role remains a separate infrastructure/security task.
 - The UI may expose only actions backed by these API endpoints; demo fixtures must not be represented as persisted memberships.
 
+## Member status (P1-A1 completion, 27/11/2026)
+
+`PATCH /api/v1/organizations/{organization_id}/members/{membership_id}/status`
+with body `{ "is_active": boolean }` deactivates or reactivates the member's
+user account (account-wide: a deactivated user cannot log in anywhere). It
+requires `members.manage`, refuses self-deactivation (409) and refuses
+deactivating the last active Organization Owner (409, same guard as role
+change and removal). The change is idempotent and audited as
+`user.deactivated` / `user.reactivated`. The members list returns
+`is_active` per member and accepts `?include_inactive=true` to also list
+deactivated accounts. See [ORGANIZATION_PROVISIONING.md](ORGANIZATION_PROVISIONING.md).
+
+## Invitations
+
+Invitations are not part of this document: they are delivered by the P1-A1
+completion lot (manual link, no email in PHASE 1) and documented in
+[ORGANIZATION_PROVISIONING.md](ORGANIZATION_PROVISIONING.md) and
+[ADR-0008](../decisions/ADR-0008-p1-a1-organization-provisioning.md).
+
 ## Member listing contract
 
-`GET /api/v1/organizations/{organization_id}/members` returns the stable `membership_id` and `role_id` alongside `user_id`, email, display name, role name and join timestamp. Clients must target mutations with `membership_id` and submit the selected role's `role_id`; role names are presentation labels, not identifiers. Both identifiers are scoped by the organization path and the server verifies tenant membership and `members.manage` before any mutation.
+`GET /api/v1/organizations/{organization_id}/members` returns the stable `membership_id` and `role_id` alongside `user_id`, email, display name, role name, `is_active` and join timestamp. Clients must target mutations with `membership_id` and submit the selected role's `role_id`; role names are presentation labels, not identifiers. Both identifiers are scoped by the organization path and the server verifies tenant membership and `members.manage` before any mutation.
 
 ## Frontend integration
 
-The Utilisateurs & rôles page uses the dedicated `apps/web/lib/membership-api.ts` client for the member listing and membership mutations. It submits role identifiers, not display names, includes the HttpOnly session cookie with `credentials: include`, and sends the session-bound `X-CSRF-Token` header on PATCH/DELETE. A missing CSRF token is rejected before a request is sent.
+The Utilisateurs & rôles page uses the dedicated `apps/web/lib/membership-api.ts` client for the member listing and membership mutations, `apps/web/lib/invitation-api.ts` for invitations and `apps/web/lib/organization-api.ts` for organization provisioning. It submits role identifiers, not display names, includes the HttpOnly session cookie with `credentials: include`, and sends the session-bound `X-CSRF-Token` header on PATCH/DELETE/POST. A missing CSRF token is rejected before a request is sent.
 
 After a successful mutation, the member query is invalidated and reloaded from the API. The UI disables mutations until the current server session is resolved, prevents presenting self-removal as an available action, asks for confirmation before removal, and displays server 401/403/404/409 responses. These client-side affordances are not authorization controls: the API remains authoritative for `members.manage`, trusted Origin, CSRF and the last-active-owner invariant.

@@ -89,7 +89,8 @@ Codes d'erreur stables (`VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`,
 |---|---|
 | Auth | `POST /auth/login` (OIDC), `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` |
 | Organizations | `GET/POST /organizations`, `GET/PATCH/DELETE /organizations/{id}` |
-| Users & roles | `GET/POST /organizations/{id}/members`, `GET/POST /roles`, `GET /permissions` |
+| Users & roles | `GET/POST /organizations/{id}/members`, `PATCH /organizations/{id}/members/{id}/status`, `GET/POST /roles`, `GET /permissions` |
+| Invitations | `GET/POST /organizations/{id}/invitations`, `DELETE /organizations/{id}/invitations/{id}`, `GET /invitations/{token}`, `POST /invitations/{token}/accept` |
 | Sites | `GET/POST /organizations/{id}/sites` |
 | Infrastructure | `GET /organizations/{id}/resources`, `GET /resources/{id}`, `GET /resources/{id}/history` |
 | Connectors | `GET/POST /organizations/{id}/connectors`, `POST /connectors/{id}/verify`, `POST /connectors/{id}/sync`, `GET /connectors/{id}/sync-runs` |

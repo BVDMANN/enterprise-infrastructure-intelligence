@@ -11,13 +11,17 @@ concurrent bootstrap attempts.
 from __future__ import annotations
 
 import getpass
-import re
 
 from sqlalchemy import func, select, text
 
 from app.db.session import SessionLocal
 from app.models.identity import Membership, Organization, User
+from app.services.organizations import (
+    OrganizationValidationError,
+    validate_slug,
+)
 from app.services.passwords import hash_password
+from app.services.rbac import create_default_roles_for_organization
 
 
 def main() -> None:
@@ -33,8 +37,10 @@ def main() -> None:
         raise SystemExit("Display name is required (max 255 characters).")
     if not organization_name or len(organization_name) > 255:
         raise SystemExit("Organization name is required (max 255 characters).")
-    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
-        raise SystemExit("Invalid organization slug.")
+    try:
+        slug = validate_slug(slug)
+    except OrganizationValidationError as exc:
+        raise SystemExit(str(exc)) from exc
 
     password = getpass.getpass("Administrator password (12–128 characters): ")
     confirmation = getpass.getpass("Confirm password: ")
@@ -62,11 +68,15 @@ def main() -> None:
         organization = Organization(name=organization_name, slug=slug)
         db.add_all([user, organization])
         db.flush()
+        roles = create_default_roles_for_organization(db, organization.id)
+        owner_role = next((role for role in roles if role.name == "owner"), None)
+        if owner_role is None:  # pragma: no cover - roles are always created
+            raise SystemExit("System owner role was not created")
         db.add(
             Membership(
                 organization_id=organization.id,
                 user_id=user.id,
-                role="owner",
+                role_id=owner_role.id,
             )
         )
         db.commit()

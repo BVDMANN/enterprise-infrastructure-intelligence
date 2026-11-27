@@ -1,8 +1,7 @@
 """Membership-scoped identity reads (P1-A1).
 
-No public HTTP route exists yet — P1-A1 exposes no endpoint. These
-helpers are the server-side read path that later routes will use: a
-user only ever sees organizations they are a member of, and
+These helpers are the server-side read path for the organization
+routes: a user only ever sees organizations they are a member of, and
 soft-deleted organizations are never returned. The tenant is derived
 from the membership, never from a value supplied by the caller alone.
 """

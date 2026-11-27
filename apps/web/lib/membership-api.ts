@@ -9,6 +9,7 @@ export interface OrganizationMember {
   email: string;
   display_name: string;
   role: string;
+  is_active: boolean;
   joined_at: string;
 }
 
@@ -66,9 +67,45 @@ function requireCsrfToken(csrfToken: string): void {
 
 export function getOrganizationMembers(
   organizationId: string,
+  includeInactive = false,
 ): Promise<OrganizationMember[]> {
+  const query = includeInactive ? "?include_inactive=true" : "";
   return request<OrganizationMember[]>(
-    `/api/v1/organizations/${encodeURIComponent(organizationId)}/members`,
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/members${query}`,
+  );
+}
+
+export function createOrganizationMembership(
+  organizationId: string,
+  userId: string,
+  roleId: string,
+  csrfToken: string,
+): Promise<MembershipMutationResponse> {
+  requireCsrfToken(csrfToken);
+  return request<MembershipMutationResponse>(
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/memberships`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ user_id: userId, role_id: roleId }),
+    },
+  );
+}
+
+export function updateMemberStatus(
+  organizationId: string,
+  membershipId: string,
+  isActive: boolean,
+  csrfToken: string,
+): Promise<OrganizationMember> {
+  requireCsrfToken(csrfToken);
+  return request<OrganizationMember>(
+    `/api/v1/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(membershipId)}/status`,
+    {
+      method: "PATCH",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ is_active: isActive }),
+    },
   );
 }
 
