@@ -39,6 +39,8 @@ Les événements d'audit affichés sur le dashboard ne proviennent plus de `demo
 - la déduplication des utilisateurs ;
 - les états chargement, zéro résultat, 401, 403 et erreur API ;
 - le tri des événements d'audit, la gestion des timestamps invalides et l'absence de mutation des tableaux du cache ;
-- l'absence de fallback vers des compteurs ou événements fictifs.
+- l'absence de fallback vers des valeurs de compteurs fictives dans le helper de métriques.
+
+Le panneau d'audit utilise directement les résultats API et affiche des états explicites de chargement, d'erreur ou de liste vide ; il ne dispose pas de jeu d'événements de démonstration.
 
 Aucune dépendance n'est ajoutée et le lockfile n'est pas modifié par cette documentation.
