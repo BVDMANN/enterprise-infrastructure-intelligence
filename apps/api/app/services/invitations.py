@@ -85,8 +85,12 @@ def _is_pending(invitation: Invitation, *, now: datetime | None = None) -> bool:
 
 
 def _find_pending_invitation(db: Session, *, token_hash: str) -> Invitation | None:
+    # Hold the invitation row until the caller commits or rolls back.
+    # The revocation path takes the same lock, so terminal transitions serialize.
     invitation = db.scalar(
-        select(Invitation).where(Invitation.token_hash == token_hash)
+        select(Invitation)
+        .where(Invitation.token_hash == token_hash)
+        .with_for_update()
     )
     if invitation is None or not _is_pending(invitation):
         return None
