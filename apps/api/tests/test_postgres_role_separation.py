@@ -32,9 +32,9 @@ def _assert_insufficient_privilege(error: DBAPIError, operation: str) -> None:
     sqlstate = getattr(error.orig, "sqlstate", None) or getattr(
         error.orig, "pgcode", None
     )
-    assert sqlstate == "42501", (
-        f"{operation} should fail with SQLSTATE 42501, got {sqlstate}"
-    )
+    assert (
+        sqlstate == "42501"
+    ), f"{operation} should fail with SQLSTATE 42501, got {sqlstate}"
 
 
 def test_runtime_role_has_crud_access_but_cannot_create_schema_objects() -> None:
