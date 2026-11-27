@@ -160,6 +160,7 @@ def test_concurrent_owner_demotions_preserve_one_active_owner(monkeypatch) -> No
         ).all()
         assert len(role_changes) == 1
 
+
 def _seed_invitation_organization() -> tuple[str, str, str]:
     """Create a unique tenant with an owner and return its member role."""
     suffix = uuid4().hex
@@ -346,7 +347,9 @@ def test_concurrent_invitation_acceptance_is_single_use(monkeypatch) -> None:
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             first_future = executor.submit(accept, first_client)
-            assert loaded.wait(timeout=10), "First acceptance did not acquire its row lock"
+            assert loaded.wait(timeout=10), (
+                "First acceptance did not acquire its row lock"
+            )
             second_future = executor.submit(accept_second)
             try:
                 second_blocked = not second_finished.wait(timeout=1)
