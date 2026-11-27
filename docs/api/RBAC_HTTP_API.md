@@ -37,6 +37,26 @@ Les réponses ne contiennent ni hash de mot de passe, ni token de session, ni CS
 
 ## Hors périmètre
 
-Aucune création/modification d'organisation, invitation, changement de rôle, endpoint
-d'administration RBAC, OIDC/MFA, RLS PostgreSQL ou audit trail append-only n'est livré
-par ce lot. Le frontend de démonstration n'est pas déclaré connecté à ces routes.
+Aucun endpoint d'administration RBAC, OIDC/MFA, RLS PostgreSQL ou audit
+trail append-only n'est livré par ce lot. Le frontend de démonstration n'est
+pas déclaré connecté à ces routes.
+
+## Évolution — P1-A1 completion (27/11/2026)
+
+Les mutations d'organisation, les invitations et les statuts de membre sont
+désormais livrés par le lot P1-A1 completion (branche
+`phase1/p1-a1-crud-complet`, base PR #51) et documentés dans
+[ORGANIZATION_PROVISIONING.md](ORGANIZATION_PROVISIONING.md) et
+[ADR-0008](../decisions/ADR-0008-p1-a1-organization-provisioning.md) :
+
+| Méthode | Route | Permission |
+|---|---|---|
+| POST | `/api/v1/organizations` | Session + CSRF (aucun membership requis) |
+| PATCH | `/api/v1/organizations/{organization_id}` | `organization.manage` |
+| DELETE | `/api/v1/organizations/{organization_id}` | `organization.manage` |
+| POST | `/api/v1/organizations/{organization_id}/invitations` | `members.manage` |
+| GET | `/api/v1/organizations/{organization_id}/invitations` | `members.read` |
+| DELETE | `/api/v1/organizations/{organization_id}/invitations/{invitation_id}` | `members.manage` |
+| PATCH | `/api/v1/organizations/{organization_id}/members/{membership_id}/status` | `members.manage` |
+| GET | `/api/v1/invitations/{token}` | Publique (aperçu) |
+| POST | `/api/v1/invitations/{token}/accept` | Publique (le jeton autorise) |
