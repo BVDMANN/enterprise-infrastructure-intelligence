@@ -87,7 +87,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - name: Validate PostgreSQL role bootstrap shell syntax
-        run: sh -n ../../infrastructure/postgres/bootstrap-roles.sh
+        run: |
+          sh -n ../../infrastructure/postgres/bootstrap-roles.sh
+          sh -n ../../infrastructure/postgres/test-existing-schema-adoption.sh
       - name: Provision least-privilege PostgreSQL roles
         run: |
           docker run --rm --network host \
@@ -108,6 +110,14 @@ jobs:
             postgres:16-alpine /bin/sh /scripts/bootstrap-roles.sh
       - name: Apply migrations using the dedicated migrator connection
         run: alembic upgrade head
+      - name: Verify opt-in adoption of an existing schema
+        run: |
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE/infrastructure/postgres:/scripts:ro" \
+            --env PGHOST --env PGPORT --env PGDATABASE --env PGUSER --env PGPASSWORD \
+            --env EII_RUNTIME_ROLE --env EII_RUNTIME_PASSWORD \
+            --env EII_MIGRATOR_ROLE --env EII_MIGRATOR_PASSWORD \
+            postgres:16-alpine /bin/sh /scripts/test-existing-schema-adoption.sh
       - name: Verify runtime and migrator role boundaries
         run: python -m pytest tests/test_postgres_role_separation.py -q
       - name: Verify concurrent owner demotions remain serialized
