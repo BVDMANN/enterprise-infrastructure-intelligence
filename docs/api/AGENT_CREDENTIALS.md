@@ -17,7 +17,8 @@ Request:
 ```
 
 The expiry is bounded to 1–365 days. The default is 90 days. The response
-contains the plaintext `eii_agent_...` bearer token exactly once. The API
+contains the plaintext `eii_agent_...` bearer token exactly once and sets
+`Cache-Control: no-store` plus `Pragma: no-cache`. The API
 stores only its SHA-256 digest and a short display prefix; the raw token is
 not stored, returned by list endpoints, written to audit details or logged.
 
