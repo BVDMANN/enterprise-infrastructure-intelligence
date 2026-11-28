@@ -308,6 +308,55 @@ def test_infrastructure_metrics_enforce_tenant_rls_and_append_only() -> None:
                     )
                     == 1
                 )
+        # A suspended user must lose direct runtime-role visibility even when
+        # the transaction-local tenant/user context is still supplied.
+        with migrator_engine.begin() as connection:
+            connection.execute(
+                text("UPDATE users SET is_active = false WHERE id = :user_id"),
+                {"user_id": user_a},
+            )
+
+        with runtime_engine.connect() as connection:
+            with connection.begin():
+                _set_context(connection, organization_a, user_a)
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT count(*) FROM infrastructure_metrics "
+                            "WHERE id = :metric_id"
+                        ),
+                        {"metric_id": metric_a},
+                    )
+                    == 0
+                )
+
+        # Membership revocation is represented by deleting the membership row.
+        # Restore the account, revoke only its tenant membership, then prove that
+        # the same runtime context no longer exposes the persisted metric.
+        with migrator_engine.begin() as connection:
+            connection.execute(
+                text("UPDATE users SET is_active = true WHERE id = :user_id"),
+                {"user_id": user_a},
+            )
+            connection.execute(
+                text("DELETE FROM memberships WHERE id = :membership_id"),
+                {"membership_id": membership_a},
+            )
+
+        with runtime_engine.connect() as connection:
+            with connection.begin():
+                _set_context(connection, organization_a, user_a)
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT count(*) FROM infrastructure_metrics "
+                            "WHERE id = :metric_id"
+                        ),
+                        {"metric_id": metric_a},
+                    )
+                    == 0
+                )
+
     finally:
         runtime_engine.dispose()
         migrator_engine.dispose()
