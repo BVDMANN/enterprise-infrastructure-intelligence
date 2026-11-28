@@ -347,28 +347,6 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                     == 1
                 )
 
-                # The migration owner has TRUNCATE privilege, but the
-                # statement-level append-only trigger must still reject it.
-                with migrator_engine.connect() as owner_connection:
-                    with owner_connection.begin():
-                        _set_context(owner_connection, organization_a, user_a)
-                        with pytest.raises(DBAPIError) as denied_owner_truncate:
-                            with owner_connection.begin_nested():
-                                owner_connection.execute(
-                                    text("TRUNCATE TABLE audit_events")
-                                )
-                        assert _sqlstate(denied_owner_truncate.value) == "55000"
-                        assert (
-                            owner_connection.scalar(
-                                text(
-                                    "SELECT count(*) FROM audit_events "
-                                    "WHERE id = :event_id"
-                                ),
-                                {"event_id": event_a},
-                            )
-                            == 1
-                        )
-
                 # A valid tenant ID alone is insufficient: the context user
                 # must also have an active membership in that tenant.
                 _set_context(connection, organization_b, user_a)
@@ -398,6 +376,30 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                     == 0
                 )
                 assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
+
+        # Run owner TRUNCATE after the runtime transaction closes; TRUNCATE
+        # requests ACCESS EXCLUSIVE and would wait on the runtime table locks.
+        # The migration owner has TRUNCATE privilege, but the
+        # statement-level append-only trigger must still reject it.
+        with migrator_engine.connect() as owner_connection:
+            with owner_connection.begin():
+                _set_context(owner_connection, organization_a, user_a)
+                with pytest.raises(DBAPIError) as denied_owner_truncate:
+                    with owner_connection.begin_nested():
+                        owner_connection.execute(
+                            text("TRUNCATE TABLE audit_events")
+                        )
+                assert _sqlstate(denied_owner_truncate.value) == "55000"
+                assert (
+                    owner_connection.scalar(
+                        text(
+                            "SELECT count(*) FROM audit_events "
+                            "WHERE id = :event_id"
+                        ),
+                        {"event_id": event_a},
+                    )
+                    == 1
+                )
 
         def _assert_context_denied(label: str) -> None:
             """Inactive identities and deleted tenants must fail closed."""
