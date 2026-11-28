@@ -386,16 +386,11 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                 _set_context(owner_connection, organization_a, user_a)
                 with pytest.raises(DBAPIError) as denied_owner_truncate:
                     with owner_connection.begin_nested():
-                        owner_connection.execute(
-                            text("TRUNCATE TABLE audit_events")
-                        )
+                        owner_connection.execute(text("TRUNCATE TABLE audit_events"))
                 assert _sqlstate(denied_owner_truncate.value) == "55000"
                 assert (
                     owner_connection.scalar(
-                        text(
-                            "SELECT count(*) FROM audit_events "
-                            "WHERE id = :event_id"
-                        ),
+                        text("SELECT count(*) FROM audit_events WHERE id = :event_id"),
                         {"event_id": event_a},
                     )
                     == 1
