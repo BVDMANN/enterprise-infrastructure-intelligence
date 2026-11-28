@@ -1,0 +1,26 @@
+name: Linux agent
+
+on:
+  pull_request:
+    paths:
+      - "agents/linux/**"
+      - ".github/workflows/linux-agent.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "agents/linux/**"
+      - ".github/workflows/linux-agent.yml"
+
+jobs:
+  linux-agent:
+    name: Linux agent (compile / unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Compile collector
+        run: python -m compileall -q agents/linux
+      - name: Run collector unit tests
+        run: python -m unittest discover -s agents/linux -p "test_*.py" -v

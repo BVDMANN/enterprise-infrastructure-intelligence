@@ -1,0 +1,30 @@
+[Unit]
+Description=Enterprise Infrastructure Intelligence Linux Agent
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=eii-agent
+Group=eii-agent
+EnvironmentFile=/etc/eii-agent/agent.env
+ExecStart=/usr/bin/python3 /opt/eii-agent/collector.py
+Restart=on-failure
+RestartSec=10s
+RestartPreventExitStatus=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/proc /sys
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

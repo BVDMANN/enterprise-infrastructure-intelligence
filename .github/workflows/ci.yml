@@ -512,3 +512,16 @@ jobs:
             process.exit(2);
           }
           NODE
+
+  linux-agent:
+    name: Linux agent (compile / unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Compile Linux collector
+        run: python -m compileall -q agents/linux
+      - name: Run Linux collector unit tests
+        run: python -m unittest discover -s agents/linux -p "test_*.py" -v
