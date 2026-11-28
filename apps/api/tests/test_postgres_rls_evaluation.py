@@ -660,12 +660,10 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                 """
             )
             connection.exec_driver_sql(
-                f'ALTER TABLE "{schema}".tenant_records '
-                "ENABLE ROW LEVEL SECURITY"
+                f'ALTER TABLE "{schema}".tenant_records ' "ENABLE ROW LEVEL SECURITY"
             )
             connection.exec_driver_sql(
-                f'ALTER TABLE "{schema}".tenant_records '
-                "FORCE ROW LEVEL SECURITY"
+                f'ALTER TABLE "{schema}".tenant_records ' "FORCE ROW LEVEL SECURITY"
             )
             connection.exec_driver_sql(
                 f"""
@@ -684,7 +682,7 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                 f'GRANT USAGE ON SCHEMA "{schema}" TO "{runtime_role}"'
             )
             connection.exec_driver_sql(
-                f'GRANT SELECT, INSERT, UPDATE, DELETE '
+                f"GRANT SELECT, INSERT, UPDATE, DELETE "
                 f'ON "{schema}".tenant_records TO "{runtime_role}"'
             )
             connection.exec_driver_sql(
@@ -735,12 +733,18 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     ),
                     {"org": str(organization_b), "user": str(user_b)},
                 )
-                assert connection.scalar(
-                    text(f'SELECT "{schema}".current_organization_id()')
-                ) is None
-                assert connection.scalar(
-                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text(f'SELECT "{schema}".current_organization_id()')
+                    )
+                    is None
+                )
+                assert (
+                    connection.scalar(
+                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                    )
+                    == 0
+                )
 
                 with pytest.raises(DBAPIError) as denied_private_read:
                     with connection.begin_nested():
@@ -770,9 +774,7 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     )
                 ) == str(organization_a)
                 assert str(
-                    connection.scalar(
-                        text(f'SELECT "{schema}".current_user_id()')
-                    )
+                    connection.scalar(text(f'SELECT "{schema}".current_user_id()'))
                 ) == str(user_a)
                 assert connection.scalars(
                     text(
@@ -789,12 +791,18 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     ),
                     {"org": str(organization_b), "user": str(user_b)},
                 )
-                assert connection.scalar(
-                    text(f'SELECT "{schema}".current_organization_id()')
-                ) is None
-                assert connection.scalar(
-                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text(f'SELECT "{schema}".current_organization_id()')
+                    )
+                    is None
+                )
+                assert (
+                    connection.scalar(
+                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                    )
+                    == 0
+                )
                 with pytest.raises(DBAPIError) as denied_cross_tenant_insert:
                     with connection.begin_nested():
                         connection.execute(
@@ -834,12 +842,18 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     ),
                     {"org": str(organization_a), "user": str(user_a)},
                 )
-                assert connection.scalar(
-                    text(f'SELECT "{schema}".current_organization_id()')
-                ) is None
-                assert connection.scalar(
-                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text(f'SELECT "{schema}".current_organization_id()')
+                    )
+                    is None
+                )
+                assert (
+                    connection.scalar(
+                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                    )
+                    == 0
+                )
 
             # Expired and revoked sessions cannot mint a context lock.
             for token in (expired_token, revoked_token):
@@ -848,9 +862,7 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     with pytest.raises(DBAPIError) as denied_session:
                         with connection.begin_nested():
                             connection.execute(
-                                text(
-                                    f'SELECT "{schema}".set_tenant_context(:token)'
-                                ),
+                                text(f'SELECT "{schema}".set_tenant_context(:token)'),
                                 {"token": token},
                             )
                     assert sqlstate(denied_session.value) == "28000"
@@ -862,9 +874,12 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                         ),
                         {"org": str(organization_a), "user": str(user_a)},
                     )
-                    assert connection.scalar(
-                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
-                    ) == 0
+                    assert (
+                        connection.scalar(
+                            text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                        )
+                        == 0
+                    )
 
             # A second backend cannot reuse the first backend's valid context.
             with connection.begin():
@@ -873,9 +888,12 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     text(f'SELECT "{schema}".set_tenant_context(:token)'),
                     {"token": token_a},
                 )
-                assert connection.scalar(
-                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
-                ) == 1
+                assert (
+                    connection.scalar(
+                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                    )
+                    == 1
+                )
                 with engine.connect() as second_connection:
                     with second_connection.begin():
                         second_connection.exec_driver_sql(
@@ -889,16 +907,18 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                             ),
                             {"org": str(organization_a), "user": str(user_a)},
                         )
-                        assert second_connection.scalar(
-                            text(
-                                f'SELECT "{schema}".current_organization_id()'
+                        assert (
+                            second_connection.scalar(
+                                text(f'SELECT "{schema}".current_organization_id()')
                             )
-                        ) is None
-                        assert second_connection.scalar(
-                            text(
-                                f'SELECT count(*) FROM "{schema}".tenant_records'
+                            is None
+                        )
+                        assert (
+                            second_connection.scalar(
+                                text(f'SELECT count(*) FROM "{schema}".tenant_records')
                             )
-                        ) == 0
+                            == 0
+                        )
 
             # A different valid session is authorized only for its own tenant.
             with connection.begin():
