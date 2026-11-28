@@ -33,6 +33,26 @@ def _sqlstate(error: DBAPIError) -> str | None:
     return getattr(error.orig, "sqlstate", None) or getattr(error.orig, "pgcode", None)
 
 
+def _assert_metric_insert_denied(connection, organization_id, asset_id) -> None:
+    """Verify a revoked tenant identity cannot append another metric sample."""
+    with pytest.raises(DBAPIError) as denied_insert:
+        with connection.begin_nested():
+            connection.execute(
+                text(
+                    "INSERT INTO infrastructure_metrics "
+                    "(id, organization_id, asset_id, metric_name, metric_value) "
+                    "VALUES (:id, :organization_id, :asset_id, "
+                    "'cpu.utilization', 99)"
+                ),
+                {
+                    "id": uuid4(),
+                    "organization_id": organization_id,
+                    "asset_id": asset_id,
+                },
+            )
+    assert _sqlstate(denied_insert.value) == "42501"
+
+
 def test_infrastructure_metrics_enforce_tenant_rls_and_append_only() -> None:
     """Verify the real runtime role cannot cross tenants or mutate samples."""
     runtime_url = os.environ.get("DATABASE_URL")
@@ -329,6 +349,7 @@ def test_infrastructure_metrics_enforce_tenant_rls_and_append_only() -> None:
                     )
                     == 0
                 )
+                _assert_metric_insert_denied(connection, organization_a, asset_a)
 
         # Membership revocation is represented by deleting the membership row.
         # Restore the account, revoke only its tenant membership, then prove that
@@ -356,6 +377,7 @@ def test_infrastructure_metrics_enforce_tenant_rls_and_append_only() -> None:
                     )
                     == 0
                 )
+                _assert_metric_insert_denied(connection, organization_a, asset_a)
 
     finally:
         runtime_engine.dispose()
