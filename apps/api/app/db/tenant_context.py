@@ -49,9 +49,6 @@ def set_current_agent_token_hash(db: Session, token_hash: str | None) -> None:
         return
 
     db.execute(
-        text(
-            "SELECT set_config("
-            "'app.current_agent_token_hash', :token_hash, true)"
-        ),
+        text("SELECT set_config('app.current_agent_token_hash', :token_hash, true)"),
         {"token_hash": token_hash or ""},
     )
