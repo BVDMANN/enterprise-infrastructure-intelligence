@@ -14,6 +14,7 @@ from app.core.authorization import (
     require_session_csrf,
 )
 from app.db.session import get_db
+from app.db.tenant_context import set_current_organization
 from app.models.identity import Organization, User
 from app.models.infrastructure import InfrastructureAsset
 from app.schemas.infrastructure import (
@@ -110,6 +111,7 @@ def create_asset(
             details={"asset_type": asset.asset_type, "status": asset.status},
         )
         db.commit()
+        set_current_organization(db, organization.id)
         db.refresh(asset)
         return asset
     except IntegrityError as exc:
@@ -158,6 +160,7 @@ def update_asset(
             details={"changed_fields": sorted(changes)},
         )
         db.commit()
+        set_current_organization(db, organization.id)
         db.refresh(asset)
         return asset
     except IntegrityError as exc:
