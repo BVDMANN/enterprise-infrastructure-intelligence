@@ -16,9 +16,9 @@ def _script_directory() -> ScriptDirectory:
     return ScriptDirectory.from_config(config)
 
 
-def test_alembic_has_one_initial_head() -> None:
-    """The infrastructure assets migration must be the only head."""
-    assert _script_directory().get_heads() == ["0008_infrastructure_assets"]
+def test_alembic_has_one_head() -> None:
+    """The application-table RLS migration must be the only head."""
+    assert _script_directory().get_heads() == ["0009_application_table_rls"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -71,10 +71,11 @@ def test_invitations_migration_follows_audit_events() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one linear chain through the infrastructure migration."""
+    """The history must be one linear chain through application-table RLS."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
+        "0009_application_table_rls",
         "0008_infrastructure_assets",
         "0007_organization_invitations",
         "0006_audit_events",
@@ -84,6 +85,13 @@ def test_migration_history_is_linear() -> None:
         "0002_identity",
         "0001_pg_extensions",
     ]
+
+
+def test_application_table_rls_migration_follows_infrastructure_assets() -> None:
+    """0009_application_table_rls must descend directly from infrastructure assets."""
+    revision = _script_directory().get_revision("0009_application_table_rls")
+    assert revision is not None
+    assert revision.down_revision == "0008_infrastructure_assets"
 
 
 def test_infrastructure_assets_migration_follows_invitations() -> None:

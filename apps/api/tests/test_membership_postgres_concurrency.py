@@ -13,6 +13,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal, engine
+from app.db.tenant_context import set_current_organization
 from app.main import app
 import app.routers.auth as auth_router
 import app.routers.organizations as organizations_router
@@ -89,6 +90,7 @@ def test_concurrent_owner_demotions_preserve_one_active_owner(monkeypatch) -> No
         db.commit()
 
         organization_id = organization.id
+        owner_a_id = owner_a.id
         membership_a_id = membership_a.id
         membership_b_id = membership_b.id
 
@@ -139,6 +141,7 @@ def test_concurrent_owner_demotions_preserve_one_active_owner(monkeypatch) -> No
     assert sorted([response_a.status_code, response_b.status_code]) == [200, 409]
 
     with SessionLocal() as db:
+        set_current_organization(db, organization_id, owner_a_id)
         owner_memberships = db.execute(
             select(Membership.id)
             .join(

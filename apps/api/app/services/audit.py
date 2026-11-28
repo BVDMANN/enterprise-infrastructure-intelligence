@@ -14,6 +14,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.tenant_context import set_current_organization
+
 from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 
@@ -124,6 +126,7 @@ def record_audit_event(
     if membership_id is None:
         raise ValueError("Audit actor must be an active member of the organization")
 
+    set_current_organization(db, organization_id, actor_user_id)
     event = AuditEvent(
         organization_id=organization_id,
         actor_user_id=actor_user_id,
@@ -148,6 +151,7 @@ def list_audit_events(
     """List newest events for one already-authorized organization."""
     if not 1 <= limit <= 100:
         raise ValueError("limit must be between 1 and 100")
+    set_current_organization(db, organization_id)
     statement = (
         select(AuditEvent)
         .where(AuditEvent.organization_id == organization_id)
