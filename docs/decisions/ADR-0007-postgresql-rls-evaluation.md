@@ -67,9 +67,10 @@ real application tables:
 - `audit_events`
 
 The policy requires both transaction-local settings:
-`app.current_organization_id` and `app.current_user_id`. It also checks
-that the user has an active, non-deleted membership in that organization.
-Missing or mismatched context is default-deny. The API sets context only after
+`app.current_organization_id` and `app.current_user_id`. It checks that the
+organization is not soft-deleted and that the context user has an existing
+membership plus an active, non-deleted user record. Missing or mismatched
+context is default-deny. The API sets context only after
 session resolution and organization RBAC; the audit writer binds it to the
 validated actor. The inventory service preserves the authenticated user
 context. Context uses `set_config(..., true)` so it is cleared at transaction

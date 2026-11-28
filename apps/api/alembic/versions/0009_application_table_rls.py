@@ -23,6 +23,12 @@ def _policy_sql(table: str) -> str:
                 )::uuid
             AND EXISTS (
                 SELECT 1
+                FROM organizations AS o
+                WHERE o.id = {table}.organization_id
+                  AND o.deleted_at IS NULL
+            )
+            AND EXISTS (
+                SELECT 1
                 FROM memberships AS m
                 JOIN users AS u ON u.id = m.user_id
                 WHERE m.organization_id = {table}.organization_id
@@ -39,6 +45,12 @@ def _policy_sql(table: str) -> str:
                 NULLIF(
                     current_setting('app.current_organization_id', true), ''
                 )::uuid
+            AND EXISTS (
+                SELECT 1
+                FROM organizations AS o
+                WHERE o.id = {table}.organization_id
+                  AND o.deleted_at IS NULL
+            )
             AND EXISTS (
                 SELECT 1
                 FROM memberships AS m
