@@ -4,7 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import auth, health, infrastructure, invitations, organizations
+from app.routers import (
+    agents,
+    auth,
+    health,
+    infrastructure,
+    invitations,
+    organizations,
+)
 
 app = FastAPI(
     title="Enterprise Infrastructure Intelligence API",
@@ -27,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(organizations.router)
 app.include_router(infrastructure.router)
 app.include_router(invitations.router)
+app.include_router(agents.router)
 
 
 @app.get("/health", tags=["health"])
