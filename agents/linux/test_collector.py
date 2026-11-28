@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -16,6 +18,7 @@ from collector import (
     read_memory_bytes,
     read_network_bytes,
     validate_api_url,
+    main,
 )
 
 TOKEN = "eii_agent_test-token-never-a-real-secret"
@@ -192,6 +195,27 @@ class ClientTests(unittest.TestCase):
         self.assertIsNone(
             handler.redirect_request(None, None, 302, "Found", {}, "https://other.example")
         )
+
+
+class ServiceUnitTests(unittest.TestCase):
+    def test_invalid_configuration_is_not_restarted_by_systemd(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "EII_AGENT_API_URL": "http://control.example",
+                "EII_AGENT_TOKEN": TOKEN,
+                "EII_AGENT_INTERVAL_SECONDS": "60",
+                "EII_AGENT_LOG_LEVEL": "CRITICAL",
+            },
+            clear=True,
+        ):
+            self.assertEqual(main(), 2)
+
+        unit = Path(__file__).with_name("eii-agent.service").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Restart=on-failure", unit)
+        self.assertIn("RestartPreventExitStatus=2", unit)
 
 
 if __name__ == "__main__":
