@@ -87,12 +87,12 @@ def test_migration_history_is_linear() -> None:
     ]
 
 
-
 def test_application_table_rls_migration_follows_infrastructure_assets() -> None:
     """0009_application_table_rls must descend directly from infrastructure assets."""
     revision = _script_directory().get_revision("0009_application_table_rls")
     assert revision is not None
     assert revision.down_revision == "0008_infrastructure_assets"
+
 
 def test_infrastructure_assets_migration_follows_invitations() -> None:
     """0008_infrastructure_assets must descend from 0007_organization_invitations."""
