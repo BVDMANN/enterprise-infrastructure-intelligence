@@ -771,6 +771,17 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
             assert flags.rolsuper is False
             assert flags.rolbypassrls is False
 
+            # The runtime role must not inherit or assume the function owner.
+            owner_membership = connection.scalar(
+                text(
+                    "SELECT pg_catalog.pg_has_role("
+                    "CAST(:member_role AS name), CAST(:target_role AS name), "
+                    "'MEMBER')"
+                ),
+                {"member_role": runtime_role, "target_role": owner_role},
+            )
+            assert owner_membership is False
+
         with engine.connect() as connection:
             # A caller can set arbitrary custom GUCs, but without the private
             # transaction lock the policy remains default-deny.
@@ -810,6 +821,20 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                             text(f'SELECT token_hash FROM "{schema}".sessions')
                         )
                 assert sqlstate(denied_private_session_read.value) == "42501"
+
+                with pytest.raises(DBAPIError) as denied_internal_helper:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(
+                                f'SELECT "{schema}".trusted_context_valid('
+                                ":organization_id, :user_id)"
+                            ),
+                            {
+                                "organization_id": organization_a,
+                                "user_id": user_a,
+                            },
+                        )
+                assert sqlstate(denied_internal_helper.value) == "42501"
 
             # A validated session creates a lock scoped to this backend and
             # transaction. Changing either GUC cannot retarget that lock.
