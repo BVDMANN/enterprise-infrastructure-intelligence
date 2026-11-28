@@ -235,3 +235,689 @@ def test_rls_is_fail_closed_tenant_scoped_and_transaction_local() -> None:
                 cleanup.exec_driver_sql(f'DROP ROLE IF EXISTS "{owner_role}"')
         finally:
             engine.dispose()
+
+
+def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> None:
+    """A GUC alone cannot select a tenant without a DB-validated transaction lock."""
+    import hashlib
+    from datetime import datetime, timedelta, timezone
+
+    database_url = os.environ.get("DATABASE_URL")
+    assert database_url, "DATABASE_URL must target the ephemeral PostgreSQL service."
+
+    engine = create_engine(
+        database_url,
+        pool_size=2,
+        max_overflow=0,
+        pool_pre_ping=True,
+    )
+    suffix = uuid4().hex
+    schema = f"eii_trusted_rls_{suffix}"
+    owner_role = f"eii_trusted_owner_{suffix}"
+    runtime_role = f"eii_trusted_runtime_{suffix}"
+
+    organization_a = uuid4()
+    organization_b = uuid4()
+    user_a = uuid4()
+    user_b = uuid4()
+    token_a = f"eii-test-session-a-{suffix}"
+    token_b = f"eii-test-session-b-{suffix}"
+    expired_token = f"eii-test-session-expired-{suffix}"
+    revoked_token = f"eii-test-session-revoked-{suffix}"
+    now = datetime.now(timezone.utc)
+
+    def token_hash(token: str) -> bytes:
+        return hashlib.sha256(token.encode("utf-8")).digest()
+
+    def sqlstate(error: DBAPIError) -> str | None:
+        return getattr(error.orig, "sqlstate", None) or getattr(
+            error.orig, "pgcode", None
+        )
+
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public"
+            )
+            connection.exec_driver_sql(
+                f'CREATE ROLE "{owner_role}" NOLOGIN NOSUPERUSER NOBYPASSRLS'
+            )
+            connection.exec_driver_sql(
+                f'CREATE ROLE "{runtime_role}" NOLOGIN NOSUPERUSER NOBYPASSRLS'
+            )
+            connection.exec_driver_sql(
+                f'CREATE SCHEMA "{schema}" AUTHORIZATION "{owner_role}"'
+            )
+            connection.exec_driver_sql(f'SET LOCAL ROLE "{owner_role}"')
+
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".context_keys (
+                    singleton boolean PRIMARY KEY CHECK (singleton),
+                    secret bytea NOT NULL
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                INSERT INTO "{schema}".context_keys (singleton, secret)
+                VALUES (true, public.gen_random_bytes(32))
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".organizations (
+                    id uuid PRIMARY KEY,
+                    deleted_at timestamptz
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".users (
+                    id uuid PRIMARY KEY,
+                    is_active boolean NOT NULL,
+                    deleted_at timestamptz
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".memberships (
+                    organization_id uuid NOT NULL,
+                    user_id uuid NOT NULL,
+                    is_active boolean NOT NULL,
+                    PRIMARY KEY (organization_id, user_id)
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".sessions (
+                    token_hash bytea PRIMARY KEY,
+                    organization_id uuid NOT NULL,
+                    user_id uuid NOT NULL,
+                    expires_at timestamptz NOT NULL,
+                    revoked_at timestamptz
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE TABLE "{schema}".tenant_records (
+                    organization_id uuid NOT NULL,
+                    payload text NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                text(
+                    f'INSERT INTO "{schema}".organizations (id) '
+                    "VALUES (:org_a), (:org_b)"
+                ),
+                {"org_a": organization_a, "org_b": organization_b},
+            )
+            connection.execute(
+                text(
+                    f'INSERT INTO "{schema}".users (id, is_active) '
+                    "VALUES (:user_a, true), (:user_b, true)"
+                ),
+                {"user_a": user_a, "user_b": user_b},
+            )
+            connection.execute(
+                text(
+                    f'INSERT INTO "{schema}".memberships '
+                    "(organization_id, user_id, is_active) "
+                    "VALUES (:org_a, :user_a, true), (:org_b, :user_b, true)"
+                ),
+                {
+                    "org_a": organization_a,
+                    "user_a": user_a,
+                    "org_b": organization_b,
+                    "user_b": user_b,
+                },
+            )
+            connection.execute(
+                text(
+                    f'INSERT INTO "{schema}".sessions '
+                    "(token_hash, organization_id, user_id, expires_at, revoked_at) "
+                    "VALUES "
+                    "(:hash_a, :org_a, :user_a, :future, NULL), "
+                    "(:hash_b, :org_b, :user_b, :future, NULL), "
+                    "(:hash_expired, :org_a, :user_a, :past, NULL), "
+                    "(:hash_revoked, :org_a, :user_a, :future, :revoked)"
+                ),
+                {
+                    "hash_a": token_hash(token_a),
+                    "hash_b": token_hash(token_b),
+                    "hash_expired": token_hash(expired_token),
+                    "hash_revoked": token_hash(revoked_token),
+                    "org_a": organization_a,
+                    "user_a": user_a,
+                    "org_b": organization_b,
+                    "user_b": user_b,
+                    "future": now + timedelta(hours=1),
+                    "past": now - timedelta(minutes=1),
+                    "revoked": now,
+                },
+            )
+            connection.execute(
+                text(
+                    f'INSERT INTO "{schema}".tenant_records '
+                    "(organization_id, payload) "
+                    "VALUES (:org_a, 'tenant-a'), (:org_b, 'tenant-b')"
+                ),
+                {"org_a": organization_a, "org_b": organization_b},
+            )
+
+            # The private HMAC key never leaves this ephemeral database. The
+            # runtime role receives EXECUTE on narrow functions, not table access.
+            connection.exec_driver_sql(
+                f"""
+                CREATE FUNCTION "{schema}".trusted_context_valid(
+                    p_organization_id uuid,
+                    p_user_id uuid
+                ) RETURNS boolean
+                LANGUAGE plpgsql
+                SECURITY DEFINER
+                SET search_path = pg_catalog
+                AS $function$
+                DECLARE
+                    v_secret bytea;
+                    v_mac bytea;
+                    v_high bigint;
+                    v_low bigint;
+                    v_high_oid bigint;
+                    v_low_oid bigint;
+                BEGIN
+                    IF p_organization_id IS NULL OR p_user_id IS NULL THEN
+                        RETURN false;
+                    END IF;
+
+                    SELECT secret INTO v_secret
+                    FROM "{schema}".context_keys
+                    WHERE singleton = true;
+                    IF v_secret IS NULL THEN
+                        RETURN false;
+                    END IF;
+
+                    v_mac := public.hmac(
+                        pg_catalog.convert_to(
+                            p_organization_id::text || ':' ||
+                            p_user_id::text || ':' ||
+                            pg_catalog.pg_backend_pid()::text || ':' ||
+                            pg_catalog.pg_current_xact_id()::text,
+                            'UTF8'
+                        ),
+                        v_secret,
+                        'sha256'
+                    );
+                    v_high :=
+                        pg_catalog.get_byte(v_mac, 0)::bigint * 16777216 +
+                        pg_catalog.get_byte(v_mac, 1)::bigint * 65536 +
+                        pg_catalog.get_byte(v_mac, 2)::bigint * 256 +
+                        pg_catalog.get_byte(v_mac, 3)::bigint;
+                    v_low :=
+                        pg_catalog.get_byte(v_mac, 4)::bigint * 16777216 +
+                        pg_catalog.get_byte(v_mac, 5)::bigint * 65536 +
+                        pg_catalog.get_byte(v_mac, 6)::bigint * 256 +
+                        pg_catalog.get_byte(v_mac, 7)::bigint;
+                    IF v_high >= 2147483648 THEN
+                        v_high := v_high - 4294967296;
+                    END IF;
+                    IF v_low >= 2147483648 THEN
+                        v_low := v_low - 4294967296;
+                    END IF;
+                    v_high_oid := CASE
+                        WHEN v_high < 0 THEN v_high + 4294967296
+                        ELSE v_high
+                    END;
+                    v_low_oid := CASE
+                        WHEN v_low < 0 THEN v_low + 4294967296
+                        ELSE v_low
+                    END;
+
+                    RETURN EXISTS (
+                        SELECT 1
+                        FROM pg_catalog.pg_locks AS lock_row
+                        WHERE lock_row.locktype = 'advisory'
+                          AND lock_row.pid = pg_catalog.pg_backend_pid()
+                          AND lock_row.granted
+                          AND lock_row.objsubid = 2
+                          AND lock_row.classid::bigint = v_high_oid
+                          AND lock_row.objid::bigint = v_low_oid
+                    );
+                END
+                $function$
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE FUNCTION "{schema}".set_tenant_context(
+                    p_session_token text
+                ) RETURNS void
+                LANGUAGE plpgsql
+                SECURITY DEFINER
+                SET search_path = pg_catalog
+                AS $function$
+                DECLARE
+                    v_organization_id uuid;
+                    v_user_id uuid;
+                    v_secret bytea;
+                    v_mac bytea;
+                    v_high bigint;
+                    v_low bigint;
+                BEGIN
+                    SELECT session_row.organization_id, session_row.user_id
+                    INTO v_organization_id, v_user_id
+                    FROM "{schema}".sessions AS session_row
+                    JOIN "{schema}".organizations AS organization_row
+                      ON organization_row.id = session_row.organization_id
+                     AND organization_row.deleted_at IS NULL
+                    JOIN "{schema}".users AS user_row
+                      ON user_row.id = session_row.user_id
+                     AND user_row.is_active
+                     AND user_row.deleted_at IS NULL
+                    JOIN "{schema}".memberships AS membership_row
+                      ON membership_row.organization_id =
+                         session_row.organization_id
+                     AND membership_row.user_id = session_row.user_id
+                     AND membership_row.is_active
+                    WHERE session_row.token_hash = public.digest(
+                        pg_catalog.convert_to(p_session_token, 'UTF8'),
+                        'sha256'
+                    )
+                      AND session_row.revoked_at IS NULL
+                      AND session_row.expires_at > pg_catalog.clock_timestamp();
+
+                    IF NOT FOUND THEN
+                        RAISE EXCEPTION 'invalid or inactive tenant session'
+                            USING ERRCODE = '28000';
+                    END IF;
+
+                    SELECT secret INTO v_secret
+                    FROM "{schema}".context_keys
+                    WHERE singleton = true;
+                    IF v_secret IS NULL THEN
+                        RAISE EXCEPTION 'trusted context key is unavailable'
+                            USING ERRCODE = '55000';
+                    END IF;
+
+                    v_mac := public.hmac(
+                        pg_catalog.convert_to(
+                            v_organization_id::text || ':' ||
+                            v_user_id::text || ':' ||
+                            pg_catalog.pg_backend_pid()::text || ':' ||
+                            pg_catalog.pg_current_xact_id()::text,
+                            'UTF8'
+                        ),
+                        v_secret,
+                        'sha256'
+                    );
+                    v_high :=
+                        pg_catalog.get_byte(v_mac, 0)::bigint * 16777216 +
+                        pg_catalog.get_byte(v_mac, 1)::bigint * 65536 +
+                        pg_catalog.get_byte(v_mac, 2)::bigint * 256 +
+                        pg_catalog.get_byte(v_mac, 3)::bigint;
+                    v_low :=
+                        pg_catalog.get_byte(v_mac, 4)::bigint * 16777216 +
+                        pg_catalog.get_byte(v_mac, 5)::bigint * 65536 +
+                        pg_catalog.get_byte(v_mac, 6)::bigint * 256 +
+                        pg_catalog.get_byte(v_mac, 7)::bigint;
+                    IF v_high >= 2147483648 THEN
+                        v_high := v_high - 4294967296;
+                    END IF;
+                    IF v_low >= 2147483648 THEN
+                        v_low := v_low - 4294967296;
+                    END IF;
+
+                    PERFORM pg_catalog.pg_advisory_xact_lock(
+                        v_high::integer,
+                        v_low::integer
+                    );
+                    PERFORM pg_catalog.set_config(
+                        'app.current_organization_id',
+                        v_organization_id::text,
+                        true
+                    );
+                    PERFORM pg_catalog.set_config(
+                        'app.current_user_id',
+                        v_user_id::text,
+                        true
+                    );
+                END
+                $function$
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE FUNCTION "{schema}".current_organization_id()
+                RETURNS uuid
+                LANGUAGE plpgsql
+                SECURITY DEFINER
+                SET search_path = pg_catalog
+                AS $function$
+                DECLARE
+                    v_organization_id uuid;
+                    v_user_id uuid;
+                BEGIN
+                    v_organization_id := NULLIF(
+                        pg_catalog.current_setting(
+                            'app.current_organization_id', true
+                        ),
+                        ''
+                    )::uuid;
+                    v_user_id := NULLIF(
+                        pg_catalog.current_setting('app.current_user_id', true),
+                        ''
+                    )::uuid;
+                    IF "{schema}".trusted_context_valid(
+                        v_organization_id, v_user_id
+                    ) THEN
+                        RETURN v_organization_id;
+                    END IF;
+                    RETURN NULL;
+                EXCEPTION
+                    WHEN invalid_text_representation THEN
+                        RETURN NULL;
+                END
+                $function$
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE FUNCTION "{schema}".current_user_id()
+                RETURNS uuid
+                LANGUAGE plpgsql
+                SECURITY DEFINER
+                SET search_path = pg_catalog
+                AS $function$
+                DECLARE
+                    v_organization_id uuid;
+                    v_user_id uuid;
+                BEGIN
+                    v_organization_id := NULLIF(
+                        pg_catalog.current_setting(
+                            'app.current_organization_id', true
+                        ),
+                        ''
+                    )::uuid;
+                    v_user_id := NULLIF(
+                        pg_catalog.current_setting('app.current_user_id', true),
+                        ''
+                    )::uuid;
+                    IF "{schema}".trusted_context_valid(
+                        v_organization_id, v_user_id
+                    ) THEN
+                        RETURN v_user_id;
+                    END IF;
+                    RETURN NULL;
+                EXCEPTION
+                    WHEN invalid_text_representation THEN
+                        RETURN NULL;
+                END
+                $function$
+                """
+            )
+            connection.exec_driver_sql(
+                f'ALTER TABLE "{schema}".tenant_records '
+                "ENABLE ROW LEVEL SECURITY"
+            )
+            connection.exec_driver_sql(
+                f'ALTER TABLE "{schema}".tenant_records '
+                "FORCE ROW LEVEL SECURITY"
+            )
+            connection.exec_driver_sql(
+                f"""
+                CREATE POLICY trusted_tenant_isolation
+                ON "{schema}".tenant_records
+                USING (
+                    organization_id = "{schema}".current_organization_id()
+                )
+                WITH CHECK (
+                    organization_id = "{schema}".current_organization_id()
+                )
+                """
+            )
+            connection.exec_driver_sql("RESET ROLE")
+            connection.exec_driver_sql(
+                f'GRANT USAGE ON SCHEMA "{schema}" TO "{runtime_role}"'
+            )
+            connection.exec_driver_sql(
+                f'GRANT SELECT, INSERT, UPDATE, DELETE '
+                f'ON "{schema}".tenant_records TO "{runtime_role}"'
+            )
+            connection.exec_driver_sql(
+                f'REVOKE ALL ON ALL TABLES IN SCHEMA "{schema}" FROM PUBLIC'
+            )
+            for signature in (
+                f'"{schema}".trusted_context_valid(uuid, uuid)',
+                f'"{schema}".set_tenant_context(text)',
+                f'"{schema}".current_organization_id()',
+                f'"{schema}".current_user_id()',
+            ):
+                connection.exec_driver_sql(
+                    f"REVOKE ALL ON FUNCTION {signature} FROM PUBLIC"
+                )
+            connection.exec_driver_sql(
+                f'GRANT EXECUTE ON FUNCTION "{schema}".set_tenant_context(text) '
+                f'TO "{runtime_role}"'
+            )
+            connection.exec_driver_sql(
+                f'GRANT EXECUTE ON FUNCTION "{schema}".current_organization_id() '
+                f'TO "{runtime_role}"'
+            )
+            connection.exec_driver_sql(
+                f'GRANT EXECUTE ON FUNCTION "{schema}".current_user_id() '
+                f'TO "{runtime_role}"'
+            )
+
+            flags = connection.execute(
+                text(
+                    "SELECT rolsuper, rolbypassrls FROM pg_catalog.pg_roles "
+                    "WHERE rolname = :role"
+                ),
+                {"role": runtime_role},
+            ).one()
+            assert flags.rolsuper is False
+            assert flags.rolbypassrls is False
+
+        with engine.connect() as connection:
+            # A caller can set arbitrary custom GUCs, but without the private
+            # transaction lock the policy remains default-deny.
+            with connection.begin():
+                connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                connection.execute(
+                    text(
+                        "SELECT pg_catalog.set_config("
+                        "'app.current_organization_id', :org, true), "
+                        "pg_catalog.set_config('app.current_user_id', :user, true)"
+                    ),
+                    {"org": str(organization_b), "user": str(user_b)},
+                )
+                assert connection.scalar(
+                    text(f'SELECT "{schema}".current_organization_id()')
+                ) is None
+                assert connection.scalar(
+                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                ) == 0
+
+                with pytest.raises(DBAPIError) as denied_private_read:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(f'SELECT secret FROM "{schema}".context_keys')
+                        )
+                assert sqlstate(denied_private_read.value) == "42501"
+
+                with pytest.raises(DBAPIError) as denied_private_session_read:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(f'SELECT token_hash FROM "{schema}".sessions')
+                        )
+                assert sqlstate(denied_private_session_read.value) == "42501"
+
+            # A validated session creates a lock scoped to this backend and
+            # transaction. Changing either GUC cannot retarget that lock.
+            with connection.begin():
+                connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                connection.execute(
+                    text(f'SELECT "{schema}".set_tenant_context(:token)'),
+                    {"token": token_a},
+                )
+                assert str(
+                    connection.scalar(
+                        text(f'SELECT "{schema}".current_organization_id()')
+                    )
+                ) == str(organization_a)
+                assert str(
+                    connection.scalar(
+                        text(f'SELECT "{schema}".current_user_id()')
+                    )
+                ) == str(user_a)
+                assert connection.scalars(
+                    text(
+                        f'SELECT payload FROM "{schema}".tenant_records '
+                        "ORDER BY payload"
+                    )
+                ).all() == ["tenant-a"]
+
+                connection.execute(
+                    text(
+                        "SELECT pg_catalog.set_config("
+                        "'app.current_organization_id', :org, true), "
+                        "pg_catalog.set_config('app.current_user_id', :user, true)"
+                    ),
+                    {"org": str(organization_b), "user": str(user_b)},
+                )
+                assert connection.scalar(
+                    text(f'SELECT "{schema}".current_organization_id()')
+                ) is None
+                assert connection.scalar(
+                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                ) == 0
+                with pytest.raises(DBAPIError) as denied_cross_tenant_insert:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(
+                                f'INSERT INTO "{schema}".tenant_records '
+                                "(organization_id, payload) "
+                                "VALUES (:org, 'forged-tenant-b')"
+                            ),
+                            {"org": organization_b},
+                        )
+                assert sqlstate(denied_cross_tenant_insert.value) == "42501"
+
+                # Restoring the original, validated identity restores only A.
+                connection.execute(
+                    text(
+                        "SELECT pg_catalog.set_config("
+                        "'app.current_organization_id', :org, true), "
+                        "pg_catalog.set_config('app.current_user_id', :user, true)"
+                    ),
+                    {"org": str(organization_a), "user": str(user_a)},
+                )
+                assert connection.scalars(
+                    text(
+                        f'SELECT payload FROM "{schema}".tenant_records '
+                        "ORDER BY payload"
+                    )
+                ).all() == ["tenant-a"]
+
+            # Transaction-level locks and SET LOCAL values do not survive commit.
+            with connection.begin():
+                connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                connection.execute(
+                    text(
+                        "SELECT pg_catalog.set_config("
+                        "'app.current_organization_id', :org, true), "
+                        "pg_catalog.set_config('app.current_user_id', :user, true)"
+                    ),
+                    {"org": str(organization_a), "user": str(user_a)},
+                )
+                assert connection.scalar(
+                    text(f'SELECT "{schema}".current_organization_id()')
+                ) is None
+                assert connection.scalar(
+                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                ) == 0
+
+            # Expired and revoked sessions cannot mint a context lock.
+            for token in (expired_token, revoked_token):
+                with connection.begin():
+                    connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                    with pytest.raises(DBAPIError) as denied_session:
+                        with connection.begin_nested():
+                            connection.execute(
+                                text(
+                                    f'SELECT "{schema}".set_tenant_context(:token)'
+                                ),
+                                {"token": token},
+                            )
+                    assert sqlstate(denied_session.value) == "28000"
+                    connection.execute(
+                        text(
+                            "SELECT pg_catalog.set_config("
+                            "'app.current_organization_id', :org, true), "
+                            "pg_catalog.set_config('app.current_user_id', :user, true)"
+                        ),
+                        {"org": str(organization_a), "user": str(user_a)},
+                    )
+                    assert connection.scalar(
+                        text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                    ) == 0
+
+            # A second backend cannot reuse the first backend's valid context.
+            with connection.begin():
+                connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                connection.execute(
+                    text(f'SELECT "{schema}".set_tenant_context(:token)'),
+                    {"token": token_a},
+                )
+                assert connection.scalar(
+                    text(f'SELECT count(*) FROM "{schema}".tenant_records')
+                ) == 1
+                with engine.connect() as second_connection:
+                    with second_connection.begin():
+                        second_connection.exec_driver_sql(
+                            f'SET LOCAL ROLE "{runtime_role}"'
+                        )
+                        second_connection.execute(
+                            text(
+                                "SELECT pg_catalog.set_config("
+                                "'app.current_organization_id', :org, true), "
+                                "pg_catalog.set_config('app.current_user_id', :user, true)"
+                            ),
+                            {"org": str(organization_a), "user": str(user_a)},
+                        )
+                        assert second_connection.scalar(
+                            text(
+                                f'SELECT "{schema}".current_organization_id()'
+                            )
+                        ) is None
+                        assert second_connection.scalar(
+                            text(
+                                f'SELECT count(*) FROM "{schema}".tenant_records'
+                            )
+                        ) == 0
+
+            # A different valid session is authorized only for its own tenant.
+            with connection.begin():
+                connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
+                connection.execute(
+                    text(f'SELECT "{schema}".set_tenant_context(:token)'),
+                    {"token": token_b},
+                )
+                assert connection.scalars(
+                    text(
+                        f'SELECT payload FROM "{schema}".tenant_records '
+                        "ORDER BY payload"
+                    )
+                ).all() == ["tenant-b"]
+    finally:
+        try:
+            with engine.begin() as cleanup:
+                cleanup.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+                cleanup.exec_driver_sql(f'DROP ROLE IF EXISTS "{runtime_role}"')
+                cleanup.exec_driver_sql(f'DROP ROLE IF EXISTS "{owner_role}"')
+        finally:
+            engine.dispose()
