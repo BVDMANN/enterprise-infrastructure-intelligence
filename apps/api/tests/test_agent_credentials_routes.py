@@ -272,6 +272,35 @@ def test_agent_token_stops_working_when_enrolling_user_is_deactivated(client) ->
         assert authenticate_agent_credential(db, token) is None
 
 
+def test_agent_token_stops_working_when_enrolling_membership_is_removed(client) -> None:
+    _test_client, engine = client
+    organization_id, user_id, asset_id = _seed_asset(
+        engine,
+        slug="agent-revoked-membership",
+        email="agent-revoked-membership@example.com",
+    )
+    with Session(engine) as db:
+        created = create_agent_credential(
+            db,
+            organization_id=UUID(organization_id),
+            asset_id=UUID(asset_id),
+            created_by_user_id=UUID(user_id),
+            name="membership-bound-agent",
+        )
+        db.commit()
+        membership = db.scalar(
+            select(Membership)
+            .where(Membership.organization_id == UUID(organization_id))
+            .where(Membership.user_id == UUID(user_id))
+        )
+        assert membership is not None
+        db.delete(membership)
+        db.commit()
+
+    with Session(engine) as db:
+        assert authenticate_agent_credential(db, created.token) is None
+
+
 def test_expired_agent_token_is_rejected(client) -> None:
     _test_client, engine = client
     organization_id, user_id, asset_id = _seed_asset(
