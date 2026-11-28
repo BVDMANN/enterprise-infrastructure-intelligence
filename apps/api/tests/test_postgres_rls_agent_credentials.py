@@ -279,16 +279,25 @@ def test_agent_credentials_enforce_member_and_single_token_rls() -> None:
                     {"id": credential_a},
                 )
 
-                with pytest.raises(DBAPIError) as denied_delete:
+                denied_delete = connection.execute(
+                    text(
+                        "DELETE FROM infrastructure_agent_credentials "
+                        "WHERE id = :id"
+                    ),
+                    {"id": credential_a},
+                )
+                assert denied_delete.rowcount == 0
+
+                with pytest.raises(DBAPIError) as denied_unrevoke:
                     with connection.begin_nested():
                         connection.execute(
                             text(
-                                "DELETE FROM infrastructure_agent_credentials "
-                                "WHERE id = :id"
+                                "UPDATE infrastructure_agent_credentials "
+                                "SET revoked_at = NULL WHERE id = :id"
                             ),
                             {"id": credential_a},
                         )
-                assert denied_delete.value is not None
+                assert _sqlstate(denied_unrevoke.value) == "55000"
 
             with connection.begin():
                 _set_agent_context(connection, token_hash_a)
