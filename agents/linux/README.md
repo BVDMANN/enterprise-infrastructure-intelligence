@@ -87,6 +87,11 @@ sudo systemctl enable --now eii-agent.service
 sudo systemctl status eii-agent.service
 ```
 
+An invalid configuration exits with status `2`. The service unit uses
+`RestartPreventExitStatus=2` so systemd does not enter a restart loop while the
+URL, token or interval is invalid. Correct the root-owned environment file,
+then restart the service explicitly.
+
 Create `agent.env` locally with the actual control-plane URL and the
 one-time token before the `install` command. Do not commit that file.
 
