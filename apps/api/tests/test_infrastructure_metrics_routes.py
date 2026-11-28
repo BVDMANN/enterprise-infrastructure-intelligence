@@ -271,6 +271,16 @@ def test_viewer_can_read_but_cannot_record_metric_samples(client) -> None:
     )
     assert denied.status_code == 403
 
+    with Session(engine) as db:
+        metric_events = list(
+            db.scalars(
+                select(AuditEvent).where(
+                    AuditEvent.event_type == "infrastructure.metric.recorded"
+                )
+            ).all()
+        )
+    assert metric_events == []
+
 
 def test_metrics_are_hidden_across_tenants(client) -> None:
     test_client, engine = client
@@ -307,6 +317,16 @@ def test_metrics_are_hidden_across_tenants(client) -> None:
         f"{asset_a}/metrics"
     )
     assert test_client.get(own_collection).status_code == 200
+
+    with Session(engine) as db:
+        foreign_events = list(
+            db.scalars(
+                select(AuditEvent)
+                .where(AuditEvent.organization_id == UUID(organization_b))
+                .where(AuditEvent.event_type == "infrastructure.metric.recorded")
+            ).all()
+        )
+    assert foreign_events == []
 
 
 def test_metric_payload_rejects_invalid_names_nonfinite_values_and_future_time(
