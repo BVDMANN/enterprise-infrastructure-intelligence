@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,22 @@ def get_authenticated_agent(
 
     credential = authenticate_agent_credential(db, credentials.credentials)
     if credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired agent credential",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Hold the credential row lock until the request commits. A concurrent
+    # revocation then serializes with this request instead of racing a batch.
+    live_credential_id = db.scalar(
+        select(InfrastructureAgentCredential.id)
+        .where(InfrastructureAgentCredential.id == credential.id)
+        .where(InfrastructureAgentCredential.revoked_at.is_(None))
+        .where(InfrastructureAgentCredential.expires_at > datetime.now(timezone.utc))
+        .with_for_update()
+    )
+    if live_credential_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired agent credential",

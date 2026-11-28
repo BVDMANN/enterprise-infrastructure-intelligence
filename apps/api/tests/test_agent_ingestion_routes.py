@@ -18,7 +18,6 @@ from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.infrastructure import InfrastructureAsset
 from app.models.infrastructure_metrics import InfrastructureMetric
-from app.models.rbac import Role
 from app.services.agents import create_agent_credential
 from app.services.passwords import hash_password
 from app.services.rbac import create_default_roles_for_organization
