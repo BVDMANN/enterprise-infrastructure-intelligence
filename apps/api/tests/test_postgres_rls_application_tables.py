@@ -333,6 +333,67 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                     == 0
                 )
                 assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
+
+        def _assert_context_denied(label: str) -> None:
+            """Inactive identities and deleted tenants must fail closed."""
+            with runtime_engine.begin() as connection:
+                _set_context(connection, organization_a, user_a)
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM infrastructure_assets")
+                    )
+                    == 0
+                )
+                assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
+                with pytest.raises(DBAPIError) as denied_write:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(
+                                "INSERT INTO infrastructure_assets "
+                                "(id, organization_id, name, asset_type) "
+                                "VALUES (:id, :organization_id, :name, 'server')"
+                            ),
+                            {
+                                "id": uuid4(),
+                                "organization_id": organization_a,
+                                "name": f"Denied {label}",
+                            },
+                        )
+                assert _sqlstate(denied_write.value) == "42501"
+
+        # RLS must deny access after a global user suspension.
+        with migrator_engine.begin() as connection:
+            connection.execute(
+                text("UPDATE users SET is_active = false WHERE id = :user_id"),
+                {"user_id": user_a},
+            )
+        _assert_context_denied("inactive user")
+
+        # A soft-deleted user is denied even while the membership row remains.
+        with migrator_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE users SET is_active = true, deleted_at = CURRENT_TIMESTAMP "
+                    "WHERE id = :user_id"
+                ),
+                {"user_id": user_a},
+            )
+        _assert_context_denied("deleted user")
+
+        # The database policy mirrors the API's existing soft-delete boundary.
+        with migrator_engine.begin() as connection:
+            connection.execute(
+                text("UPDATE users SET deleted_at = NULL WHERE id = :user_id"),
+                {"user_id": user_a},
+            )
+            connection.execute(
+                text(
+                    "UPDATE organizations SET deleted_at = CURRENT_TIMESTAMP "
+                    "WHERE id = :organization_id"
+                ),
+                {"organization_id": organization_a},
+            )
+        _assert_context_denied("deleted organization")
     finally:
         runtime_engine.dispose()
         migrator_engine.dispose()
