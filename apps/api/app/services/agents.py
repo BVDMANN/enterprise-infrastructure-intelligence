@@ -147,13 +147,18 @@ def authenticate_agent_credential(
 
     token_hash = _digest(token)
     set_current_agent_token_hash(db, token_hash)
-    credential = db.scalars(
-        select(InfrastructureAgentCredential)
-        .where(InfrastructureAgentCredential.token_hash == token_hash)
-        .where(InfrastructureAgentCredential.revoked_at.is_(None))
-        .where(InfrastructureAgentCredential.expires_at > _utc(now or datetime.now(timezone.utc)))
-    ).one_or_none()
-    set_current_agent_token_hash(db, None)
+    try:
+        credential = db.scalars(
+            select(InfrastructureAgentCredential)
+            .where(InfrastructureAgentCredential.token_hash == token_hash)
+            .where(InfrastructureAgentCredential.revoked_at.is_(None))
+            .where(
+                InfrastructureAgentCredential.expires_at
+                > _utc(now or datetime.now(timezone.utc))
+            )
+        ).one_or_none()
+    finally:
+        set_current_agent_token_hash(db, None)
 
     if credential is None or not hmac.compare_digest(
         credential.token_hash, token_hash
