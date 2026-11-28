@@ -190,6 +190,9 @@ def test_owner_can_record_and_filter_metric_samples(client) -> None:
             db.scalars(
                 select(AuditEvent)
                 .where(AuditEvent.organization_id == UUID(organization_id))
+                .where(
+                    AuditEvent.event_type == "infrastructure.metric.recorded"
+                )
                 .order_by(AuditEvent.occurred_at, AuditEvent.id)
             ).all()
         )
