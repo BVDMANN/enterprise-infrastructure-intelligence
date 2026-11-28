@@ -212,6 +212,16 @@ def validate_api_url(value: str) -> str:
         raise ValueError("EII_AGENT_API_URL must not contain credentials or query data")
     if parsed.path not in {"", "/"}:
         raise ValueError("EII_AGENT_API_URL must be an origin without a path")
+    try:
+        port = parsed.port
+    except ValueError:
+        raise ValueError(
+            "EII_AGENT_API_URL must use a numeric port between 1 and 65535"
+        ) from None
+    if parsed.netloc.endswith(":") or port == 0:
+        raise ValueError(
+            "EII_AGENT_API_URL must use a numeric port between 1 and 65535"
+        )
     if parsed.scheme == "http" and parsed.hostname not in {
         "localhost",
         "127.0.0.1",
