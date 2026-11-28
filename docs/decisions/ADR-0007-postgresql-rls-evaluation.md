@@ -1,6 +1,6 @@
 # ADR-0007 — PostgreSQL Row-Level Security evaluation prototype
 
-- **Status:** Proposed — evaluation only; not a production adoption.
+- **Status:** Accepted for partial application-table enforcement; full tenant-table rollout remains pending.
 - **Date:** 2026-11-27.
 - **Related:** ADR-0005, ADR-0006, P1-A1 identity, P1-A3 RBAC, P1-A5 audit trail.
 
@@ -57,6 +57,42 @@ Before production adoption, a separate accepted ADR and implementation must:
    privilege escalation, rollback, connection-pool reuse and background jobs.
 5. Keep application-layer authorization; RLS is an additional control, not its
    replacement.
+
+## Phase 1 partial application rollout (2026-11-28)
+
+Migration `0009_application_table_rls` enables and forces RLS on exactly two
+real application tables:
+
+- `infrastructure_assets`
+- `audit_events`
+
+The policy requires both transaction-local settings:
+`app.current_organization_id` and `app.current_user_id`. It also checks
+that the user has an active, non-deleted membership in that organization.
+Missing or mismatched context is default-deny. The API sets context only after
+session resolution and organization RBAC; the audit writer binds it to the
+validated actor. The inventory service preserves the authenticated user
+context. Context uses `set_config(..., true)` so it is cleared at transaction
+end, including on pooled connection reuse.
+
+The PostgreSQL integration test runs against the actual `eii_runtime` login
+and migrated application tables. It checks table ownership, ENABLE/FORCE RLS,
+missing-context denial, tenant A/B isolation, membership mismatch, cross-tenant
+INSERT/UPDATE denial, hidden cross-tenant DELETE, and transaction cleanup.
+
+This is deliberately a partial rollout. `organizations`, `users`,
+`memberships`, `roles`, `role_permissions`, and `invitations` are not yet
+protected by RLS; their existing application-layer session/RBAC checks remain
+in force. Background workers and future collectors must establish an explicit
+validated tenant/user context before accessing the two protected tables.
+
+A custom PostgreSQL GUC is settable by the connected runtime role. Therefore
+this rollout protects against omitted tenant predicates when the application
+context setter is used correctly, but it is not a boundary against arbitrary
+SQL execution, SQL injection, or a compromised runtime credential. Keep
+parameterized SQL, application authorization, least-privilege grants, and
+independent security review. Do not describe this as complete database-level
+tenant isolation.
 
 ## Decision boundary
 
