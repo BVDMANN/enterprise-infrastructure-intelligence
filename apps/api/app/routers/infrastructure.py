@@ -18,6 +18,11 @@ from app.db.session import get_db
 from app.db.tenant_context import set_current_organization
 from app.models.identity import Organization, User
 from app.models.infrastructure import InfrastructureAsset
+from app.models.infrastructure_metrics import InfrastructureMetric
+from app.schemas.infrastructure_metrics import (
+    InfrastructureMetricCreateRequest,
+    InfrastructureMetricResponse,
+)
 from app.schemas.infrastructure import (
     AssetStatus,
     AssetType,
@@ -26,10 +31,6 @@ from app.schemas.infrastructure import (
     InfrastructureAssetUpdateRequest,
 )
 from app.services.audit import record_audit_event
-from app.schemas.infrastructure_metrics import (
-    InfrastructureMetricCreateRequest,
-    InfrastructureMetricResponse,
-)
 from app.services.infrastructure_metrics import (
     create_infrastructure_metric,
     list_infrastructure_metrics,
