@@ -150,6 +150,11 @@ class ClientTests(unittest.TestCase):
             "https://user:password@control.example",
             "https://control.example/api",
             "https://control.example?token=bad",
+            "https://control.example:abc",
+            "https://control.example:65536",
+            "https://control.example:",
+            "https://control.example:0",
+            "https://[::1]:",
         ):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 validate_api_url(url)
@@ -198,6 +203,21 @@ class ClientTests(unittest.TestCase):
 
 
 class ServiceUnitTests(unittest.TestCase):
+    def test_invalid_api_port_exits_before_entering_run_loop(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "EII_AGENT_API_URL": "https://control.example:abc",
+                "EII_AGENT_TOKEN": TOKEN,
+                "EII_AGENT_INTERVAL_SECONDS": "60",
+                "EII_AGENT_LOG_LEVEL": "CRITICAL",
+            },
+            clear=True,
+        ):
+            with patch("collector.run_forever") as run_loop:
+                self.assertEqual(main(), 2)
+                run_loop.assert_not_called()
+
     def test_invalid_configuration_is_not_restarted_by_systemd(self) -> None:
         with patch.dict(
             os.environ,
