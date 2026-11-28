@@ -79,7 +79,9 @@ end, including on pooled connection reuse.
 The PostgreSQL integration test runs against the actual `eii_runtime` login
 and migrated application tables. It checks table ownership, ENABLE/FORCE RLS,
 missing-context denial, tenant A/B isolation, membership mismatch, cross-tenant
-INSERT/UPDATE denial, hidden cross-tenant DELETE, and transaction cleanup.
+INSERT/UPDATE denial, hidden cross-tenant DELETE, and transaction cleanup. It also
+verifies that inactive/deleted users and soft-deleted organizations cannot SELECT,
+INSERT, UPDATE, or DELETE rows from either protected table.
 
 This is deliberately a partial rollout. `organizations`, `users`,
 `memberships`, `roles`, `role_permissions`, and `invitations` are not yet
