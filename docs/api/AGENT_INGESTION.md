@@ -4,19 +4,19 @@
 
 The P1-A7.1 credential is accepted as an HTTP bearer token:
 
-- \`POST /api/v1/agent/heartbeat\` updates the bound asset's \`last_seen_at\`.
-- \`POST /api/v1/agent/metrics\` accepts and persists a batch of 1–100 metric
+- `POST /api/v1/agent/heartbeat` updates the bound asset's `last_seen_at`.
+- `POST /api/v1/agent/metrics` accepts and persists a batch of 1–100 metric
   samples.
 
 Example request:
 
-\`\`\`http
+```http
 POST /api/v1/agent/metrics
 Authorization: Bearer <one-time-agent-token>
 Content-Type: application/json
-\`\`\`
+```
 
-\`\`\`json
+```json
 {
   "samples": [
     {
@@ -31,7 +31,7 @@ Content-Type: application/json
     }
   ]
 }
-\`\`\`
+```
 
 The credential, not the request body or URL, determines the organization and
 asset. Clients cannot submit an organization ID, asset ID, ingestion source,
@@ -51,26 +51,26 @@ URL or log them.
 ## Persistence and tenant boundary
 
 Every accepted sample is stored in the existing append-only
-\`infrastructure_metrics\` table with \`ingestion_source=agent_api\`. Operator
-submissions retain \`operator_api\`. The server sets the organization and asset
-from the authenticated credential and updates the asset's \`last_seen_at\` in
+`infrastructure_metrics` table with `ingestion_source=agent_api`. Operator
+submissions retain `operator_api`. The server sets the organization and asset
+from the authenticated credential and updates the asset's `last_seen_at` in
 the same transaction. It does not automatically mark the asset healthy.
 
 A batch is all-or-nothing. The endpoint validates the entire payload before
 writing, inserts all samples and one audit event in a single SQL transaction,
 and returns only the asset ID, accepted sample count and receive timestamp.
-The audit event is \`infrastructure.agent.metrics.ingested\`; it identifies
-\`actor_type=infrastructure_agent\`, the credential record ID and sample count,
+The audit event is `infrastructure.agent.metrics.ingested`; it identifies
+`actor_type=infrastructure_agent`, the credential record ID and sample count,
 but contains no metric values, plaintext token or token digest. Its
-\`actor_user_id\` is the active user who enrolled the credential, not a claim
-that a human submitted the batch. Heartbeats update \`last_seen_at\` without
+`actor_user_id` is the active user who enrolled the credential, not a claim
+that a human submitted the batch. Heartbeats update `last_seen_at` without
 creating a high-volume audit event.
 
 The runtime PostgreSQL role is subject to the existing forced RLS policies on
 agent credentials, assets, metrics and audit events. The credential service
 must resolve a live token and revalidate the enrolling user, active membership,
 organization and asset before the route writes. A PostgreSQL integration test
-runs the service with \`eii_runtime\` and verifies that a token for organization
+runs the service with `eii_runtime` and verifies that a token for organization
 A cannot insert a metric for organization B.
 
 ## Operational limitations — not implemented in this lot
