@@ -94,7 +94,7 @@ def require_organization_permission(
                 detail="Insufficient organization permission",
             ) from exc
 
-        set_current_organization(db, organization.id)
+        set_current_organization(db, organization.id, current_user.id)
         return organization
 
     return dependency
