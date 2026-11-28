@@ -8,6 +8,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.tenant_context import set_current_organization
+
 from app.models.infrastructure import InfrastructureAsset
 from app.schemas.infrastructure import AssetStatus, AssetType
 
@@ -23,6 +25,7 @@ def list_infrastructure_assets(
     """List non-deleted assets for exactly one organization."""
     if not 1 <= limit <= 100:
         raise ValueError("limit must be between 1 and 100")
+    set_current_organization(db, organization_id)
 
     statement = (
         select(InfrastructureAsset)
@@ -47,6 +50,7 @@ def get_infrastructure_asset(
     asset_id: UUID,
 ) -> InfrastructureAsset | None:
     """Resolve one non-deleted asset only inside the supplied organization."""
+    set_current_organization(db, organization_id)
     return db.scalar(
         select(InfrastructureAsset)
         .where(InfrastructureAsset.id == asset_id)
@@ -61,6 +65,7 @@ def create_infrastructure_asset(
     values: dict[str, object],
 ) -> InfrastructureAsset:
     """Insert an asset without committing the caller's transaction."""
+    set_current_organization(db, organization_id)
     asset = InfrastructureAsset(organization_id=organization_id, **values)
     db.add(asset)
     db.flush()
@@ -73,6 +78,7 @@ def update_infrastructure_asset(
     changes: dict[str, object],
 ) -> InfrastructureAsset:
     """Apply validated fields and flush without committing."""
+    set_current_organization(db, asset.organization_id)
     if not changes:
         return asset
     for field_name, value in changes.items():
@@ -87,6 +93,7 @@ def soft_delete_infrastructure_asset(
     asset: InfrastructureAsset,
 ) -> InfrastructureAsset:
     """Hide an asset from normal reads while retaining its audit history."""
+    set_current_organization(db, asset.organization_id)
     now = datetime.now(timezone.utc)
     asset.deleted_at = now
     asset.updated_at = now
