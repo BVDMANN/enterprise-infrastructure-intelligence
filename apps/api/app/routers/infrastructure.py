@@ -168,6 +168,19 @@ def create_asset_metric(
             asset.id,
             payload.model_dump(),
         )
+        record_audit_event(
+            db,
+            organization_id=organization.id,
+            actor_user_id=actor.id,
+            event_type="infrastructure.metric.recorded",
+            target_type="infrastructure_asset",
+            target_id=str(asset.id),
+            details={
+                "metric_name": metric.metric_name,
+                "unit": metric.unit,
+                "ingestion_source": "operator_api",
+            },
+        )
         db.commit()
         set_current_organization(db, organization.id, actor.id)
         db.refresh(metric)

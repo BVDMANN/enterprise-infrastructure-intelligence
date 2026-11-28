@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import Base, get_db
 from app.main import app
 import app.routers.auth as auth_router
+from app.models.audit import AuditEvent
 from app.models.identity import Membership, Organization, User
 from app.models.infrastructure import InfrastructureAsset
 from app.models.infrastructure_metrics import InfrastructureMetric
@@ -117,7 +118,7 @@ def _sample_payload(
 
 def test_owner_can_record_and_filter_metric_samples(client) -> None:
     test_client, engine = client
-    organization_id, _, asset_id = _seed_asset(
+    organization_id, user_id, asset_id = _seed_asset(
         engine,
         slug="metrics-lifecycle",
         email="metrics-owner@example.com",
@@ -184,6 +185,28 @@ def test_owner_can_record_and_filter_metric_samples(client) -> None:
     assert len(rows) == 2
     assert all(row.received_at is not None for row in rows)
 
+    with Session(engine) as db:
+        audit_events = list(
+            db.scalars(
+                select(AuditEvent)
+                .where(AuditEvent.organization_id == UUID(organization_id))
+                .where(AuditEvent.event_type == "infrastructure.metric.recorded")
+                .order_by(AuditEvent.occurred_at, AuditEvent.id)
+            ).all()
+        )
+    assert len(audit_events) == 2
+    assert {item.event_type for item in audit_events} == {
+        "infrastructure.metric.recorded"
+    }
+    assert all(item.actor_user_id == UUID(user_id) for item in audit_events)
+    assert all(item.target_type == "infrastructure_asset" for item in audit_events)
+    assert all(item.target_id == asset_id for item in audit_events)
+    assert {item.details["metric_name"] for item in audit_events} == {"cpu.utilization"}
+    assert all(
+        item.details["ingestion_source"] == "operator_api" for item in audit_events
+    )
+    assert all("metric_value" not in item.details for item in audit_events)
+
 
 def test_viewer_can_read_but_cannot_record_metric_samples(client) -> None:
     test_client, engine = client
@@ -246,6 +269,16 @@ def test_viewer_can_read_but_cannot_record_metric_samples(client) -> None:
     )
     assert denied.status_code == 403
 
+    with Session(engine) as db:
+        metric_events = list(
+            db.scalars(
+                select(AuditEvent).where(
+                    AuditEvent.event_type == "infrastructure.metric.recorded"
+                )
+            ).all()
+        )
+    assert metric_events == []
+
 
 def test_metrics_are_hidden_across_tenants(client) -> None:
     test_client, engine = client
@@ -282,6 +315,16 @@ def test_metrics_are_hidden_across_tenants(client) -> None:
         f"{asset_a}/metrics"
     )
     assert test_client.get(own_collection).status_code == 200
+
+    with Session(engine) as db:
+        foreign_events = list(
+            db.scalars(
+                select(AuditEvent)
+                .where(AuditEvent.organization_id == UUID(organization_b))
+                .where(AuditEvent.event_type == "infrastructure.metric.recorded")
+            ).all()
+        )
+    assert foreign_events == []
 
 
 def test_metric_payload_rejects_invalid_names_nonfinite_values_and_future_time(

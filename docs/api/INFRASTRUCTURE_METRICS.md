@@ -35,6 +35,20 @@ Metric names are lowercase identifiers such as `cpu.utilization`,
 as decimals; units are supplied explicitly (for example `%`, `bytes` or
 `seconds`). Samples more than five minutes in the future are rejected.
 
+## Audit trail
+
+Each successful operator-facing metric POST appends an
+`infrastructure.metric.recorded` event in the same database transaction as
+the sample. The event identifies the organization, actor and asset and records
+the normalized metric name, unit and `operator_api` ingestion source. It
+deliberately excludes the metric value to avoid copying potentially sensitive
+telemetry into the audit log. If the transaction fails, neither the sample nor
+its audit event is committed.
+
+This audit event describes the operator action that submitted the sample; it
+does not claim to identify an infrastructure agent. A future agent ingestion
+path must define its own volume-appropriate audit policy before it is enabled.
+
 ## Explicit limitations
 
 This is an authenticated operator-facing ingestion API, not an agent protocol.
