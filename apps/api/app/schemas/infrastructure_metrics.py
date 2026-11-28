@@ -20,9 +20,7 @@ class InfrastructureMetricCreateRequest(BaseModel):
     metric_name: str = Field(min_length=1, max_length=100)
     metric_value: Decimal = Field(max_digits=30, decimal_places=6)
     unit: str | None = Field(default=None, max_length=32)
-    recorded_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("metric_name")
     @classmethod
@@ -56,7 +54,9 @@ class InfrastructureMetricCreateRequest(BaseModel):
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("recorded_at must include a timezone")
         if value > datetime.now(timezone.utc) + timedelta(minutes=5):
-            raise ValueError("recorded_at cannot be more than five minutes in the future")
+            raise ValueError(
+                "recorded_at cannot be more than five minutes in the future"
+            )
         return value
 
 
