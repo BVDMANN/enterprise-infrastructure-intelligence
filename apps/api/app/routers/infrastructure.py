@@ -111,7 +111,7 @@ def create_asset(
             details={"asset_type": asset.asset_type, "status": asset.status},
         )
         db.commit()
-        set_current_organization(db, organization.id)
+        set_current_organization(db, organization.id, actor.id)
         db.refresh(asset)
         return asset
     except IntegrityError as exc:
@@ -160,7 +160,7 @@ def update_asset(
             details={"changed_fields": sorted(changes)},
         )
         db.commit()
-        set_current_organization(db, organization.id)
+        set_current_organization(db, organization.id, actor.id)
         db.refresh(asset)
         return asset
     except IntegrityError as exc:
