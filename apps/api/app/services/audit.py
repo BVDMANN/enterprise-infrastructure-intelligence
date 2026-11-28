@@ -126,7 +126,7 @@ def record_audit_event(
     if membership_id is None:
         raise ValueError("Audit actor must be an active member of the organization")
 
-    set_current_organization(db, organization_id)
+    set_current_organization(db, organization_id, actor_user_id)
     event = AuditEvent(
         organization_id=organization_id,
         actor_user_id=actor_user_id,
