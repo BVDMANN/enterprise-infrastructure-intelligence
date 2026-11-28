@@ -131,6 +131,8 @@ def test_owner_can_issue_list_revoke_and_authenticate_agent(client) -> None:
         json={"name": "proxmox-node-01", "expires_in_days": 30},
     )
     assert created.status_code == 201
+    assert created.headers["cache-control"] == "no-store"
+    assert created.headers["pragma"] == "no-cache"
     body = created.json()
     token = body["token"]
     assert token.startswith("eii_agent_")
