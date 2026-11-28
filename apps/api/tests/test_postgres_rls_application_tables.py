@@ -361,6 +361,38 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                         )
                 assert _sqlstate(denied_write.value) == "42501"
 
+                # An invalid identity/tenant must not mutate rows that it can no
+                # longer read. Check both UPDATE and DELETE on both RLS tables.
+                hidden_asset_update = connection.execute(
+                    text(
+                        "UPDATE infrastructure_assets SET name = :name "
+                        "WHERE id = :asset_id"
+                    ),
+                    {"name": f"Blocked update {label}", "asset_id": asset_a},
+                )
+                assert hidden_asset_update.rowcount == 0
+
+                hidden_asset_delete = connection.execute(
+                    text("DELETE FROM infrastructure_assets WHERE id = :asset_id"),
+                    {"asset_id": asset_a},
+                )
+                assert hidden_asset_delete.rowcount == 0
+
+                hidden_audit_update = connection.execute(
+                    text(
+                        "UPDATE audit_events SET event_type = 'rls.blocked' "
+                        "WHERE id = :event_id"
+                    ),
+                    {"event_id": event_a},
+                )
+                assert hidden_audit_update.rowcount == 0
+
+                hidden_audit_delete = connection.execute(
+                    text("DELETE FROM audit_events WHERE id = :event_id"),
+                    {"event_id": event_a},
+                )
+                assert hidden_audit_delete.rowcount == 0
+
         # RLS must deny access after a global user suspension.
         with migrator_engine.begin() as connection:
             connection.execute(
