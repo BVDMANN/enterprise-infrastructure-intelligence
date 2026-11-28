@@ -19,10 +19,6 @@ from app.db.tenant_context import set_current_organization
 from app.models.identity import Organization, User
 from app.models.infrastructure import InfrastructureAsset
 from app.models.infrastructure_metrics import InfrastructureMetric
-from app.schemas.infrastructure_metrics import (
-    InfrastructureMetricCreateRequest,
-    InfrastructureMetricResponse,
-)
 from app.schemas.infrastructure import (
     AssetStatus,
     AssetType,
@@ -30,17 +26,21 @@ from app.schemas.infrastructure import (
     InfrastructureAssetResponse,
     InfrastructureAssetUpdateRequest,
 )
-from app.services.audit import record_audit_event
-from app.services.infrastructure_metrics import (
-    create_infrastructure_metric,
-    list_infrastructure_metrics,
+from app.schemas.infrastructure_metrics import (
+    InfrastructureMetricCreateRequest,
+    InfrastructureMetricResponse,
 )
+from app.services.audit import record_audit_event
 from app.services.infrastructure import (
     create_infrastructure_asset,
     get_infrastructure_asset,
     list_infrastructure_assets,
     soft_delete_infrastructure_asset,
     update_infrastructure_asset,
+)
+from app.services.infrastructure_metrics import (
+    create_infrastructure_metric,
+    list_infrastructure_metrics,
 )
 
 router = APIRouter(prefix="/api/v1/organizations", tags=["infrastructure"])
