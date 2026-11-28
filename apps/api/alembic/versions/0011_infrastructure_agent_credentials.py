@@ -208,6 +208,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Refuse to discard credential history during a schema rollback."""
+    # FORCE RLS also filters the table owner. Temporarily remove FORCE inside
+    # this migration transaction so the safety count sees every tenant row.
+    # If records exist, the raised exception rolls this DDL back as well.
+    op.execute(
+        "ALTER TABLE infrastructure_agent_credentials NO FORCE ROW LEVEL SECURITY"
+    )
     bind = op.get_bind()
     credential_count = bind.execute(
         sa.text("SELECT count(*) FROM infrastructure_agent_credentials")
