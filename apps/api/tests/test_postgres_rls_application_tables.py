@@ -304,6 +304,49 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                 )
                 assert hidden_audit_delete.rowcount == 0
 
+                # Audit history remains append-only even for a valid active
+                # tenant member. The PostgreSQL trigger, not RLS invisibility,
+                # must reject both mutations with SQLSTATE 55000.
+                with pytest.raises(DBAPIError) as denied_audit_update:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(
+                                "UPDATE audit_events SET event_type = "
+                                "'rls.tampered' WHERE id = :event_id"
+                            ),
+                            {"event_id": event_a},
+                        )
+                assert _sqlstate(denied_audit_update.value) == "55000"
+
+                with pytest.raises(DBAPIError) as denied_audit_delete:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text("DELETE FROM audit_events WHERE id = :event_id"),
+                            {"event_id": event_a},
+                        )
+                assert _sqlstate(denied_audit_delete.value) == "55000"
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM audit_events WHERE id = :event_id"),
+                        {"event_id": event_a},
+                    )
+                    == 1
+                )
+
+                # TRUNCATE bypasses row-level policies. The runtime role must
+                # lack this table privilege so it cannot erase audit history.
+                with pytest.raises(DBAPIError) as denied_runtime_truncate:
+                    with connection.begin_nested():
+                        connection.execute(text("TRUNCATE TABLE audit_events"))
+                assert _sqlstate(denied_runtime_truncate.value) == "42501"
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM audit_events WHERE id = :event_id"),
+                        {"event_id": event_a},
+                    )
+                    == 1
+                )
+
                 # A valid tenant ID alone is insufficient: the context user
                 # must also have an active membership in that tenant.
                 _set_context(connection, organization_b, user_a)
@@ -333,6 +376,25 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                     == 0
                 )
                 assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
+
+        # Run owner TRUNCATE after the runtime transaction closes; TRUNCATE
+        # requests ACCESS EXCLUSIVE and would wait on the runtime table locks.
+        # The migration owner has TRUNCATE privilege, but the
+        # statement-level append-only trigger must still reject it.
+        with migrator_engine.connect() as owner_connection:
+            with owner_connection.begin():
+                _set_context(owner_connection, organization_a, user_a)
+                with pytest.raises(DBAPIError) as denied_owner_truncate:
+                    with owner_connection.begin_nested():
+                        owner_connection.execute(text("TRUNCATE TABLE audit_events"))
+                assert _sqlstate(denied_owner_truncate.value) == "55000"
+                assert (
+                    owner_connection.scalar(
+                        text("SELECT count(*) FROM audit_events WHERE id = :event_id"),
+                        {"event_id": event_a},
+                    )
+                    == 1
+                )
 
         def _assert_context_denied(label: str) -> None:
             """Inactive identities and deleted tenants must fail closed."""
