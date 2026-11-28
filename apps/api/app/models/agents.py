@@ -40,12 +40,6 @@ class InfrastructureAgentCredential(Base):
             name="fk_agent_credentials_organization_asset",
             ondelete="RESTRICT",
         ),
-        ForeignKeyConstraint(
-            ["created_by_user_id"],
-            ["users.id"],
-            name="fk_agent_credentials_created_by_user",
-            ondelete="RESTRICT",
-        ),
         UniqueConstraint("token_hash", name="uq_agent_credentials_token_hash"),
         CheckConstraint(
             "length(trim(name)) > 0",
@@ -80,7 +74,7 @@ class InfrastructureAgentCredential(Base):
     asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("users.id", name="fk_agent_credentials_created_by_user", ondelete="RESTRICT"),
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
