@@ -39,8 +39,8 @@ boundary, not only the role flags:
   `false` setting preserves ownership, explicit `true` transfers both
   objects to the migrator, the row remains intact, and a repeated opt-in
   bootstrap is idempotent.
-- These tests verify role privileges and ownership migration only. They do not
-  prove tenant isolation or activate RLS on application tables.
+- These tests verify role privileges, ownership migration, and the separate
+  application-table RLS integration job described below.
 
 ## Existing development volumes
 
@@ -69,9 +69,20 @@ separately reviewed migration and recovery plan.
 - The bootstrap administrator is still a superuser by design. It is confined to
   the DB healthcheck/bootstrap path and explicit administrative or ephemeral CI
   smoke commands; it is not injected into API, Worker, or migration containers.
-- This lot does not enable RLS on application tables and does not establish a
-  trusted tenant context. The isolated RLS prototype remains an evaluation,
-  not a production security guarantee.
-- Runtime and migrator roles are both `NOBYPASSRLS`; future RLS adoption must
-  add table policies, FORCE ROW LEVEL SECURITY where appropriate, and
-  authenticated tenant-context tests on real API/Worker paths.
+- Migration `0009_application_table_rls` enables and forces RLS on the real
+  `infrastructure_assets` and `audit_events` tables only. Policies require
+  transaction-local organization and user context plus an active, non-deleted
+  membership in that organization. Runtime and migrator roles remain
+  `NOBYPASSRLS`.
+- The API establishes context after authenticated-session and organization-RBAC
+  checks; the audit writer binds inserts to the validated actor. Context is
+  transaction-local and cleared when the request transaction ends.
+- This is a partial rollout, not complete database-level tenant isolation.
+  `organizations`, `users`, `memberships`, `roles`, `role_permissions`, and
+  `invitations` still rely on application-layer authorization. Workers and
+  collectors must establish validated context before using protected tables.
+- PostgreSQL custom GUCs are caller-settable by the connected runtime role.
+  RLS therefore protects against omitted tenant predicates when the application
+  sets context correctly, but not against arbitrary SQL execution, SQL injection,
+  or a compromised runtime credential. Keep parameterized SQL and application
+  authorization; require independent review before expanding policy scope.
