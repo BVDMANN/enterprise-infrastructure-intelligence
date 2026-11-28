@@ -6,7 +6,6 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,8 +15,8 @@ from app.core.authorization import (
     require_session_csrf,
 )
 from app.db.session import get_db
+from app.models.agents import InfrastructureAgentCredential
 from app.models.identity import Organization, User
-from app.models.infrastructure import InfrastructureAsset
 from app.schemas.agents import (
     AgentCredentialCreateRequest,
     AgentCredentialCreateResponse,
@@ -35,8 +34,11 @@ from app.services.infrastructure import get_infrastructure_asset
 router = APIRouter(prefix="/api/v1/organizations", tags=["infrastructure-agents"])
 
 
-def _response(credential: InfrastructureAsset, token: str | None = None):
-    """Build a safe credential response without exposing its stored digest."""
+def _response(
+    credential: InfrastructureAgentCredential,
+    token: str | None = None,
+) -> AgentCredentialResponse | AgentCredentialCreateResponse:
+    """Build a safe response without exposing the stored digest."""
     values = {
         "id": credential.id,
         "organization_id": credential.organization_id,
@@ -95,7 +97,6 @@ def create_agent(
             details={
                 "asset_id": str(asset.id),
                 "name": created.credential.name,
-                "token_prefix": created.credential.token_prefix,
                 "expires_at": created.credential.expires_at.isoformat(),
             },
         )
@@ -108,7 +109,9 @@ def create_agent(
             detail="Agent credential could not be created",
         ) from exc
 
-    return _response(created.credential, created.token)
+    response = _response(created.credential, created.token)
+    assert isinstance(response, AgentCredentialCreateResponse)
+    return response
 
 
 @router.get(
@@ -182,7 +185,6 @@ def revoke_agent(
             details={
                 "asset_id": str(asset.id),
                 "name": credential.name,
-                "token_prefix": credential.token_prefix,
             },
         )
         db.commit()
