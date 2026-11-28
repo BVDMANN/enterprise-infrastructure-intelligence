@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.session_constants import SESSION_COOKIE
 from app.db.session import get_db
+from app.db.tenant_context import set_current_organization
 from app.models.identity import Organization, User
 from app.services.identity import get_organization_for_user
 from app.services.rbac import PermissionDenied, require_permission
@@ -93,6 +94,7 @@ def require_organization_permission(
                 detail="Insufficient organization permission",
             ) from exc
 
+        set_current_organization(db, organization.id)
         return organization
 
     return dependency
