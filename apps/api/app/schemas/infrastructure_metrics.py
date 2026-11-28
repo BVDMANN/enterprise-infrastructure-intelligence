@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -64,9 +65,9 @@ class InfrastructureMetricResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    organization_id: str
-    asset_id: str
+    id: UUID
+    organization_id: UUID
+    asset_id: UUID
     metric_name: str
     metric_value: Decimal
     unit: str | None
