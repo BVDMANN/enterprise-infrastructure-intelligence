@@ -215,10 +215,9 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
             )
 
         with runtime_engine.connect() as connection:
-            assert connection.scalar(text("SELECT current_user")) == runtime_role
-
             # Missing context is default-deny for reads and writes.
             with connection.begin():
+                assert connection.scalar(text("SELECT current_user")) == runtime_role
                 assert connection.scalar(
                     text("SELECT count(*) FROM infrastructure_assets")
                 ) == 0
