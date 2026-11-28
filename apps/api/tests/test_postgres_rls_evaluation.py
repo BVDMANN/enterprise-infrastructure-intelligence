@@ -258,12 +258,21 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
 
     organization_a = uuid4()
     organization_b = uuid4()
+    organization_deleted = uuid4()
     user_a = uuid4()
     user_b = uuid4()
+    user_inactive_membership = uuid4()
+    user_inactive = uuid4()
+    user_deleted = uuid4()
+    user_deleted_organization = uuid4()
     token_a = f"eii-test-session-a-{suffix}"
     token_b = f"eii-test-session-b-{suffix}"
     expired_token = f"eii-test-session-expired-{suffix}"
     revoked_token = f"eii-test-session-revoked-{suffix}"
+    inactive_membership_token = f"eii-test-session-inactive-membership-{suffix}"
+    inactive_user_token = f"eii-test-session-inactive-user-{suffix}"
+    deleted_user_token = f"eii-test-session-deleted-user-{suffix}"
+    deleted_organization_token = f"eii-test-session-deleted-organization-{suffix}"
     now = datetime.now(timezone.utc)
 
     def token_hash(token: str) -> bytes:
@@ -352,29 +361,58 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
             )
             connection.execute(
                 text(
-                    f'INSERT INTO "{schema}".organizations (id) '
-                    "VALUES (:org_a), (:org_b)"
+                    f'INSERT INTO "{schema}".organizations (id, deleted_at) '
+                    "VALUES (:org_a, NULL), (:org_b, NULL), "
+                    "(:org_deleted, :deleted)"
                 ),
-                {"org_a": organization_a, "org_b": organization_b},
+                {
+                    "org_a": organization_a,
+                    "org_b": organization_b,
+                    "org_deleted": organization_deleted,
+                    "deleted": now,
+                },
             )
             connection.execute(
                 text(
-                    f'INSERT INTO "{schema}".users (id, is_active) '
-                    "VALUES (:user_a, true), (:user_b, true)"
+                    f'INSERT INTO "{schema}".users (id, is_active, deleted_at) '
+                    "VALUES "
+                    "(:user_a, true, NULL), (:user_b, true, NULL), "
+                    "(:user_inactive_membership, true, NULL), "
+                    "(:user_inactive, false, NULL), "
+                    "(:user_deleted, true, :deleted), "
+                    "(:user_deleted_organization, true, NULL)"
                 ),
-                {"user_a": user_a, "user_b": user_b},
+                {
+                    "user_a": user_a,
+                    "user_b": user_b,
+                    "user_inactive_membership": user_inactive_membership,
+                    "user_inactive": user_inactive,
+                    "user_deleted": user_deleted,
+                    "user_deleted_organization": user_deleted_organization,
+                    "deleted": now,
+                },
             )
             connection.execute(
                 text(
                     f'INSERT INTO "{schema}".memberships '
                     "(organization_id, user_id, is_active) "
-                    "VALUES (:org_a, :user_a, true), (:org_b, :user_b, true)"
+                    "VALUES "
+                    "(:org_a, :user_a, true), (:org_b, :user_b, true), "
+                    "(:org_a, :user_inactive_membership, false), "
+                    "(:org_a, :user_inactive, true), "
+                    "(:org_a, :user_deleted, true), "
+                    "(:org_deleted, :user_deleted_organization, true)"
                 ),
                 {
                     "org_a": organization_a,
                     "user_a": user_a,
                     "org_b": organization_b,
                     "user_b": user_b,
+                    "user_inactive_membership": user_inactive_membership,
+                    "user_inactive": user_inactive,
+                    "user_deleted": user_deleted,
+                    "org_deleted": organization_deleted,
+                    "user_deleted_organization": user_deleted_organization,
                 },
             )
             connection.execute(
@@ -385,14 +423,27 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                     "(:hash_a, :org_a, :user_a, :future, NULL), "
                     "(:hash_b, :org_b, :user_b, :future, NULL), "
                     "(:hash_expired, :org_a, :user_a, :past, NULL), "
-                    "(:hash_revoked, :org_a, :user_a, :future, :revoked)"
+                    "(:hash_revoked, :org_a, :user_a, :future, :revoked), "
+                    "(:hash_inactive_membership, :org_a, :user_inactive_membership, :future, NULL), "
+                    "(:hash_inactive_user, :org_a, :user_inactive, :future, NULL), "
+                    "(:hash_deleted_user, :org_a, :user_deleted, :future, NULL), "
+                    "(:hash_deleted_organization, :org_deleted, :user_deleted_organization, :future, NULL)"
                 ),
                 {
                     "hash_a": token_hash(token_a),
                     "hash_b": token_hash(token_b),
                     "hash_expired": token_hash(expired_token),
                     "hash_revoked": token_hash(revoked_token),
+                    "hash_inactive_membership": token_hash(inactive_membership_token),
+                    "hash_inactive_user": token_hash(inactive_user_token),
+                    "hash_deleted_user": token_hash(deleted_user_token),
+                    "hash_deleted_organization": token_hash(deleted_organization_token),
                     "org_a": organization_a,
+                    "org_deleted": organization_deleted,
+                    "user_inactive_membership": user_inactive_membership,
+                    "user_inactive": user_inactive,
+                    "user_deleted": user_deleted,
+                    "user_deleted_organization": user_deleted_organization,
                     "user_a": user_a,
                     "org_b": organization_b,
                     "user_b": user_b,
@@ -856,7 +907,14 @@ def test_trusted_transaction_context_rejects_caller_settable_guc_forgery() -> No
                 )
 
             # Expired and revoked sessions cannot mint a context lock.
-            for token in (expired_token, revoked_token):
+            for token in (
+                expired_token,
+                revoked_token,
+                inactive_membership_token,
+                inactive_user_token,
+                deleted_user_token,
+                deleted_organization_token,
+            ):
                 with connection.begin():
                     connection.exec_driver_sql(f'SET LOCAL ROLE "{runtime_role}"')
                     with pytest.raises(DBAPIError) as denied_session:
