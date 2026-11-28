@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -17,12 +18,17 @@ from app.db.session import get_db
 from app.db.tenant_context import set_current_organization
 from app.models.identity import Organization, User
 from app.models.infrastructure import InfrastructureAsset
+from app.models.infrastructure_metrics import InfrastructureMetric
 from app.schemas.infrastructure import (
     AssetStatus,
     AssetType,
     InfrastructureAssetCreateRequest,
     InfrastructureAssetResponse,
     InfrastructureAssetUpdateRequest,
+)
+from app.schemas.infrastructure_metrics import (
+    InfrastructureMetricCreateRequest,
+    InfrastructureMetricResponse,
 )
 from app.services.audit import record_audit_event
 from app.services.infrastructure import (
@@ -31,6 +37,10 @@ from app.services.infrastructure import (
     list_infrastructure_assets,
     soft_delete_infrastructure_asset,
     update_infrastructure_asset,
+)
+from app.services.infrastructure_metrics import (
+    create_infrastructure_metric,
+    list_infrastructure_metrics,
 )
 
 router = APIRouter(prefix="/api/v1/organizations", tags=["infrastructure"])
@@ -78,6 +88,96 @@ def get_asset(
             detail="Infrastructure asset not found",
         )
     return asset
+
+
+@router.get(
+    "/{organization_id}/infrastructure/assets/{asset_id}/metrics",
+    response_model=list[InfrastructureMetricResponse],
+)
+def list_asset_metrics(
+    asset_id: UUID,
+    actor: User = Depends(get_current_user),
+    organization: Organization = Depends(
+        require_organization_permission("infrastructure.read")
+    ),
+    db: Session = Depends(get_db),
+    metric_name: str | None = Query(default=None, min_length=1, max_length=100),
+    since: datetime | None = Query(default=None),
+    until: datetime | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[InfrastructureMetric]:
+    """List persisted metric samples for one authorized asset."""
+    for label, value in (("since", since), ("until", until)):
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{label} must include a timezone",
+            )
+    if since is not None and until is not None and since > until:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="since must not be later than until",
+        )
+
+    set_current_organization(db, organization.id, actor.id)
+    asset = get_infrastructure_asset(db, organization.id, asset_id)
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Infrastructure asset not found",
+        )
+    return list_infrastructure_metrics(
+        db,
+        organization.id,
+        asset.id,
+        metric_name=metric_name.strip().lower() if metric_name else None,
+        since=since,
+        until=until,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/{organization_id}/infrastructure/assets/{asset_id}/metrics",
+    response_model=InfrastructureMetricResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_asset_metric(
+    asset_id: UUID,
+    payload: InfrastructureMetricCreateRequest,
+    actor: User = Depends(get_current_user),
+    organization: Organization = Depends(
+        require_organization_permission("infrastructure.manage")
+    ),
+    _csrf: None = Depends(require_session_csrf),
+    db: Session = Depends(get_db),
+) -> InfrastructureMetric:
+    """Record one operator-submitted sample in the authorized tenant."""
+    set_current_organization(db, organization.id, actor.id)
+    asset = get_infrastructure_asset(db, organization.id, asset_id)
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Infrastructure asset not found",
+        )
+
+    try:
+        metric = create_infrastructure_metric(
+            db,
+            organization.id,
+            asset.id,
+            payload.model_dump(),
+        )
+        db.commit()
+        set_current_organization(db, organization.id, actor.id)
+        db.refresh(metric)
+        return metric
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The infrastructure asset changed while the metric was recorded",
+        ) from exc
 
 
 @router.post(

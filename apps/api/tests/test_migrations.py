@@ -17,8 +17,8 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_head() -> None:
-    """The application-table RLS migration must be the only head."""
-    assert _script_directory().get_heads() == ["0009_application_table_rls"]
+    """The infrastructure metrics migration must be the only head."""
+    assert _script_directory().get_heads() == ["0010_infrastructure_metrics"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -71,10 +71,11 @@ def test_invitations_migration_follows_audit_events() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one linear chain through application-table RLS."""
+    """The history must be one linear chain through infrastructure metrics."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
+        "0010_infrastructure_metrics",
         "0009_application_table_rls",
         "0008_infrastructure_assets",
         "0007_organization_invitations",
@@ -99,3 +100,10 @@ def test_infrastructure_assets_migration_follows_invitations() -> None:
     revision = _script_directory().get_revision("0008_infrastructure_assets")
     assert revision is not None
     assert revision.down_revision == "0007_organization_invitations"
+
+
+def test_infrastructure_metrics_migration_follows_application_table_rls() -> None:
+    """0010_infrastructure_metrics must descend directly from RLS migration 0009."""
+    revision = _script_directory().get_revision("0010_infrastructure_metrics")
+    assert revision is not None
+    assert revision.down_revision == "0009_application_table_rls"
