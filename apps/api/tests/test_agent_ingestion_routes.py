@@ -115,10 +115,14 @@ def _issue_credential(
     )
     assert response.status_code == 201
     body = response.json()
-    return body["token"], body["id"], {
-        "Origin": ORIGIN,
-        "X-CSRF-Token": csrf_token,
-    }
+    return (
+        body["token"],
+        body["id"],
+        {
+            "Origin": ORIGIN,
+            "X-CSRF-Token": csrf_token,
+        },
+    )
 
 
 def test_agent_can_heartbeat_and_ingest_a_bounded_metric_batch(client) -> None:
@@ -180,9 +184,7 @@ def test_agent_can_heartbeat_and_ingest_a_bounded_metric_batch(client) -> None:
             db.scalars(
                 select(AuditEvent)
                 .where(AuditEvent.organization_id == UUID(organization_id))
-                .where(
-                    AuditEvent.event_type == "infrastructure.agent.metrics.ingested"
-                )
+                .where(AuditEvent.event_type == "infrastructure.agent.metrics.ingested")
             ).all()
         )
 
@@ -271,7 +273,9 @@ def test_expired_agent_credential_is_rejected(client) -> None:
     assert response.status_code == 401
 
 
-def test_invalid_or_unscoped_batches_are_rejected_without_partial_writes(client) -> None:
+def test_invalid_or_unscoped_batches_are_rejected_without_partial_writes(
+    client,
+) -> None:
     user_client, engine = client
     organization_id, _user_id, asset_id = _seed_asset(
         engine,
@@ -296,9 +300,7 @@ def test_invalid_or_unscoped_batches_are_rejected_without_partial_writes(client)
             "/api/v1/agent/metrics",
             headers=headers,
             json={
-                "samples": [
-                    {"metric_name": "CPU %", "metric_value": "10", "unit": "%"}
-                ]
+                "samples": [{"metric_name": "CPU %", "metric_value": "10", "unit": "%"}]
             },
         )
         unscoped = agent_client.post(
@@ -306,9 +308,7 @@ def test_invalid_or_unscoped_batches_are_rejected_without_partial_writes(client)
             headers=headers,
             json={
                 "organization_id": "00000000-0000-4000-8000-000000000000",
-                "samples": [
-                    {"metric_name": "cpu.utilization", "metric_value": "10"}
-                ],
+                "samples": [{"metric_name": "cpu.utilization", "metric_value": "10"}],
             },
         )
 

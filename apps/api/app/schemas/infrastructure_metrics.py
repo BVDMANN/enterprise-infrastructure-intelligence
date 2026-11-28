@@ -54,7 +54,9 @@ class InfrastructureMetricCreateRequest(BaseModel):
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("recorded_at must include a timezone")
         if value > datetime.now(timezone.utc) + timedelta(minutes=5):
-            raise ValueError("recorded_at cannot be more than five minutes in the future")
+            raise ValueError(
+                "recorded_at cannot be more than five minutes in the future"
+            )
         return value
 
 
