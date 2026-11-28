@@ -17,8 +17,8 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_head() -> None:
-    """The agent credential migration must be the only head."""
-    assert _script_directory().get_heads() == ["0011_agent_credentials"]
+    """The agent ingestion source migration must be the only head."""
+    assert _script_directory().get_heads() == ["0012_metric_source"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -71,10 +71,11 @@ def test_invitations_migration_follows_audit_events() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one linear chain through agent credentials."""
+    """The history must be one linear chain through agent ingestion provenance."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
+        "0012_metric_source",
         "0011_agent_credentials",
         "0010_infrastructure_metrics",
         "0009_application_table_rls",
@@ -108,3 +109,17 @@ def test_infrastructure_metrics_migration_follows_application_table_rls() -> Non
     revision = _script_directory().get_revision("0010_infrastructure_metrics")
     assert revision is not None
     assert revision.down_revision == "0009_application_table_rls"
+
+
+def test_agent_credentials_migration_follows_infrastructure_metrics() -> None:
+    """0011_agent_credentials must descend directly from infrastructure metrics."""
+    revision = _script_directory().get_revision("0011_agent_credentials")
+    assert revision is not None
+    assert revision.down_revision == "0010_infrastructure_metrics"
+
+
+def test_agent_ingestion_source_migration_follows_agent_credentials() -> None:
+    """0012_metric_source must descend directly from agent credentials."""
+    revision = _script_directory().get_revision("0012_metric_source")
+    assert revision is not None
+    assert revision.down_revision == "0011_agent_credentials"

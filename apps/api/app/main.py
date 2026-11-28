@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.routers import (
+    agent_ingestion,
     agents,
     auth,
     health,
@@ -35,6 +36,7 @@ app.include_router(organizations.router)
 app.include_router(infrastructure.router)
 app.include_router(invitations.router)
 app.include_router(agents.router)
+app.include_router(agent_ingestion.router)
 
 
 @app.get("/health", tags=["health"])

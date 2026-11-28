@@ -13,7 +13,7 @@ _METRIC_NAME = re.compile(r"^[a-z][a-z0-9_.-]{0,99}$")
 
 
 class InfrastructureMetricCreateRequest(BaseModel):
-    """Accept one bounded metric sample from an authenticated operator."""
+    """Accept one bounded metric sample from an authenticated operator or agent."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -71,5 +71,6 @@ class InfrastructureMetricResponse(BaseModel):
     metric_name: str
     metric_value: Decimal
     unit: str | None
+    ingestion_source: str
     recorded_at: datetime
     received_at: datetime
