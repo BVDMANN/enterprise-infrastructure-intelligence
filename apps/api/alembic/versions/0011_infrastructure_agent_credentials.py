@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "0011_infrastructure_agent_credentials"
+revision = "0011_agent_credentials"
 down_revision = "0010_infrastructure_metrics"
 branch_labels = None
 depends_on = None
