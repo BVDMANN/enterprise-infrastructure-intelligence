@@ -41,8 +41,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - name: Temporary Ruff diff diagnostic for metric route tests
-        run: ruff format --diff tests/test_infrastructure_metrics_routes.py
       - run: ruff format --check app tests
       - run: python -m pytest tests -q
 
