@@ -35,9 +35,7 @@ def _set_context(connection, organization_id, user_id) -> None:
 
 
 def _sqlstate(error: DBAPIError) -> str | None:
-    return getattr(error.orig, "sqlstate", None) or getattr(
-        error.orig, "pgcode", None
-    )
+    return getattr(error.orig, "sqlstate", None) or getattr(error.orig, "pgcode", None)
 
 
 def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
@@ -219,12 +217,13 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
             # Missing context is default-deny for reads and writes.
             with connection.begin():
                 assert connection.scalar(text("SELECT current_user")) == runtime_role
-                assert connection.scalar(
-                    text("SELECT count(*) FROM infrastructure_assets")
-                ) == 0
-                assert connection.scalar(
-                    text("SELECT count(*) FROM audit_events")
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM infrastructure_assets")
+                    )
+                    == 0
+                )
+                assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
                 with pytest.raises(DBAPIError) as denied_without_context:
                     with connection.begin_nested():
                         connection.execute(
@@ -242,9 +241,7 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
             with connection.begin():
                 _set_context(connection, organization_a, user_a)
                 assert connection.scalars(
-                    text(
-                        "SELECT id FROM infrastructure_assets ORDER BY id"
-                    )
+                    text("SELECT id FROM infrastructure_assets ORDER BY id")
                 ).all() == [asset_a]
                 assert connection.scalars(
                     text("SELECT id FROM audit_events ORDER BY id")
@@ -310,12 +307,13 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                 # A valid tenant ID alone is insufficient: the context user
                 # must also have an active membership in that tenant.
                 _set_context(connection, organization_b, user_a)
-                assert connection.scalar(
-                    text("SELECT count(*) FROM infrastructure_assets")
-                ) == 0
-                assert connection.scalar(
-                    text("SELECT count(*) FROM audit_events")
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM infrastructure_assets")
+                    )
+                    == 0
+                )
+                assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
 
                 _set_context(connection, organization_b, user_b)
                 assert connection.scalars(
@@ -328,12 +326,13 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
             # SET LOCAL / set_config(..., true) must not leak through a
             # pooled runtime connection into the next request transaction.
             with connection.begin():
-                assert connection.scalar(
-                    text("SELECT count(*) FROM infrastructure_assets")
-                ) == 0
-                assert connection.scalar(
-                    text("SELECT count(*) FROM audit_events")
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM infrastructure_assets")
+                    )
+                    == 0
+                )
+                assert connection.scalar(text("SELECT count(*) FROM audit_events")) == 0
     finally:
         runtime_engine.dispose()
         migrator_engine.dispose()
