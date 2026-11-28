@@ -304,6 +304,35 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                 )
                 assert hidden_audit_delete.rowcount == 0
 
+                # Audit history remains append-only even for a valid active
+                # tenant member. The PostgreSQL trigger, not RLS invisibility,
+                # must reject both mutations with SQLSTATE 55000.
+                with pytest.raises(DBAPIError) as denied_audit_update:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text(
+                                "UPDATE audit_events SET event_type = "
+                                "'rls.tampered' WHERE id = :event_id"
+                            ),
+                            {"event_id": event_a},
+                        )
+                assert _sqlstate(denied_audit_update.value) == "55000"
+
+                with pytest.raises(DBAPIError) as denied_audit_delete:
+                    with connection.begin_nested():
+                        connection.execute(
+                            text("DELETE FROM audit_events WHERE id = :event_id"),
+                            {"event_id": event_a},
+                        )
+                assert _sqlstate(denied_audit_delete.value) == "55000"
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM audit_events WHERE id = :event_id"),
+                        {"event_id": event_a},
+                    )
+                    == 1
+                )
+
                 # A valid tenant ID alone is insufficient: the context user
                 # must also have an active membership in that tenant.
                 _set_context(connection, organization_b, user_a)
