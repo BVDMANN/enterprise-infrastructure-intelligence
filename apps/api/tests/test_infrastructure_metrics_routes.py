@@ -200,9 +200,7 @@ def test_owner_can_record_and_filter_metric_samples(client) -> None:
     assert all(item.actor_user_id == UUID(user_id) for item in audit_events)
     assert all(item.target_type == "infrastructure_asset" for item in audit_events)
     assert all(item.target_id == asset_id for item in audit_events)
-    assert {item.details["metric_name"] for item in audit_events} == {
-        "cpu.utilization"
-    }
+    assert {item.details["metric_name"] for item in audit_events} == {"cpu.utilization"}
     assert all(
         item.details["ingestion_source"] == "operator_api" for item in audit_events
     )
