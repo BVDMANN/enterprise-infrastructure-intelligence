@@ -141,7 +141,8 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
             )
             connection.execute(
                 text(
-                    "INSERT INTO roles (id, organization_id, name, description, is_system) "
+                    "INSERT INTO roles "
+                    "(id, organization_id, name, description, is_system) "
                     "VALUES (:id, :organization_id, 'owner', 'RLS test owner', true)"
                 ),
                 [
@@ -255,7 +256,8 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                             text(
                                 "INSERT INTO infrastructure_assets "
                                 "(id, organization_id, name, asset_type) "
-                                "VALUES (:id, :organization_id, 'Cross tenant', 'server')"
+                                "VALUES (:id, :organization_id, 'Cross tenant', "
+                                "'server')"
                             ),
                             {"id": uuid4(), "organization_id": organization_b},
                         )
@@ -266,7 +268,8 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                         connection.execute(
                             text(
                                 "UPDATE infrastructure_assets "
-                                "SET organization_id = :organization_b WHERE id = :asset_a"
+                                "SET organization_id = :organization_b "
+                                "WHERE id = :asset_a"
                             ),
                             {
                                 "organization_b": organization_b,
@@ -287,7 +290,8 @@ def test_real_inventory_and_audit_tables_enforce_tenant_rls() -> None:
                             text(
                                 "INSERT INTO audit_events "
                                 "(id, organization_id, actor_user_id, event_type) "
-                                "VALUES (:id, :organization_id, :actor_user_id, 'cross.tenant')"
+                                "VALUES (:id, :organization_id, :actor_user_id, "
+                                "'cross.tenant')"
                             ),
                             {
                                 "id": uuid4(),
