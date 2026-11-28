@@ -83,6 +83,20 @@ def test_agent_credentials_enforce_member_and_single_token_rls() -> None:
             assert flags.rolsuper is False
             assert flags.rolbypassrls is False
 
+            table_flags = connection.execute(
+                text(
+                    "SELECT c.relrowsecurity, c.relforcerowsecurity, "
+                    "pg_get_userbyid(c.relowner) AS owner "
+                    "FROM pg_class AS c "
+                    "JOIN pg_namespace AS n ON n.oid = c.relnamespace "
+                    "WHERE n.nspname = 'public' "
+                    "AND c.relname = 'infrastructure_agent_credentials'"
+                )
+            ).one()
+            assert table_flags.relrowsecurity is True
+            assert table_flags.relforcerowsecurity is True
+            assert table_flags.owner == migrator_role
+
             connection.execute(
                 text(
                     "INSERT INTO organizations (id, name, slug) "
