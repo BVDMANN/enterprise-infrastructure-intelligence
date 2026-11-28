@@ -204,8 +204,7 @@ def test_owner_can_record_and_filter_metric_samples(client) -> None:
         "cpu.utilization"
     }
     assert all(
-        item.details["ingestion_source"] == "operator_api"
-        for item in audit_events
+        item.details["ingestion_source"] == "operator_api" for item in audit_events
     )
     assert all("metric_value" not in item.details for item in audit_events)
 
