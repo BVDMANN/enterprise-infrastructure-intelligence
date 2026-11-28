@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import threading
 import time
@@ -19,14 +20,21 @@ from pathlib import Path
 from typing import Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import (
+    HTTPRedirectHandler,
+    Request,
+    build_opener,
+    urlopen,
+)
 
 LOG = logging.getLogger("eii-linux-agent")
 TOKEN_PREFIX = "eii_agent_"
 MIN_INTERVAL_SECONDS = 10
 MAX_INTERVAL_SECONDS = 3600
 MAX_RESPONSE_BYTES = 64 * 1024
+MAX_NETWORK_INTERFACES = 40
 CPU_SAMPLE_INTERVAL_SECONDS = 0.25
+_INTERFACE_NAME = re.compile(r"^[a-z0-9_.-]{1,15}$")
 
 
 def read_cpu_times(proc_root: Path = Path("/proc")) -> tuple[int, int]:
@@ -76,21 +84,35 @@ def read_memory_bytes(proc_root: Path = Path("/proc")) -> tuple[int, int]:
     return total, available
 
 
-def read_network_bytes(proc_root: Path = Path("/proc")) -> tuple[int, int]:
-    """Return aggregate RX/TX byte counters, excluding loopback."""
-    received = 0
-    transmitted = 0
+def read_network_bytes(
+    proc_root: Path = Path("/proc"),
+) -> dict[str, tuple[int, int]]:
+    """Return per-interface RX/TX counters, excluding loopback.
+
+    Per-interface samples avoid summing bridges, bonds and their member
+    interfaces together, which would double-count traffic on many Linux hosts.
+    """
+    interfaces: dict[str, tuple[int, int]] = {}
     lines = (proc_root / "net/dev").read_text(encoding="ascii").splitlines()
     for line in lines[2:]:
         interface, separator, raw_counters = line.partition(":")
-        if not separator or interface.strip() == "lo":
+        name = interface.strip().lower()
+        if not separator or name == "lo":
+            continue
+        if not _INTERFACE_NAME.fullmatch(name):
             continue
         fields = raw_counters.split()
         if len(fields) < 9:
             raise ValueError("unexpected interface counters in /proc/net/dev")
-        received += int(fields[0])
-        transmitted += int(fields[8])
-    return received, transmitted
+        if name in interfaces:
+            raise ValueError("duplicate interface name in /proc/net/dev")
+        interfaces[name] = (int(fields[0]), int(fields[8]))
+        if len(interfaces) > MAX_NETWORK_INTERFACES:
+            raise ValueError(
+                f"more than {MAX_NETWORK_INTERFACES} network interfaces; "
+                "refusing to truncate telemetry"
+            )
+    return interfaces
 
 
 def _sample(
@@ -112,7 +134,7 @@ def collect_metrics(
     sleep: Callable[[float], None] = time.sleep,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
 ) -> list[dict[str, str]]:
-    """Collect host CPU, memory, root filesystem and non-loopback network data."""
+    """Collect host CPU, memory, root filesystem and per-interface network data."""
     if cpu_interval < 0 or cpu_interval > 5:
         raise ValueError("cpu_interval must be between 0 and 5 seconds")
 
@@ -122,8 +144,11 @@ def collect_metrics(
     cpu_after = read_cpu_times(proc_root)
     total_memory, available_memory = read_memory_bytes(proc_root)
     disk = shutil.disk_usage(filesystem_root)
-    received_bytes, transmitted_bytes = read_network_bytes(proc_root)
-    recorded_at = now().astimezone(timezone.utc)
+    interfaces = read_network_bytes(proc_root)
+    observed_at = now()
+    if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+        raise ValueError("collector clock must return a timezone-aware datetime")
+    recorded_at = observed_at.astimezone(timezone.utc)
 
     used_memory = total_memory - available_memory
     used_disk = disk.used
@@ -154,10 +179,27 @@ def collect_metrics(
                 "%",
                 recorded_at,
             ),
-            _sample("network.rx_bytes_total", received_bytes, "bytes", recorded_at),
-            _sample("network.tx_bytes_total", transmitted_bytes, "bytes", recorded_at),
         ]
     )
+    for name, (received_bytes, transmitted_bytes) in sorted(interfaces.items()):
+        samples.append(
+            _sample(
+                f"network.interface.{name}.rx_bytes_total",
+                received_bytes,
+                "bytes",
+                recorded_at,
+            )
+        )
+        samples.append(
+            _sample(
+                f"network.interface.{name}.tx_bytes_total",
+                transmitted_bytes,
+                "bytes",
+                recorded_at,
+            )
+        )
+    if not 1 <= len(samples) <= 100:
+        raise ValueError("collected metric count is outside the API batch limit")
     return samples
 
 
@@ -179,6 +221,13 @@ def validate_api_url(value: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
+class _RejectRedirects(HTTPRedirectHandler):
+    """Never forward an agent bearer token to a redirect target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
+
+
 class AgentClient:
     """Small HTTPS client; no retries are made because ingestion is not idempotent."""
 
@@ -197,9 +246,11 @@ class AgentClient:
         self.api_url = validate_api_url(api_url)
         self._token = token
         self.timeout = timeout
-        self._opener = opener
+        self._opener = opener or build_opener(_RejectRedirects()).open
 
     def _post(self, endpoint: str, payload: dict[str, object]) -> dict[str, object]:
+        if endpoint not in {"heartbeat", "metrics"}:
+            raise ValueError("unsupported agent endpoint")
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         request = Request(
             f"{self.api_url}/api/v1/agent/{endpoint}",
@@ -211,9 +262,8 @@ class AgentClient:
             },
             method="POST",
         )
-        open_request = self._opener or urlopen
         try:
-            with open_request(request, timeout=self.timeout) as response:
+            with self._opener(request, timeout=self.timeout) as response:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
                 if len(raw) > MAX_RESPONSE_BYTES:
                     raise RuntimeError("Agent API response exceeded the size limit")
