@@ -71,7 +71,7 @@ def test_invitations_migration_follows_audit_events() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one linear chain through application-table RLS."""
+    """The history must be one linear chain through infrastructure metrics."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
