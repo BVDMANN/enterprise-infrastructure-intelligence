@@ -96,8 +96,9 @@ tenant isolation.
 
 ## Decision boundary
 
-This proposal does not enable RLS on organizations, users, memberships, roles or
-audit_events. It does not change docker-compose credentials, application
-DATABASE_URL, production roles, migrations or data. Production adoption remains
-open until the security model and operational role separation receive independent
-review.
+Migration 0009 enables RLS only on `infrastructure_assets` and `audit_events`.
+It does not enable RLS on `organizations`, `users`, `memberships`, `roles`,
+`role_permissions` or `invitations`, and it does not change Compose credentials,
+production roles or application secrets. Full database-level tenant isolation
+remains open pending the remaining table policies, worker/collector context,
+production role review and independent security assessment.
