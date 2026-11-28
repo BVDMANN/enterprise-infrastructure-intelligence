@@ -17,8 +17,8 @@ def _script_directory() -> ScriptDirectory:
 
 
 def test_alembic_has_one_head() -> None:
-    """The infrastructure metrics migration must be the only head."""
-    assert _script_directory().get_heads() == ["0010_infrastructure_metrics"]
+    """The agent credential migration must be the only head."""
+    assert _script_directory().get_heads() == ["0011_agent_credentials"]
 
 
 def test_initial_migration_has_no_parent() -> None:
@@ -71,10 +71,11 @@ def test_invitations_migration_follows_audit_events() -> None:
 
 
 def test_migration_history_is_linear() -> None:
-    """The history must be one linear chain through infrastructure metrics."""
+    """The history must be one linear chain through agent credentials."""
     history = list(_script_directory().walk_revisions())
     revisions = [rev.revision for rev in history]
     assert revisions == [
+        "0011_agent_credentials",
         "0010_infrastructure_metrics",
         "0009_application_table_rls",
         "0008_infrastructure_assets",

@@ -41,7 +41,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - run: ruff format --check app tests
+      - run: ruff format --check --diff app tests
       - run: python -m pytest tests -q
 
   api-postgres-integration:
@@ -127,6 +127,8 @@ jobs:
         run: python -m pytest tests/test_postgres_rls_application_tables.py -q
       - name: Verify infrastructure metrics RLS and append-only guards
         run: python -m pytest tests/test_postgres_rls_infrastructure_metrics.py -q
+      - name: Verify agent credential token lookup and tenant RLS
+        run: python -m pytest tests/test_postgres_rls_agent_credentials.py -q
 
   api-postgres-rls-evaluation:
     name: PostgreSQL RLS evaluation (isolated prototype)
