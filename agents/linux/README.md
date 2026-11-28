@@ -30,7 +30,7 @@ Network counters are emitted per interface rather than summed: adding a
 bridge/bond and its member interfaces together can double-count traffic.
 Interface names that cannot safely form metric names are skipped. More than
 40 eligible interfaces is an explicit collection error rather than silent
-truncation. A collection contains at most 85 samples, below the API limit of
+truncation. A collection contains at most 86 samples, below the API limit of
 100.
 
 ## Configuration
