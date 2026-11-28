@@ -102,6 +102,12 @@ def test_authenticated_agent_can_write_only_its_bound_tenant_metrics() -> None:
                 name="postgres-agent-a",
             )
 
+            organization_a_id = organization_a.id
+            organization_b_id = organization_b.id
+            asset_a_id = asset_a.id
+            user_a_id = user_a.id
+            token = credential.token
+
             set_current_organization(db, organization_b.id, user_b.id)
             asset_b = InfrastructureAsset(
                 organization_id=organization_b.id,
@@ -109,14 +115,9 @@ def test_authenticated_agent_can_write_only_its_bound_tenant_metrics() -> None:
                 asset_type="server",
             )
             db.add(asset_b)
-            db.commit()
-
-            organization_a_id = organization_a.id
-            organization_b_id = organization_b.id
-            asset_a_id = asset_a.id
+            db.flush()
             asset_b_id = asset_b.id
-            token = credential.token
-            user_a_id = user_a.id
+            db.commit()
 
         with Session(runtime_engine) as db:
             assert db.scalar(text("SELECT current_user")) == "eii_runtime"
