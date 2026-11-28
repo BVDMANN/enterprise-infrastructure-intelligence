@@ -62,6 +62,7 @@ def _response(
 )
 def create_agent(
     payload: AgentCredentialCreateRequest,
+    response: Response,
     asset_id: UUID,
     actor: User = Depends(get_current_user),
     organization: Organization = Depends(
@@ -109,9 +110,11 @@ def create_agent(
             detail="Agent credential could not be created",
         ) from exc
 
-    response = _response(created.credential, created.token)
-    assert isinstance(response, AgentCredentialCreateResponse)
-    return response
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    result = _response(created.credential, created.token)
+    assert isinstance(result, AgentCredentialCreateResponse)
+    return result
 
 
 @router.get(
