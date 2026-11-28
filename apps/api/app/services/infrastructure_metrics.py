@@ -31,9 +31,7 @@ def list_infrastructure_metrics(
         .where(InfrastructureMetric.asset_id == asset_id)
     )
     if metric_name is not None:
-        statement = statement.where(
-            InfrastructureMetric.metric_name == metric_name
-        )
+        statement = statement.where(InfrastructureMetric.metric_name == metric_name)
     if since is not None:
         statement = statement.where(InfrastructureMetric.recorded_at >= since)
     if until is not None:
