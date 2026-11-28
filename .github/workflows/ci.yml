@@ -129,6 +129,8 @@ jobs:
         run: python -m pytest tests/test_postgres_rls_infrastructure_metrics.py -q
       - name: Verify agent credential token lookup and tenant RLS
         run: python -m pytest tests/test_postgres_rls_agent_credentials.py -q
+      - name: Verify agent metric ingestion tenant RLS
+        run: python -m pytest tests/test_postgres_rls_agent_ingestion.py -q
 
   api-postgres-rls-evaluation:
     name: PostgreSQL RLS evaluation (isolated prototype)

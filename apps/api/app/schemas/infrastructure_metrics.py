@@ -13,7 +13,7 @@ _METRIC_NAME = re.compile(r"^[a-z][a-z0-9_.-]{0,99}$")
 
 
 class InfrastructureMetricCreateRequest(BaseModel):
-    """Accept one bounded metric sample from an authenticated operator."""
+    """Accept one bounded metric sample from an authenticated operator or agent."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -54,9 +54,7 @@ class InfrastructureMetricCreateRequest(BaseModel):
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("recorded_at must include a timezone")
         if value > datetime.now(timezone.utc) + timedelta(minutes=5):
-            raise ValueError(
-                "recorded_at cannot be more than five minutes in the future"
-            )
+            raise ValueError("recorded_at cannot be more than five minutes in the future")
         return value
 
 
@@ -71,5 +69,6 @@ class InfrastructureMetricResponse(BaseModel):
     metric_name: str
     metric_value: Decimal
     unit: str | None
+    ingestion_source: str
     recorded_at: datetime
     received_at: datetime

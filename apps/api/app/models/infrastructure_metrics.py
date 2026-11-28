@@ -1,4 +1,4 @@
-"""Append-only infrastructure metric samples (P1-A6.3)."""
+"""Append-only infrastructure metric samples (P1-A6.3/P1-A7.2)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Numeric,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -48,6 +49,10 @@ class InfrastructureMetric(Base):
             "unit IS NULL OR length(trim(unit)) > 0",
             name="ck_infrastructure_metrics_unit_nonempty",
         ),
+        CheckConstraint(
+            "ingestion_source IN ('operator_api', 'agent_api')",
+            name="ck_infrastructure_metrics_ingestion_source",
+        ),
         Index(
             "ix_infrastructure_metrics_organization_asset_recorded",
             "organization_id",
@@ -72,6 +77,12 @@ class InfrastructureMetric(Base):
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
     metric_value: Mapped[Decimal] = mapped_column(Numeric(30, 6), nullable=False)
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ingestion_source: Mapped[str] = mapped_column(
+        String(24),
+        nullable=False,
+        default="operator_api",
+        server_default=text("'operator_api'"),
+    )
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
