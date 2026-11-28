@@ -31,10 +31,7 @@ def _set_member_context(connection, organization_id, user_id) -> None:
 
 def _set_agent_context(connection, token_hash: str) -> None:
     connection.execute(
-        text(
-            "SELECT set_config("
-            "'app.current_agent_token_hash', :token_hash, true)"
-        ),
+        text("SELECT set_config('app.current_agent_token_hash', :token_hash, true)"),
         {"token_hash": token_hash},
     )
 
@@ -225,13 +222,16 @@ def test_agent_credentials_enforce_member_and_single_token_rls() -> None:
                     ),
                     {"token_hash": token_hash_a},
                 ).all() == [credential_a]
-                assert connection.scalar(
-                    text(
-                        "SELECT count(*) FROM infrastructure_agent_credentials "
-                        "WHERE token_hash = :token_hash"
-                    ),
-                    {"token_hash": token_hash_b},
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT count(*) FROM infrastructure_agent_credentials "
+                            "WHERE token_hash = :token_hash"
+                        ),
+                        {"token_hash": token_hash_b},
+                    )
+                    == 0
+                )
 
             with connection.begin():
                 _set_member_context(connection, organization_a, user_a)
@@ -280,10 +280,7 @@ def test_agent_credentials_enforce_member_and_single_token_rls() -> None:
                 )
 
                 denied_delete = connection.execute(
-                    text(
-                        "DELETE FROM infrastructure_agent_credentials "
-                        "WHERE id = :id"
-                    ),
+                    text("DELETE FROM infrastructure_agent_credentials WHERE id = :id"),
                     {"id": credential_a},
                 )
                 assert denied_delete.rowcount == 0
@@ -301,13 +298,16 @@ def test_agent_credentials_enforce_member_and_single_token_rls() -> None:
 
             with connection.begin():
                 _set_agent_context(connection, token_hash_a)
-                assert connection.scalar(
-                    text(
-                        "SELECT count(*) FROM infrastructure_agent_credentials "
-                        "WHERE token_hash = :token_hash"
-                    ),
-                    {"token_hash": token_hash_a},
-                ) == 0
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT count(*) FROM infrastructure_agent_credentials "
+                            "WHERE token_hash = :token_hash"
+                        ),
+                        {"token_hash": token_hash_a},
+                    )
+                    == 0
+                )
 
         with migrator_engine.begin() as connection:
             with pytest.raises(DBAPIError) as denied_truncate:
